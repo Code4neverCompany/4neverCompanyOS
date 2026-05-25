@@ -30,6 +30,11 @@ tier2_resolutions:
   repo_structure: 'monorepo with pnpm workspaces (OQ-I)'
   version_pinning: 'Architect researches current stable tags at M0 start; quarterly cadence (OQ-J)'
   license_audit: 'LICENSES.md is an M0 deliverable (OQ-K)'
+tier3_4_resolutions:
+  team_size: '4+ engineers; build-plan timeline (24-32 weeks at 2-3 engineers) may compress through parallelization (OQ-L)'
+  budget: 'personal project with no formal cap; pace dictated by engineering exit criteria, not date (OQ-L)'
+  attribution: 'all four locations — Settings/About panel + first-run wizard final screen + app-launch splash screen + LICENSES.md (OQ-M)'
+  contribution_back: 'always offer upstream when general-purpose; adapters/plugins/personas/BMAD modules become PRs when not 4nCO-specific (OQ-M)'
 ---
 
 # Architecture Decision Document
