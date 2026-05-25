@@ -10,11 +10,16 @@
 
 ## TL;DR — Go / Fallback Decision
 
-**Verdict: provisional GO on D-13 portal-slot path** — frontend / WebView2 / portal pattern all compile cleanly and are ready to launch.
+**Verdict: FINAL GO on D-13 portal-slot path.** Validated end-to-end 2026-05-26 after Windows 11 SDK 10.0.28000.0 was installed.
 
-**Blocker (environmental, not architectural):** Tauri's Rust build chain on this machine cannot link because the **Windows SDK 10 install is incomplete** — `C:\Program Files (x86)\Windows Kits\10\Lib\` and `Include\` are empty (only `Catalogs/`, `Redist/`, `UnionMetadata/` subdirs exist; no `um/`, `shared/`, `ucrt/`). This is fixable by re-installing the Windows 10/11 SDK and is **not a Tauri-architecture-choice problem**.
+- ✅ WebView2 rendering (page paints inside Tauri window)
+- ✅ Portal-slot injection (workspace panels render inside Paperclip host's named DOM slots via `createPortal`)
+- ✅ Tauri IPC (`invoke('greet')` round-trips)
+- ✅ DOM-mount fallback (separate `createRoot` works in the same WebView2)
 
-Once the SDK is repaired, the spike's runnable phase (window-launches verification + portal-slot visual verification) can complete in minutes. D-13 fallback (DOM-mount) is implemented and will work the same way once the Rust side compiles.
+Cold build of Tauri Rust crates: **1m 40s** in debug mode (1st run); incremental dev builds will be much faster. Tauri 2.11.2 + React 19.2.6 + Vite 7.3.3 + TypeScript 5.8.3 + Rust 1.90.0 + WebView2 148.0.3967.83. The architectural choice is locked in; M0 can proceed to Story 1.2 monorepo scaffolding with full confidence.
+
+**Previous blocker (resolved):** The Windows SDK install at `C:\Program Files (x86)\Windows Kits\10\` was incomplete on first attempt — `Lib\` and `Include\` payloads were missing. Maurice installed Windows 11 SDK 10.0.28000.0 via the official installer; `Lib\10.0.28000.0\um\x64\kernel32.Lib` (311 KB) is now present, and the VS Developer PowerShell launcher (`Launch-VsDevShell.ps1 -Arch amd64 -HostArch amd64 -SkipAutomaticLocation`) populates LIB (4 entries) and INCLUDE (8 entries) correctly. The vcvars64.bat batch file itself still emits a cosmetic "vswhere.exe is not recognized" warning during startup but the env vars load fine.
 
 ---
 
@@ -102,16 +107,26 @@ Both paths compile cleanly. Once (d) is unblocked, launching `pnpm tauri dev` wi
 
 ## Action items
 
-### Immediate (unblock the spike's run-time verification phase)
+### Immediate (DONE 2026-05-26)
 
-1. **Re-install the Windows SDK** — pick one of:
-   - **Easiest:** download "Windows 11 SDK" (10.0.22621.x or current) from <https://developer.microsoft.com/windows/downloads/windows-sdk/> and run the installer.
-   - **Via VS Installer:** open Visual Studio Installer → modify VS 2022 BuildTools (or Community) → check "Windows 11 SDK (10.0.22621.x)" under "Individual components" → install. This populates `C:\Program Files (x86)\Windows Kits\10\Lib\` and `Include\` properly.
-   - **Via winget:** `winget install Microsoft.WindowsSDK.10.0.22621` (validate the exact package name in winget's catalog).
-2. **After SDK install:** verify `Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\Lib'` lists at least one `10.0.x.x` subdirectory with `um\x64\kernel32.lib` inside.
-3. **Re-run cargo check:** `cd spikes\tauri-spike\src-tauri && cargo check`. Expected: clean compile.
-4. **Run the visual phase:** `pnpm tauri dev` from `spikes\tauri-spike\`. A Tauri window opens; the page reports PASS for "Portal-slot injection" and (after clicking the test button) PASS for "DOM-mount fallback."
-5. **Update this report's "Go / Fallback Decision"** from *provisional* to *final* once the visual run passes.
+1. ~~Re-install the Windows SDK~~ — **DONE.** Windows 11 SDK 10.0.28000.0 installed. `Lib\10.0.28000.0\um\x64\kernel32.Lib` present (311 KB).
+2. ~~Verify SDK payload~~ — **DONE.** `Get-ChildItem` confirms `10.0.28000.0` exists under both `Lib\` and `Include\`.
+3. ~~Re-run cargo check~~ — **DONE.** `cargo check` from `spikes\tauri-spike\src-tauri` succeeded in 58.32s after loading the VS Developer PowerShell env (Launch-VsDevShell.ps1).
+4. ~~Run the visual phase~~ — **DONE.** `pnpm tauri dev` launched the Tauri window (1m 40s cold debug build). `tauri-spike.exe` running with 6 child `msedgewebview2` processes. Maurice visually confirmed: all four PASS indicators land (WebView2 rendering, Portal-slot injection, Tauri IPC after Greet, DOM-mount fallback after the test button).
+5. ~~Update Go / Fallback Decision~~ — **DONE.** Status: FINAL GO (see TL;DR at top).
+
+### Required env setup for any dev machine going forward
+
+To run Tauri dev/build commands, the VS Developer environment must be loaded. The cleanest pattern (verified during this spike):
+
+```powershell
+# At the start of every Tauri-touching shell session:
+& 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\Launch-VsDevShell.ps1' -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+```
+
+This populates LIB (4 entries: MSVC + NETFX + SDK ucrt + SDK um) and INCLUDE (8 entries). The launcher emits a cosmetic `vswhere.exe is not recognized` warning that can be ignored — the env loads correctly.
+
+For CI (Story 1.5), the equivalent is the `microsoft/setup-msbuild@v2` action on Windows runners or relying on the runner's pre-baked Developer environment.
 
 ### Follow-up findings to absorb into the plan
 
