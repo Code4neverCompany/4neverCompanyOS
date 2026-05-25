@@ -1,0 +1,12 @@
+{
+  "name": "c4n-4nevercompany-os",
+  "version": "0.0.1",
+  "private": true,
+  "description": "4neverCompany OS — packaged desktop workspace bundling Paperclip + Hermes Agent + BMAD Method. See docs/4neverCompany_OS_Brief.md.",
+  "devDependencies": {
+    "bmad-method": "6.7.1"
+  },
+  "scripts": {
+    "bmad": "bmad-method"
+  }
+}
