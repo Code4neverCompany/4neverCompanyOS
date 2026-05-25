@@ -1,12 +1,14 @@
 ---
 title: 4neverCompany OS — Product Brief
-status: draft
+status: approved-tier1
 created: 2026-05-25
 updated: 2026-05-25
 source: docs/4neverCompany_OS_Brief.md (v0.6)
 source_companion: docs/4neverCompany_OS_Build_Plan.md (v0.1)
 author_role: Analyst (Mary)
 project: c4n-4neverCompanyOS
+tier1_questions_answered: 2026-05-25
+tier2_4_questions_status: deferred-to-next-session
 ---
 
 # Product Brief: 4neverCompany OS
@@ -43,18 +45,25 @@ A single Windows installer that provisions Paperclip + Hermes + BMAD + Zellij + 
 
 ## Who This Serves
 
-> **[GAP — needs PM input]** The source brief does not name explicit user personas. The HANDOFF flags this as a PM-stage blocker. Best inference from the source ("a single user can install in one click", "single-user desktop product", "GitHub-based sync as the only collaboration story for v1"):
-> - **Primary persona (inferred):** a solo developer or small-team technical lead who wants an opinionated, locally-runnable AI-agent workspace without assembling four upstream projects themselves.
-> - **Secondary persona (inferred):** a methodology-curious practitioner who wants BMAD's structured workflow available as a one-click flow rather than a CLI ritual.
-> These are placeholders. PM persona needs the user's explicit answer before producing the PRD.
+**Primary persona — the solo developer who is also an AI-tooling power user.** They ship side projects on their own, own the whole stack themselves, and already run terminal-native agent CLIs (Claude Code, Antigravity CLI, or similar) as part of their daily flow. They have felt the friction of trying to stitch Paperclip + Hermes + BMAD + Zellij + Obsidian together by hand — installation, configuration, persona-to-agent wiring, memory integration — and want a single locally-installable binary that gives them persistent state, vault memory, and a real orchestrator on top of the agent CLIs they already trust. They care strongly about install speed (the M1 exit criterion of ≤10 minutes from fresh install to a working Dev agent matters to them concretely), about a no-friction `greenfield-fullstack` flow as the day-one win, and about config-as-code so their personas, skills, and BMAD artifacts travel with them as version-controlled markdown.
+
+What "success looks like" for this persona: open the workspace, pick "Start a BMAD project," and within a single work session have a working code skeleton plus the BMAD artifact set (brief, PRD, architecture, story files, QA reports) — without having spent any time on tool plumbing.
+
+> Secondary personas (small-team technical lead onboarding 1–3 teammates; methodology-curious practitioner drawn to BMAD as the headline UX) are **deferred — not selected as primary v1 targets**. The product does not preclude them — GitHub sync supports multi-machine continuity and BMAD is the default day-1 flow — but the PRD's "who" framing is built around the primary above. Revisit in v2.
 
 ## Success Criteria
 
-> **[GAP — needs PM input]** The build plan defines "usable v1" as "~24–32 weeks (6–7 months)" but does not state measurable success criteria for the v1 product as a whole. The HANDOFF flags this as a PM-stage blocker. Candidates the source materials *do* state, which the PM can promote, refine, or replace:
-> - **M1 exit criterion (install → working Dev agent in a terminal pane) takes under 10 minutes** on a fresh Windows 10/11 machine.
-> - **M4 exit criterion** — a clean `greenfield-fullstack` run produces a working code skeleton plus complete BMAD artifacts (brief, PRD, architecture, story files, QA reports) in one work session, on three different test project ideas.
-> - **M5 exit criterion** — round-trip cross-machine continuity (Windows → GitHub → macOS → Linux) works with full state preservation.
-> No business / adoption / retention metrics are stated in the source. The PM persona should propose at least one user-facing success signal beyond the engineering exit criteria.
+"Usable v1" is defined exclusively by the **engineering exit criteria** stated in the build plan. No user-facing activation, retention, or value/time-saved metrics are part of the v1 success bar; the PM persona is instructed **not** to invent additional metrics on top of the criteria below. (Rationale: this is a curated bundle for a power-user audience; the product's own adoption story is downstream of getting the engineering right.)
+
+The v1 success criteria, in full:
+
+- **M1 — Walking skeleton.** Fresh install on a clean Windows 10/11 machine → completing the first-run wizard → creating a project → having a working Dev/Claude Code agent in a Zellij pane takes **under 10 minutes**. Dev agent persists across desktop-app restarts (Zellij session survives). Vault directory layout is documented and stable.
+- **M2 — Two agents + bus.** Dev and Frontend Designer coordinate on a small task end-to-end without crashing. Progress-based stall detection validated against ~10 manual test scenarios (mix of "should intervene" and "should not intervene"). Bus messages survive Paperclip restart. Two idling agents do not burn significant tokens.
+- **M3 — Dynamic spawning.** At least five distinct persona types can be spawned successfully (Analyst, PM, Architect, SM, QA at minimum). Ephemeral agents reliably clean up — no orphan processes after 100 spawn/exit cycles. Persistent dynamic agents survive app restart the same as fixed ones. Custom personas can be created and reused across projects via BMad Builder.
+- **M4 — Full BMAD workflow.** A clean `greenfield-fullstack` run produces a working code skeleton plus complete BMAD artifacts (brief, PRD, architecture, story files, QA reports) in **one work session**, on at least **three different test project ideas**. `brownfield` runs on at least one real test repo. Workflow can be paused, app closed, reopened later, and resumed cleanly.
+- **M5 — Polish + cross-platform.** Three working installers (Windows `.exe`, macOS `.dmg`, Linux AppImage or distro packages) tested clean-install on at least one machine each. **Round-trip cross-machine continuity test passes:** project created on Windows, pushed to GitHub, opened and resumed on macOS, then on Linux, with full state preservation. Supermemory measurably improves Hermes responses on at least one defined cross-project retrieval scenario.
+
+If all five exit criteria pass, v1 is shipped.
 
 ## Scope
 
@@ -68,30 +77,30 @@ Two- to three-year horizon: 4neverCompany OS becomes the default way an individu
 
 ---
 
-## Open Questions for the User Before PM Handoff
+## Open Questions Status
 
-These are the questions the Analyst surfaces; answering them (or explicitly deferring each one) unblocks the PM persona's PRD work. They are grouped by urgency.
+### Tier 1 — Resolved (2026-05-25)
 
-### Tier 1 — Required before PM stage can fully produce the PRD
+1. **User persona — RESOLVED.** Primary v1 persona is the solo developer who is also an AI-tooling power user. Small-team technical lead and methodology-curious practitioner are deferred as non-primary for v1. Folded into § "Who This Serves" above.
+2. **Success metrics — RESOLVED.** "Usable v1" is defined exclusively by the build-plan engineering exit criteria (M1 through M5). No additional user-facing activation, retention, or value/time-saved metrics for v1; PM is instructed not to add them. Folded into § "Success Criteria" above.
 
-1. **User persona — primary and secondary.** Best inferences are listed in the brief; please confirm, revise, or replace. Without this the PRD's "who" section is speculative.
-2. **Success metrics for "usable v1."** The build-plan engineering exit criteria are listed as candidates; please confirm whether those *are* the success criteria or whether the PM should propose additional user-facing / adoption / retention signals.
-
-### Tier 2 — M0 decisions the build plan defers and the Architect will need
+### Tier 2 — Deferred to next session (M0 / Architect-blocking)
 
 3. **Desktop shell: Tauri vs. Electron.** Build plan recommends a one-day Tauri spike before committing; do you want the spike scheduled in M0, or pre-decide?
 4. **Repository structure: monorepo (pnpm workspaces) vs. multi-repo.** Build plan recommends monorepo unless the team is already split across repos.
 5. **Upstream version pinning.** Paperclip, Hermes, BMAD, Antigravity CLI, Zellij — each needs a specific pinned tag and an update cadence. Defer to M0 or specify now?
-6. **License audit (LICENSES.md).** Paperclip is MIT; Hermes, BMAD, Antigravity CLI, Claude Code, Zellij each need explicit verification of bundling, redistribution, attribution, and commercial-use terms. M0 work — confirm bandwidth in this session or defer to a later one?
+6. **License audit (LICENSES.md).** Paperclip is MIT; Hermes, BMAD, Antigravity CLI, Claude Code, Zellij each need explicit verification of bundling, redistribution, attribution, and commercial-use terms.
 
-### Tier 3 — Team and resourcing the build plan assumes but does not confirm
+### Tier 3 — Deferred to next session (team and resourcing)
 
 7. **Team size.** Build plan estimates assume 2–3 engineers (solo work roughly doubles them). Confirm.
 8. **Budget envelope.** Implicit in 2–3 engineers × 6–7 months but never stated; confirm or defer.
 
-### Tier 4 — Brand and contribution policy
+### Tier 4 — Deferred to next session (brand and contribution policy)
 
 9. **Attribution copy.** "Powered by Paperclip / Hermes / BMAD / Antigravity" — where does this appear in the product UI, and what is the contribution-back policy for adapters, plugins, personas, BMAD modules?
+
+> Tier 2–4 questions are deferred to the next session. The PM persona can begin drafting the PRD using the Tier 1 answers; the Architect persona will need Tier 2 resolved before producing architecture artifacts.
 
 ---
 
@@ -103,8 +112,8 @@ These are the questions the Analyst surfaces; answering them (or explicitly defe
 | The Problem | §2 "Why now / why bundle" (implicit) | ✓ reframed |
 | The Solution | §1 + §4 MVP Scope | ✓ direct map |
 | What Makes This Different | §7 Differentiators | ✓ direct map |
-| Who This Serves | — | ⚠ GAP (see open question 1) |
-| Success Criteria | build plan exit criteria only | ⚠ GAP (see open question 2) |
+| Who This Serves | resolved 2026-05-25: solo dev / AI-tooling power user | ✓ filled |
+| Success Criteria | resolved 2026-05-25: build-plan engineering exit criteria, no additional metrics | ✓ filled |
 | Scope | §4 (in) + §8 (out) | ✓ direct map |
 | Vision | §2 Vision & Positioning (partial) | ✓ expanded for 2–3y horizon |
 
