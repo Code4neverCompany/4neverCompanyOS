@@ -3,3 +3,15 @@ node_modules/
 Thumbs.db
 *.log
 npm-debug.log*
+
+# Spike apps — exploratory throwaway code; reports are tracked in docs/
+spikes/
+
+# Rust build artifacts
+target/
+**/target/
+Cargo.lock.bak
+
+# Tauri build outputs
+src-tauri/target/
+src-tauri/gen/
