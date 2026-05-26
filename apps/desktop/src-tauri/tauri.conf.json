@@ -26,14 +26,30 @@
     }
   },
   "bundle": {
-    "active": false,
-    "targets": "all",
+    "active": true,
+    "targets": ["nsis"],
+    "publisher": "Code4neverCompany",
+    "copyright": "Copyright © 2026 Code4neverCompany. Released under MIT — see LICENSES.md.",
+    "category": "DeveloperTool",
+    "shortDescription": "Packaged desktop bundle of Paperclip + Hermes Agent + BMAD Method.",
+    "longDescription": "4neverCompany OS bundles a vault-backed Paperclip shell, the Hermes Agent (sibling tool), and BMad Method workflows into a single desktop app. Spawns Dev (Claude Code) + Hermes personas via Zellij, with embedded bidirectional terminals.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "displayLanguageSelector": false,
+        "installerIcon": "icons/icon.ico",
+        "installMode": "currentUser",
+        "languages": ["English"]
+      }
+    }
   }
 }

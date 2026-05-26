@@ -18,5 +18,11 @@ Cargo.lock.bak
 src-tauri/target/
 src-tauri/gen/
 
+# Mobile icon variants produced by `pnpm tauri icon`. The desktop bundle
+# doesn't ship Android/iOS targets; these get regenerated on demand if a
+# future story adds mobile bundling. (Story 1.17.)
+apps/*/src-tauri/icons/android/
+apps/*/src-tauri/icons/ios/
+
 # TypeScript incremental build cache
 *.tsbuildinfo
