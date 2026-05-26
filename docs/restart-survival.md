@@ -112,7 +112,8 @@ Architecture assumes single-instance desktop. Running two instances of `pnpm dev
 - **Story 1.11** — Zellij adapter — provides the `list_sessions` / `session_exists` primitives this story depends on.
 - **Story 1.12** — Dev persona spawn — provides `spawn_dev_persona` with the existing session-reuse branch (chain link 4) and `current_project()` for restoring the pointer on launch (chain link 1).
 - **Story 1.14** — Persona supervisor — provides the supervisor + `close_on_exit: false` semantics (chain link 3).
-- **Story 1.16** — Hermes TUI embedded as a pane — will need similar restart-survival semantics for the Hermes session. Will reuse the chain documented here.
+- **Story 1.16** — Hermes TUI embedded as a pane — uses the **same** restart-survival chain documented here. The 1.16a sub-story upgrades the supervisor from raw stdio to a PTY tap (`<vault>/personas/<id>/log/<date>.pty.raw`); restart survival is unaffected because Zellij still parents the supervisor (chain link 3 holds). The xterm.js layer in 1.16c is a DISPLAY of the running session, not a replacement; on desktop restart, xterm.js re-attaches its tail to the existing tap file. Both Dev and Hermes get restart survival on the same pattern.
+- **Story 2.5** (M2) — Frontend Designer's restart survival — extends the same five-link chain to the third persona. Confirms the architecture generalizes to N personas.
 
 ## Bottom line for new contributors
 
