@@ -24,12 +24,12 @@ methodology_note: |
 
 ## At a glance
 
-M0 is fully shipped. M1's first batch (1.10–1.14) shipped, plus 1.15 audit-trail, the entire **Story 1.16 (a/b/c/d) — Hermes TUI embedded as a fully bidirectional pane**, and **Story 1.17a — NSIS installer + multi-res icon.ico regen**. Story 1.17b (supervisor sidecar bundling) was attempted but hit a `cargo` workspace-lock deadlock in `build.rs` — discarded and **deferred** pending a `--target-dir` refactor. Stories 1.18 (E2E ≤ 10 min) and 1.19 (attribution surfaces) close M1.
+M0 is fully shipped. M1's first batch (1.10–1.14) shipped, plus 1.15 audit-trail, the entire **Story 1.16 (a/b/c/d) — Hermes TUI embedded as a fully bidirectional pane**, **Story 1.17a — NSIS installer + multi-res icon.ico regen**, and **Story 1.18 — E2E smoke-test protocol + scaffolding** (first story shipped via the formal BMAD method end-to-end: bmad-create-story → user-approved spec → bmad-dev-story → 3-pass review). Story 1.17b (supervisor sidecar bundling) remains deferred pending a `--target-dir` refactor. Only Story 1.19 (attribution surfaces) remains to close M1.
 
 | Sprint                                      | State          | Notes                                                                                                                                                                                                                |
 | ------------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **M0 — Foundations**                        | ✅ Done        | Tauri spike + monorepo + CI + LICENSES + pinned-versions all shipped; CI baseline green twice across Win/Mac/Linux × JS+Rust before the GitHub Actions infrastructure incident on 2026-05-26.                        |
-| **M1 — Spawn pipeline + first-run**         | 🟡 In progress | First-batch (wizard auth flow, credential storage, vault-layout, Zellij adapter) shipped; spawn pipeline (1.12–1.14) shipped; restart survival (1.15) shipped; **Hermes embedding (1.16a/b/c/d) fully shipped + NSIS installer (1.17a) producing `.exe`**; 1.17b (sidecar bundling) deferred to follow-up; 1.18 (E2E) and 1.19 (attribution) remain. |
+| **M1 — Spawn pipeline + first-run**         | 🟡 In progress | First-batch (wizard auth flow, credential storage, vault-layout, Zellij adapter) shipped; spawn pipeline (1.12–1.14) shipped; restart survival (1.15) shipped; **Hermes embedding (1.16a/b/c/d), NSIS installer (1.17a), and E2E smoke-test protocol (1.18) all shipped**; 1.17b (sidecar bundling) deferred; only 1.19 (attribution) remains. |
 | M2 — Frontend Designer + BMad Builder       | ⏸ Not started  | Depends on M1 close-out.                                                                                                                                                                                             |
 | M3 — Sentinel + opt-in cross-project memory | ⏸ Not started  | —                                                                                                                                                                                                                    |
 | M4 — Polish + onboarding                    | ⏸ Not started  | —                                                                                                                                                                                                                    |
@@ -63,7 +63,7 @@ M0 is fully shipped. M1's first batch (1.10–1.14) shipped, plus 1.15 audit-tra
 | 1.16d | Hermes TUI — bidirectional input           | ✅ Done         | (this commit)                                                       | Supervisor `.pty.in` watcher task + `write_persona_pty_in` Tauri command + `PtyTail.onData` → invoke wiring. ~200 LOC. Code review PASS (HIGH=0, MED=0, LOW=1 pre-existing path-traversal note).                                                                                                                  |
 | 1.17a | NSIS installer + icon.ico regen            | ✅ Done         | 97f4b6f                         | `pnpm tauri build` → `4neverCompany OS_0.0.1_x64-setup.exe` (~2.2 MB). Per-user install, WebView2 auto-bootstrap, multi-res icon from the 4never monogram, `docs/installer.md` written. Verified end-to-end 3m26s on Win 11. |
 | 1.17b | Supervisor sidecar bundling                | ⏸ Deferred      | —                               | First attempt deadlocked: `build.rs` invoked `node` → `cargo build -p c4n-persona-supervisor`, competing for the workspace target-dir lock with the outer `cargo build`. Reset to 97f4b6f. Fix path documented for the redo. |
-| 1.18  | End-to-end scenario test (≤ 10 min)        | ⏸ Pending       | —                               | Depends on 1.16 (done) + 1.17a (done). Installed app still needs the supervisor on PATH until 1.17b lands; smoke test reflects that prerequisite. |
+| 1.18  | End-to-end scenario test (≤ 10 min)        | ✅ Done         | (this commit)                   | Protocol at `docs/e2e-smoke-test.md` (12-phase budget, per-step verification + failure modes, sign-off block); `e2e_scenario_manual_verification` `#[ignore]`d test surfaces it via `cargo test -- --ignored`; `tests/manual/` scaffolded with README naming the AC-mandated capture filenames. Code review PASS (HIGH/MED/LOW/DEFERRED all 0). Real-hardware run is a follow-up. **First story shipped via the formal BMAD method end-to-end** (create-story → approval → dev-story → 3-pass review). |
 | 1.19  | In-product attribution surfaces            | ⏸ Pending       | —                               | Settings → About + splash + wizard final + LICENSES.md (the file is already there; the UI surfaces aren't)                                                                                                                                                             |
 
 ## Open blockers
@@ -100,7 +100,7 @@ M0 is fully shipped. M1's first batch (1.10–1.14) shipped, plus 1.15 audit-tra
 
 ## What's next
 
-This sprint: ✅ **Story 1.16 fully closed** (a/b/c/d all done). Next is **Story 1.17** — Tauri `.exe` via NSIS bundler + multi-res `.ico` regen. After 1.17 the M1-closer stories are 1.18 (E2E ≤ 10 min) and 1.19 (attribution surfaces).
+This sprint: ✅ **Stories 1.16, 1.17a, and 1.18 all shipped.** Next is **Story 1.19** — in-product attribution surfaces (Settings → About + splash + wizard final + LICENSES.md surfaces). That closes M1's hard backlog. Story 1.17b (supervisor sidecar bundling with `--target-dir` fix) is a discretionary follow-up that improves the install UX but isn't gating M1 close-out — `docs/installer.md` documents the one-time `cargo install` workaround.
 
 ## Change log
 
@@ -111,3 +111,4 @@ This sprint: ✅ **Story 1.16 fully closed** (a/b/c/d all done). Next is **Story
 | 2026-05-26 | bmad-sprint-planning (manual) | Story 1.16c done (display layer + xterm.js); Story 1.16d split for bidirectional input.         |
 | 2026-05-26 | bmad-sprint-planning (manual) | Story 1.16d done (bidirectional input). Story 1.16 fully complete. Next-up: Story 1.17.         |
 | 2026-05-26 | bmad-sprint-planning (manual) | Story 1.17a done (NSIS + icon regen). 1.17b attempted, deadlocked, reset to 97f4b6f, deferred.  |
+| 2026-05-26 | bmad-dev-story                | Story 1.18 done (E2E protocol + scaffolding). First story shipped via formal BMAD method end-to-end. Next: Story 1.19. |
