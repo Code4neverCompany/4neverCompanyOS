@@ -9,6 +9,7 @@
 import { useState } from "react";
 import { Badge, Eyebrow, HUDFrame, StatusDot } from "@c4n/ui-tokens";
 import monogramUrl from "@c4n/ui-tokens/assets/logo/monogram.png";
+import { ProjectsView } from "../views/ProjectsView";
 
 type RailItem = "projects" | "personas" | "vault" | "memory" | "settings";
 
@@ -188,20 +189,15 @@ function SideRail({
  * Until then, we render a clearly labeled placeholder so the visual
  * baseline looks like the design system while the actual host is plumbed.
  */
-/** Per-rail-item placeholder copy. Each section is a placeholder until the
- *  story that wires it lands; this keeps drive-by visitors from assuming the
- *  side rail is functional navigation today. */
+/** Per-rail-item placeholder copy for the rail items that aren't wired up
+ *  to a real view yet. `projects` has its own implementation in
+ *  views/ProjectsView (Story 1.12). The rest will land on their own stories. */
+type PlaceholderRailItem = Exclude<RailItem, "projects">;
+
 const SLOT_COPY: Record<
-  RailItem,
+  PlaceholderRailItem,
   { eyebrow: string; titlePrefix: string; titleAccent: string; body: string; comingIn: string }
 > = {
-  projects: {
-    eyebrow: "Projects · 0 open",
-    titlePrefix: "The Orchestration ",
-    titleAccent: "Grid",
-    body: "Open or create a project; on open, the Dev persona spawns into a Zellij pane.",
-    comingIn: "Story 1.12 — Dev persona spawn on project open",
-  },
   personas: {
     eyebrow: "Personas · 2 fixed",
     titlePrefix: "",
@@ -233,6 +229,9 @@ const SLOT_COPY: Record<
 };
 
 function MainSlot({ active }: { active: RailItem }) {
+  if (active === "projects") {
+    return <ProjectsView />;
+  }
   const copy = SLOT_COPY[active];
   return (
     <main
