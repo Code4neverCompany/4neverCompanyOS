@@ -631,4 +631,81 @@ mod tests {
         assert_eq!(on_disk, BUNDLED_DEV_PERSONA_MD);
         assert_ne!(on_disk, "stale content");
     }
+
+    // ── Story 1.15 — restart survival (manual verification) ─────────
+    //
+    // The behavior is covered by existing code paths (read_active_project
+    // on launch + spawn_dev_persona's session-reuse branch). No new logic
+    // ships with 1.15; this story closes by documenting the manual-
+    // verification protocol in code so future contributors can re-run it.
+    //
+    // Mirrors the `#[ignore]` pattern used by c4n-zellij-adapter for
+    // tests that require a real Zellij install + an interactive desktop.
+    // Run with: `cargo test -p c4n-desktop -- --ignored`.
+    //
+    // See docs/restart-survival.md for the full architectural rationale.
+
+    #[test]
+    #[ignore = "manual verification protocol — requires Zellij ≥ 0.44.3, Claude Code, and the desktop app running on Win 11"]
+    fn restart_survival_manual_verification() {
+        // The body is intentionally a non-executing protocol description
+        // rather than an automated probe. Automating it requires either
+        // (a) refactoring spawn_dev_persona to take an arbitrary inner
+        // command (out of scope per the story's "no source change" rule),
+        // or (b) a real Claude Code install in the test environment
+        // (not available in CI). Both are deferred to a follow-up.
+        eprintln!(
+            "\n\
+             Story 1.15 — Dev persona restart-survival manual verification\n\
+             ────────────────────────────────────────────────────────────\n\
+             \n\
+             Preconditions:\n\
+               1. Zellij ≥ 0.44.3 installed and on PATH.\n\
+               2. Claude Code installed and on PATH (`claude --version` works).\n\
+               3. `c4n-persona-supervisor` on PATH (`cargo install --path\n\
+                  crates/persona-supervisor --debug` once).\n\
+               4. The first-run wizard has been completed; \n\
+                  ~/.4nevercompanyos/config.toml exists with a vault_path.\n\
+             \n\
+             Protocol:\n\
+               1. `pnpm dev:desktop` — launch.\n\
+               2. Projects panel → \"Open project →\" → pick any folder.\n\
+               3. Click \"Spawn Dev persona →\". Wait for the green\n\
+                  \"attached\" badge (should appear in < 5 seconds).\n\
+               4. In a separate shell: `zellij list-sessions` shows\n\
+                  `dev-<project-id>`. `zellij attach <name>` shows the\n\
+                  Claude Code prompt. Type something to confirm it's\n\
+                  interactive. Ctrl+Q to detach.\n\
+               5. Fully close the desktop app. Verify no `c4n-desktop`\n\
+                  process remains.\n\
+               6. `zellij list-sessions` STILL shows `dev-<project-id>`.\n\
+                  `zellij attach <name>` STILL shows Claude Code with\n\
+                  conversation history intact.\n\
+               7. Detach. `pnpm dev:desktop` to relaunch.\n\
+               8. ProjectsView loads showing the prior project's name +\n\
+                  path within ~3 seconds. Dev persona panel shows\n\
+                  \"Running\" with the same session_name.\n\
+               9. `zellij list-sessions` STILL shows exactly ONE\n\
+                  `dev-<project-id>` — no duplicate spawn.\n\
+              10. Click \"Refresh\" — badge stays green.\n\
+             \n\
+             Pass condition: steps 6, 8, 9, and 10 all hold.\n\
+             \n\
+             Failure-mode handling:\n\
+               - Step 6 fails: Zellij isn't persisting sessions across\n\
+                 the desktop's exit. Either Zellij is misconfigured\n\
+                 (`zellij setup --check`) or the install is < 0.44.0\n\
+                 (no Windows ConPTY support). Out of 1.15 scope.\n\
+               - Step 8 fails: `read_active_project()` regression — the\n\
+                 active-project.toml pointer didn't survive. Check that\n\
+                 the file still exists on disk.\n\
+               - Step 9 produces a duplicate: the session-reuse branch\n\
+                 in `spawn_dev_persona` regressed. Inspect lines around\n\
+                 `if already_running` in commands/mod.rs.\n\
+             "
+        );
+        // No assertion: this test only documents the protocol. Pass-or-
+        // fail of restart survival is determined by the human running
+        // the protocol on a real dev box.
+    }
 }
