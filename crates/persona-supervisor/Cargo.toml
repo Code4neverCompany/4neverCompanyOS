@@ -9,6 +9,10 @@ authors = ["4neverCompany"]
 name = "c4n_persona_supervisor"
 crate-type = ["rlib"]
 
+[[bin]]
+name = "c4n-persona-supervisor"
+path = "src/main.rs"
+
 [dependencies]
 thiserror = { workspace = true }
 anyhow = { workspace = true }
@@ -16,3 +20,11 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+# Story 1.14: ISO date arithmetic for the per-day log file name.
+# Default-features off keeps the build slim (no `clock` feature pulls in
+# `time` and other transitives we don't need beyond UTC date formatting).
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+
+[dev-dependencies]
+tempfile = "3"
