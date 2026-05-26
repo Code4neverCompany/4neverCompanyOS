@@ -23,7 +23,9 @@
     "rust:clippy": "cargo clippy --workspace --all-targets -- -D warnings",
     "rust:test": "cargo test --workspace",
     "dev:desktop": "pnpm --filter @c4n/desktop tauri dev",
-    "build:desktop": "pnpm --filter @c4n/desktop tauri build"
+    "build:desktop": "pnpm --filter @c4n/desktop tauri build",
+    "dev:wizard": "pnpm --filter @c4n/wizard tauri dev",
+    "build:wizard": "pnpm --filter @c4n/wizard tauri build"
   },
   "devDependencies": {
     "bmad-method": "6.7.1",
