@@ -2,7 +2,7 @@
 name = "c4n-persona-supervisor"
 version = "0.0.1"
 edition = "2021"
-description = "Wraps each persona process; captures stdout/stderr per line; pipes capture to the per-persona vault log file and to telemetry. Also exposes pause / dismiss control."
+description = "Wraps each persona process in a PTY; captures the raw byte stream + line-stripped JSONL events; forwards to outer terminal. Also exposes pause / dismiss control."
 authors = ["4neverCompany"]
 
 [lib]
@@ -25,6 +25,13 @@ serde_json = { workspace = true }
 # Default-features off keeps the build slim (no `clock` feature pulls in
 # `time` and other transitives we don't need beyond UTC date formatting).
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+
+# Story 1.16a: cross-platform PTY for TUI-fidelity supervision.
+# Replaces the raw Stdio::piped() pattern from 1.14a so interactive
+# tools (claude, hermes, etc.) get a real TTY and behave as if running
+# standalone. On Windows uses ConPTY (Windows 10 1809+); Linux/macOS
+# use the native pty(7).
+portable-pty = "0.9"
 
 [dev-dependencies]
 tempfile = "3"
