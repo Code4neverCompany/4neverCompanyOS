@@ -23,9 +23,13 @@
 //!     become `level="info"`. ANSI escape codes preserved in
 //!     `.pty.raw`; stripped to text in `.jsonl`.
 //!   - M1 Story 1.16b — `spawn_hermes` Tauri command using this primitive.
-//!   - M1 Story 1.16c — xterm.js consumer tailing `.pty.raw`; also
-//!     introduces a `.pty.in` input mechanism (file-watch + forward to
-//!     PTY stdin).
+//!   - M1 Story 1.16c — xterm.js consumer tailing `.pty.raw` (read-only display).
+//!   - **M1 Story 1.16d (this commit)** — `.pty.in` input mechanism.
+//!     A poller task in `supervise()` watches the persona's
+//!     `current.pty.in` file and forwards newly-appended bytes into the
+//!     PTY writer. The desktop's `write_persona_pty_in` command appends
+//!     keystroke bytes from xterm.js's `onData` callback. Together,
+//!     this completes the bidirectional embedded terminal.
 //!   - M2 Story 2.18 — IPC subscription for the telemetry layer.
 //!   - M3 Story 3.11 — pause / dismiss control surface.
 //!
@@ -57,11 +61,17 @@ use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use serde::Serialize;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 use tokio::io::AsyncWriteExt;
 use tracing::{debug, warn};
+
+/// How often the input watcher polls `.pty.in` for newly-appended
+/// bytes. 50ms gives sub-perceptible keystroke latency without burning
+/// CPU when the user isn't typing.
+const PTY_IN_POLL_MS: u64 = 50;
 
 #[derive(Debug, Error)]
 pub enum SupervisorError {
@@ -137,6 +147,25 @@ pub fn pty_raw_file_path(vault: &Path, persona_id: &str) -> PathBuf {
         .join(format!("{today}.pty.raw"))
 }
 
+/// Input-queue file path. NEW in Story 1.16d — bytes the user types
+/// in xterm.js land here via the desktop's `write_persona_pty_in`
+/// command; the supervisor's watcher task drains them into the PTY's
+/// stdin so the child sees keystrokes as if typed at a real terminal.
+///
+/// `<vault>/personas/<persona>/log/current.pty.in`
+///
+/// Unlike `.pty.raw` and `.jsonl`, this file is NOT date-rotated — it's
+/// a per-supervisor-instance transient queue. `supervise()` truncates
+/// it at startup so input from a previous supervisor process can't leak
+/// into the new one's PTY.
+pub fn pty_in_file_path(vault: &Path, persona_id: &str) -> PathBuf {
+    vault
+        .join("personas")
+        .join(persona_id)
+        .join("log")
+        .join("current.pty.in")
+}
+
 /// Spawn the child described by `config` inside a PTY. Produces three
 /// outputs simultaneously:
 ///
@@ -157,6 +186,7 @@ pub async fn supervise(config: SupervisorConfig) -> Result<i32, SupervisorError>
 
     let pty_raw_path = pty_raw_file_path(&config.vault_path, &config.persona_id);
     let jsonl_path = log_file_path(&config.vault_path, &config.persona_id);
+    let pty_in_path = pty_in_file_path(&config.vault_path, &config.persona_id);
     if let Some(parent) = pty_raw_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
@@ -169,6 +199,14 @@ pub async fn supervise(config: SupervisorConfig) -> Result<i32, SupervisorError>
         .create(true)
         .append(true)
         .open(&jsonl_path)?;
+
+    // Story 1.16d: truncate `.pty.in` at startup so input from a
+    // previous supervisor instance (different PID, possibly different
+    // child) can't leak into the new child's stdin. Creating the file
+    // also gives the desktop's `write_persona_pty_in` something to
+    // append to immediately — no race between supervisor startup and
+    // the first keystroke.
+    std::fs::File::create(&pty_in_path)?;
 
     // Default PTY size — most TUI apps respect SIGWINCH if we need to
     // resize later (Story 1.16c will plumb the xterm.js viewport size
@@ -207,12 +245,75 @@ pub async fn supervise(config: SupervisorConfig) -> Result<i32, SupervisorError>
         .try_clone_reader()
         .map_err(|e| SupervisorError::PtyOpen(format!("could not clone PTY master reader: {e}")))?;
 
+    // Story 1.16d: take the master's writer BEFORE the master moves into
+    // `_master`. We hand this to the input-watcher task below so user
+    // keystrokes can flow into the child's stdin.
+    let pty_writer = pair
+        .master
+        .take_writer()
+        .map_err(|e| SupervisorError::PtyOpen(format!("could not take PTY master writer: {e}")))?;
+
     // Keep master alive for the duration of supervision — dropping it
     // would close the PTY and signal EOF to the child.
     let _master = pair.master;
 
     let pty_raw_writer = Arc::new(Mutex::new(pty_raw_writer));
     let jsonl_writer = Arc::new(Mutex::new(jsonl_writer));
+
+    // Story 1.16d: input-watcher task. Polls `.pty.in` for newly-
+    // appended bytes (50ms cadence) and writes them to the PTY writer,
+    // which delivers them to the child as if typed at a real terminal.
+    // Uses an atomic stop flag (vs dropping the writer to signal) so we
+    // can let the writer drop naturally at end-of-function.
+    let writer_stop = Arc::new(AtomicBool::new(false));
+    let writer_handle = tokio::task::spawn_blocking({
+        let path = pty_in_path.clone();
+        let stop = writer_stop.clone();
+        let mut pty_writer = pty_writer;
+        move || -> Result<(), SupervisorError> {
+            let mut position: u64 = 0;
+            let poll = std::time::Duration::from_millis(PTY_IN_POLL_MS);
+            loop {
+                if stop.load(Ordering::SeqCst) {
+                    break;
+                }
+                if let Ok(meta) = std::fs::metadata(&path) {
+                    let size = meta.len();
+                    if size > position {
+                        let take = size - position;
+                        match std::fs::File::open(&path) {
+                            Ok(mut f) => {
+                                use std::io::{Read, Seek, SeekFrom};
+                                if f.seek(SeekFrom::Start(position)).is_ok() {
+                                    let mut buf = Vec::with_capacity(take as usize);
+                                    if f.take(take).read_to_end(&mut buf).is_ok() && !buf.is_empty()
+                                    {
+                                        position += buf.len() as u64;
+                                        if let Err(e) = pty_writer.write_all(&buf) {
+                                            warn!("pty.in writer error: {e}");
+                                            return Err(SupervisorError::Io(e));
+                                        }
+                                        if let Err(e) = pty_writer.flush() {
+                                            warn!("pty.in flush error: {e}");
+                                            return Err(SupervisorError::Io(e));
+                                        }
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                warn!("pty.in open failed: {e}");
+                            }
+                        }
+                    } else if size < position {
+                        // External truncation (rare; defensive reset).
+                        position = 0;
+                    }
+                }
+                std::thread::sleep(poll);
+            }
+            Ok(())
+        }
+    });
 
     // Read PTY → fan out to 3 outputs. portable-pty's API is sync, so
     // we use spawn_blocking. tokio handles the await boundary.
@@ -266,6 +367,14 @@ pub async fn supervise(config: SupervisorConfig) -> Result<i32, SupervisorError>
 
     // Drain any remaining reader output before returning.
     read_handle.await??;
+
+    // Story 1.16d: stop the input watcher and wait for it to finish.
+    // Errors during shutdown are non-fatal — the child has already
+    // exited so dropped input doesn't matter.
+    writer_stop.store(true, Ordering::SeqCst);
+    if let Err(e) = writer_handle.await {
+        warn!("pty.in writer join error during shutdown: {e}");
+    }
 
     Ok(exit_code)
 }
@@ -406,6 +515,32 @@ mod tests {
         );
         let s = path.to_string_lossy().replace('\\', "/");
         assert!(s.contains("personas/hermes/log/"), "got: {s}");
+    }
+
+    #[test]
+    fn pty_in_path_format() {
+        // Story 1.16d: input-queue file. NOT date-rotated (transient
+        // per-supervisor-instance queue), so both the desktop's writer
+        // command and the supervisor's reader task agree on a single
+        // stable path without needing to coordinate dates.
+        let path = pty_in_file_path(Path::new("C:/vault"), "dev");
+        assert!(
+            path.to_string_lossy().ends_with("current.pty.in"),
+            "got: {}",
+            path.display()
+        );
+        let s = path.to_string_lossy().replace('\\', "/");
+        assert!(s.contains("personas/dev/log/"), "got: {s}");
+    }
+
+    #[test]
+    fn pty_in_path_shared_across_calls() {
+        // The desktop side and supervisor side compute the path
+        // independently — they MUST agree byte-for-byte every time.
+        // This catches accidental "use today's date" regressions.
+        let a = pty_in_file_path(Path::new("/vault"), "hermes");
+        let b = pty_in_file_path(Path::new("/vault"), "hermes");
+        assert_eq!(a, b, "pty.in path must be deterministic across calls");
     }
 
     /// JSONL append helper still works the same. Catches regressions

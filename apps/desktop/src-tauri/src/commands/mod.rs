@@ -903,6 +903,82 @@ pub fn stop_persona_pty_tail(
     Ok(())
 }
 
+// ────────────────────────────────────────────────────────────────────
+// Story 1.16d — Bidirectional input
+// ────────────────────────────────────────────────────────────────────
+//
+// Input path (mirror of the read path):
+//
+//   xterm.js onData (frontend) → `write_persona_pty_in` command (this) →
+//   append to <vault>/personas/<id>/log/current.pty.in →
+//   supervisor's input-watcher task reads + writes to PTY writer →
+//   child sees keystrokes as if typed at a real terminal.
+//
+// Why file-based: the supervisor runs in its own process under Zellij,
+// not in the Tauri process. We can't share an in-memory handle. A
+// well-known file the supervisor polls (and the desktop appends to) is
+// the simplest portable channel.
+//
+// Path layout matches the supervisor's `pty_in_file_path` helper —
+// fixed `current.pty.in` (no date rotation), truncated at supervisor
+// startup so previous-session input doesn't leak.
+
+/// Vault path for the persona's `.pty.in` input queue. Mirror of the
+/// supervisor's `pty_in_file_path` — kept independent here so the
+/// desktop crate doesn't need a dep on the supervisor crate (which
+/// would slow down the desktop's compile times for one helper function).
+/// The path layout is part of the supervisor's public contract; a
+/// future supervisor change moving the file would break this too.
+fn pty_in_path_for(vault: &Path, persona_id: &str) -> PathBuf {
+    vault
+        .join("personas")
+        .join(persona_id)
+        .join("log")
+        .join("current.pty.in")
+}
+
+/// Append user-typed bytes to the persona's `.pty.in` file. The
+/// supervisor's watcher (Story 1.16d) drains them into the child's
+/// stdin at ~50ms cadence.
+///
+/// The supervisor truncates `.pty.in` at startup so an append into a
+/// missing/empty file is the happy path. We create the parent dir if
+/// absent (defensive — should always exist once the supervisor has run
+/// even once, but the call is cheap and avoids a hard-to-diagnose error
+/// when the wizard's vault path was JUST written).
+///
+/// Bytes are taken as `Vec<u8>` rather than `String` so xterm.js can
+/// send arbitrary key sequences (arrow keys, function keys, Esc-sequences,
+/// Ctrl-C, etc.) without UTF-8 round-tripping mangling them.
+#[tauri::command]
+pub fn write_persona_pty_in(persona_id: String, bytes: Vec<u8>) -> Result<(), String> {
+    if bytes.is_empty() {
+        // No-op rather than touching the file — keeps the dispatcher
+        // cheap when xterm.js fires onData with an empty payload.
+        return Ok(());
+    }
+
+    let workspace = read_workspace_config()?;
+    let vault = PathBuf::from(workspace.vault_path);
+    let path = pty_in_path_for(&vault, &persona_id);
+
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("create pty.in parent dir: {e}"))?;
+    }
+
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|e| format!("open pty.in: {e}"))?;
+    file.write_all(&bytes)
+        .map_err(|e| format!("write pty.in: {e}"))?;
+    file.flush().map_err(|e| format!("flush pty.in: {e}"))?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1266,6 +1342,35 @@ mod tests {
         assert!(picked.is_none(), "non-pty.raw .raw files must be ignored");
 
         std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn pty_in_path_matches_supervisor_convention() {
+        // The desktop and supervisor compute this path independently.
+        // If they disagree, keystrokes go into a file the supervisor
+        // never reads. Pin the layout here so a typo-bump in either
+        // place gets caught.
+        let path = pty_in_path_for(Path::new("/vault"), "hermes");
+        let s = path.to_string_lossy().replace('\\', "/");
+        assert!(
+            s.ends_with("/personas/hermes/log/current.pty.in"),
+            "got: {s}"
+        );
+    }
+
+    #[test]
+    fn pty_in_path_is_not_date_rotated() {
+        // 1.16d's contract: input queue is per-supervisor-instance,
+        // NOT per-day. If a future refactor accidentally appends a
+        // date suffix, the supervisor's startup truncation goes to a
+        // different file than the desktop's appends → silent input loss.
+        let path = pty_in_path_for(Path::new("/v"), "dev");
+        let name = path.file_name().unwrap().to_string_lossy().to_string();
+        assert_eq!(name, "current.pty.in");
+        assert!(
+            !name.contains("2026"),
+            "pty.in filename must not be date-rotated; got: {name}"
+        );
     }
 
     #[test]

@@ -1,29 +1,32 @@
-// Story 1.16c — PTY tail bridge.
+// Story 1.16c + 1.16d — bidirectional PTY bridge.
 //
-// Wraps a single xterm.js Terminal that displays the live output of a
-// supervised persona (Dev, Hermes, future personas) by tailing the
-// supervisor's `.pty.raw` tap file via the Tauri `tail_persona_pty`
-// Channel command.
+// Wraps a single xterm.js Terminal connected to a supervised persona
+// (Dev, Hermes, future personas) in both directions:
+//
+//   - DISPLAY (1.16c): tails the supervisor's `.pty.raw` tap file via
+//     the `tail_persona_pty` Tauri Channel; feeds bytes into xterm.js
+//     for full-fidelity TUI rendering.
+//   - INPUT (1.16d): xterm.js's `onData` callback fires for every
+//     keystroke (including ANSI-encoded special keys); we forward the
+//     bytes through `write_persona_pty_in`, which appends them to
+//     `current.pty.in`. The supervisor's watcher task drains them into
+//     the child's stdin at ~50ms cadence.
 //
 // Architecture context:
 //   - Zellij owns the spawned process (per D-2 + Story 1.11).
 //   - The persona-supervisor (D-11, Story 1.16a) PTY-wraps the child and
 //     appends raw PTY bytes to `<vault>/personas/<id>/log/<date>.pty.raw`.
-//   - The desktop's `tail_persona_pty` command opens a Tauri Channel and
-//     streams new bytes from that file at 80ms intervals.
-//   - This class consumes the Channel and feeds bytes into xterm.js,
-//     giving a full-fidelity TUI display (color, cursor positioning,
-//     scrollback) embedded in the Tauri webview.
-//
-// Display-only in 1.16c. Bidirectional input (write back into the PTY
-// via `.pty.in` + supervisor watcher) ships in 1.16d. Until then users
-// can still interact via `zellij attach <session>` in their own terminal.
+//   - Input flows through `<vault>/personas/<id>/log/current.pty.in`
+//     (per-supervisor-instance, truncated at startup).
 //
 // React + StrictMode notes:
 //   - The Rust side dedupes per persona_id: starting a new tail cancels
 //     any existing one. This makes double-mounts (StrictMode dev) safe.
 //   - We still call dispose() on unmount as a courtesy so the tokio
 //     task exits promptly instead of waiting for the next mount.
+//   - onData fire-and-forget: we don't `await` the write, so a slow
+//     filesystem can't stall the terminal's input loop. Lost keystrokes
+//     surface in the Rust logs (`tracing::warn!` on write failure).
 
 import { invoke, Channel } from "@tauri-apps/api/core";
 import { Terminal } from "@xterm/xterm";
@@ -125,9 +128,10 @@ export class PtyTail {
   }
 
   /**
-   * Attach the terminal to a DOM container and start tailing the tap
-   * file. Safe to call multiple times — subsequent calls are no-ops if
-   * already mounted (or already disposed).
+   * Attach the terminal to a DOM container, start tailing the tap
+   * file, and wire keystrokes to the supervisor. Safe to call multiple
+   * times — subsequent calls are no-ops if already mounted (or already
+   * disposed).
    */
   async mount(container: HTMLElement): Promise<void> {
     if (this.mounted || this.disposed) return;
@@ -166,6 +170,27 @@ export class PtyTail {
       const msg = `\r\n\x1b[31m[PtyTail] could not start tail: ${String(e)}\x1b[0m\r\n`;
       this.terminal.write(msg);
     }
+
+    // Story 1.16d: keystroke path. xterm.js's onData fires for every
+    // user input — printable chars, Backspace, arrow keys (encoded as
+    // ESC[A/B/C/D), Ctrl-C (\x03), Esc-sequences, paste content, etc.
+    // We forward the raw bytes to the supervisor via .pty.in.
+    //
+    // Fire-and-forget: don't `await` the invoke so a slow disk can't
+    // stall xterm.js's input pump. The Tauri command is sync + cheap
+    // (open + append + flush), so backpressure here is unlikely.
+    this.terminal.onData((data) => {
+      if (this.disposed) return;
+      const bytes = Array.from(new TextEncoder().encode(data));
+      void invoke("write_persona_pty_in", {
+        personaId: this.personaId,
+        bytes,
+      }).catch(() => {
+        // Swallow per-keystroke errors — the user will notice if input
+        // isn't reaching the child (visible in the terminal's echo).
+        // Bulk failures show up in the Rust tracing layer.
+      });
+    });
   }
 
   /**

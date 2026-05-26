@@ -452,12 +452,12 @@ function StatusBody({ status }: { status: DevPersonaStatus | null }) {
         </span>
       </div>
       <p style={{ color: "var(--fg-3)", fontSize: 12, margin: 0, maxWidth: 560 }}>
-        Claude Code is running in a Zellij session. The embedded display below tails its PTY tap.
-        Bidirectional input lands in Story 1.16d; until then attach in your own terminal with{" "}
+        Claude Code is running in a Zellij session. The embedded terminal below is bidirectional —
+        type directly into it. The session is still reachable in your own terminal with{" "}
         <code style={{ color: "var(--fn-cyan)", fontFamily: "var(--font-mono)" }}>
           zellij attach {status.session_name}
-        </code>
-        .
+        </code>{" "}
+        for parallel observation.
       </p>
     </div>
   );

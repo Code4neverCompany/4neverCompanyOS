@@ -50,6 +50,10 @@ pub fn run() {
             // terminal in MemoryView).
             commands::tail_persona_pty,
             commands::stop_persona_pty_tail,
+            // Story 1.16d: keystroke path — xterm.js onData writes
+            // bytes into the supervisor's `.pty.in` file via this
+            // command; the supervisor drains them into the child's stdin.
+            commands::write_persona_pty_in,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

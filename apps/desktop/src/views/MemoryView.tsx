@@ -342,12 +342,12 @@ function StatusBody({ status }: { status: HermesStatusValue | null }) {
         </span>
       </div>
       <p style={{ color: "var(--fg-3)", fontSize: 12, margin: 0, maxWidth: 560 }}>
-        Embedded display below tails the supervisor&apos;s PTY tap file. Bidirectional input lands
-        in Story 1.16d; until then attach in your own terminal with{" "}
+        Embedded terminal below is bidirectional — type into it and Hermes sees the keystrokes via
+        the supervisor&apos;s PTY. The Zellij session is still reachable from your own terminal with{" "}
         <code style={{ color: "var(--fn-cyan)", fontFamily: "var(--font-mono)" }}>
           zellij attach {status.session_name}
-        </code>
-        .
+        </code>{" "}
+        for parallel observation.
       </p>
     </div>
   );
