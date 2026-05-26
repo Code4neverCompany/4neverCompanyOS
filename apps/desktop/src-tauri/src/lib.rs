@@ -4,6 +4,8 @@
 //! Tauri `invoke()` commands (in `commands::`); long-lived streams
 //! (bus messages, persona stdout/stderr, file-watch events) use a
 //! sidecar IPC channel (in `ipc::`).
+//!
+//! Story 1.12 adds the project-open + Dev persona spawn pipeline.
 
 mod commands;
 mod ipc;
@@ -12,7 +14,18 @@ mod ipc;
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![commands::ping])
+        // Story 1.12: the Projects view uses the dialog plugin to pick a
+        // project directory from the frontend (`@tauri-apps/plugin-dialog`).
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![
+            commands::ping,
+            commands::open_project,
+            commands::current_project,
+            commands::close_active_project,
+            commands::spawn_dev_persona,
+            commands::dev_persona_status,
+            commands::zellij_available,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

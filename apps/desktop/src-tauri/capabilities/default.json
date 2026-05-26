@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Desktop shell default capabilities.",
+  "description": "Desktop shell default capabilities. Story 1.12 adds dialog access so the Projects view can prompt for a project directory.",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "dialog:default", "dialog:allow-open"]
 }

@@ -23,6 +23,7 @@ tauri-build = { workspace = true }
 [dependencies]
 tauri = { workspace = true }
 tauri-plugin-opener = { workspace = true }
+tauri-plugin-dialog = "2"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
@@ -30,3 +31,8 @@ anyhow = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
+
+# Story 1.12: project-open + Dev persona spawn pipeline.
+c4n-zellij-adapter = { path = "../../../crates/zellij-adapter" }
+toml = "0.8"
+dirs = "5"

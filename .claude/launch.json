@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "wizard",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@c4n/wizard", "dev"],
+      "port": 1430
+    }
+  ]
+}
