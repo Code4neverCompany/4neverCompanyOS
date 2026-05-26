@@ -12,8 +12,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  # Per docs/pinned-versions.md
-  NODE_VERSION: "20"
+  # Per docs/pinned-versions.md. Node 22 is the current LTS line; pnpm 11.3.0
+  # requires Node 22.13+ (uses node:sqlite, a Node 22 builtin). Brief §5 floor
+  # is Node ≥ 20 (the "+" accepts higher).
+  NODE_VERSION: "22"
   PNPM_VERSION: "11.3.0"
 
 jobs:

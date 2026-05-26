@@ -5,8 +5,8 @@
   "description": "4neverCompany OS — packaged desktop workspace bundling Paperclip + Hermes Agent + BMAD Method. See docs/4neverCompany_OS_Brief.md.",
   "type": "module",
   "engines": {
-    "node": ">=20",
-    "pnpm": ">=9.15"
+    "node": ">=22.13",
+    "pnpm": ">=11.3"
   },
   "packageManager": "pnpm@11.3.0",
   "scripts": {
