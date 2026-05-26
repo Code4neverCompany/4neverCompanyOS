@@ -7,6 +7,7 @@
 //!
 //! Story 1.12 adds the project-open + Dev persona spawn pipeline.
 //! Story 1.13 adds claude.md projection from the bundled Dev persona.
+//! Story 1.16b adds Hermes spawn alongside Dev (second Zellij session).
 
 mod commands;
 mod ipc;
@@ -30,6 +31,12 @@ pub fn run() {
             // spawn_dev_persona; exposed separately for "re-project
             // without spawning" flows in M2+).
             commands::project_claude_md,
+            // Story 1.16b: Hermes spawn / status / kill. Same shape as
+            // the Dev persona commands so the frontend (Story 1.16c)
+            // can render both via shared components.
+            commands::spawn_hermes,
+            commands::hermes_status,
+            commands::kill_hermes,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

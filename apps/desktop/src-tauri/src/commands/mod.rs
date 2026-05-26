@@ -476,6 +476,157 @@ pub fn project_claude_md(project_path: String) -> Result<ClaudeMdProjection, Str
     project_claude_md_inner(&p)
 }
 
+// ────────────────────────────────────────────────────────────────────
+// Story 1.16b — Hermes spawn
+// ────────────────────────────────────────────────────────────────────
+//
+// Mirrors the Dev persona spawn pattern. Hermes lives alongside Dev as
+// a second Zellij session (`hermes-<project-id>`) running through the
+// same supervisor (now PTY-wrapped per 1.16a). The user sees both
+// personas via the side-rail navigation in the desktop UI (ProjectsView
+// for Dev, MemoryView for Hermes — that's 1.16c's job).
+//
+// Restart survival: same five-link chain as Dev (see docs/restart-
+// survival.md). Zellij owns the session; supervisor + hermes survive
+// desktop restart; session-reuse branch avoids duplicate spawn on
+// relaunch.
+
+/// Default binary name for Hermes. Hermes is Python (per architecture
+/// §3.5); the user installs it via the wizard at first-run, putting
+/// `hermes` on PATH. Override via `C4N_HERMES_BIN` env var for tests
+/// or non-standard installs.
+const HERMES_BIN_DEFAULT: &str = "hermes";
+
+/// Env var that overrides the Hermes binary path.
+const HERMES_BIN_ENV: &str = "C4N_HERMES_BIN";
+
+/// Status of the Hermes session for a given project. Shape mirrors
+/// `DevPersonaStatus` so the frontend (Story 1.16c) can render both
+/// with the same status-panel component.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "state", rename_all = "kebab-case")]
+pub enum HermesStatus {
+    /// Zellij isn't on PATH. Same install hint as DevPersonaStatus.
+    ZellijMissing,
+    /// Zellij is present but no `hermes-<project-id>` session is running.
+    NotRunning { session_name: String },
+    /// A `hermes-<project-id>` session is running.
+    Running { session_name: String },
+}
+
+fn hermes_session_name(project_id: &str) -> String {
+    format!("hermes-{project_id}")
+}
+
+/// Return the binary name (or path) for Hermes. Honors `C4N_HERMES_BIN`
+/// env override (useful for tests + non-standard installs); otherwise
+/// returns the bare binary name for PATH resolution at spawn time.
+fn find_hermes_binary() -> String {
+    std::env::var(HERMES_BIN_ENV).unwrap_or_else(|_| HERMES_BIN_DEFAULT.to_string())
+}
+
+/// Query whether Hermes for the given project is currently running in
+/// a Zellij pane.
+#[tauri::command]
+pub fn hermes_status(project_id: String) -> Result<HermesStatus, String> {
+    if !zellij::is_available() {
+        return Ok(HermesStatus::ZellijMissing);
+    }
+    let session_name = hermes_session_name(&project_id);
+    let sessions = zellij::list_sessions().map_err(|e| format!("list sessions: {e}"))?;
+    let running = sessions
+        .iter()
+        .any(|line| line.split_whitespace().next() == Some(session_name.as_str()));
+    Ok(if running {
+        HermesStatus::Running { session_name }
+    } else {
+        HermesStatus::NotRunning { session_name }
+    })
+}
+
+/// Spawn Hermes into a Zellij pane named `hermes-<project-id>`. Reuses
+/// the session if it already exists. Routes through the persona-
+/// supervisor (Story 1.16a) so stdout/stderr land in
+/// `<vault>/personas/hermes/log/<date>.{jsonl,pty.raw}`.
+///
+/// AC source: Story 1.16 — Hermes runs in a Zellij pane labeled
+/// "Hermes" and behaves identically to running standalone.
+#[tauri::command]
+pub fn spawn_hermes(project_id: String) -> Result<HermesStatus, String> {
+    if !zellij::is_available() {
+        return Ok(HermesStatus::ZellijMissing);
+    }
+
+    // Look up the project so we know what cwd to spawn Hermes in.
+    let project = read_active_project()?
+        .ok_or_else(|| "no active project — call open_project first".to_string())?;
+    if project.id != project_id {
+        return Err(format!(
+            "project_id {project_id} doesn't match active project {}",
+            project.id
+        ));
+    }
+
+    let session_name = hermes_session_name(&project.id);
+
+    // Session-reuse: if Hermes is already running for this project,
+    // return Running without re-spawning. Same pattern as Dev.
+    let sessions = zellij::list_sessions().map_err(|e| format!("list sessions: {e}"))?;
+    let already_running = sessions
+        .iter()
+        .any(|line| line.split_whitespace().next() == Some(session_name.as_str()));
+    if already_running {
+        return Ok(HermesStatus::Running { session_name });
+    }
+
+    // Route through supervisor (Story 1.14b + 1.16a): supervisor PTY-
+    // wraps `hermes` so the TUI gets a real TTY (color, cursor, kbd)
+    // AND writes a `.pty.raw` tap file that 1.16c's xterm.js consumer
+    // will tail.
+    let workspace_config = read_workspace_config()?;
+    let supervisor_bin = find_supervisor_binary();
+    let hermes_bin = find_hermes_binary();
+
+    let cwd = PathBuf::from(&project.path);
+    let config = SpawnPaneConfig {
+        session_name: session_name.clone(),
+        command: supervisor_bin,
+        args: vec![
+            "hermes".to_string(),        // persona-id → vault/personas/hermes/log/
+            workspace_config.vault_path, // vault root
+            "--".to_string(),            // argv separator
+            hermes_bin,                  // child command
+        ],
+        env: HashMap::new(),
+        cwd: Some(cwd),
+        // Pane name per the AC: "a Zellij pane labeled 'Hermes'".
+        pane_name: Some(format!("Hermes · {}", project.name)),
+        // Story 1.15-compatible: pane stays open even if Hermes exits,
+        // so we can observe what happened.
+        close_on_exit: false,
+    };
+
+    zellij::spawn_pane(config).map_err(|e| format!("spawn pane: {e}"))?;
+
+    Ok(HermesStatus::Running { session_name })
+}
+
+/// Kill the Hermes session for a given project. Used by the UI to
+/// surface "stop Hermes" without affecting the Dev session (each
+/// persona has its own Zellij session).
+#[tauri::command]
+pub fn kill_hermes(project_id: String) -> Result<(), String> {
+    let session_name = hermes_session_name(&project_id);
+    // The PaneHandle::kill() invokes `zellij delete-session --force`.
+    // If the session doesn't exist, this errors out — accept that and
+    // surface it as a string to the frontend.
+    let handle = c4n_zellij_adapter::PaneHandle {
+        session_name,
+        pane_name: None,
+    };
+    handle.kill().map_err(|e| format!("kill hermes: {e}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -707,5 +858,61 @@ mod tests {
         // No assertion: this test only documents the protocol. Pass-or-
         // fail of restart survival is determined by the human running
         // the protocol on a real dev box.
+    }
+
+    // ── Story 1.16b — Hermes spawn ──────────────────────────────────
+
+    #[test]
+    fn hermes_session_name_format() {
+        // Same format as dev_session_name but with the `hermes-` prefix
+        // so the two personas occupy different Zellij sessions.
+        assert_eq!(
+            hermes_session_name("example-project-deadbeef"),
+            "hermes-example-project-deadbeef"
+        );
+    }
+
+    #[test]
+    fn hermes_session_name_differs_from_dev_for_same_project() {
+        // Critical: dev and hermes MUST live in different Zellij sessions
+        // so killing one doesn't kill the other. This is the guarantee
+        // that lets `kill_hermes` not affect the Dev persona.
+        let pid = "myproject-12345678";
+        let dev = dev_session_name(pid);
+        let hermes = hermes_session_name(pid);
+        assert_ne!(dev, hermes);
+        assert!(dev.starts_with("dev-"));
+        assert!(hermes.starts_with("hermes-"));
+    }
+
+    #[test]
+    fn find_hermes_binary_uses_env_override_when_set() {
+        let key = HERMES_BIN_ENV;
+        let original = std::env::var(key).ok();
+        unsafe {
+            std::env::set_var(key, "/custom/path/hermes");
+        }
+        assert_eq!(find_hermes_binary(), "/custom/path/hermes");
+        unsafe {
+            match original {
+                Some(v) => std::env::set_var(key, v),
+                None => std::env::remove_var(key),
+            }
+        }
+    }
+
+    #[test]
+    fn find_hermes_binary_falls_back_to_default_name() {
+        let key = HERMES_BIN_ENV;
+        let original = std::env::var(key).ok();
+        unsafe {
+            std::env::remove_var(key);
+        }
+        assert_eq!(find_hermes_binary(), HERMES_BIN_DEFAULT);
+        if let Some(v) = original {
+            unsafe {
+                std::env::set_var(key, v);
+            }
+        }
     }
 }
