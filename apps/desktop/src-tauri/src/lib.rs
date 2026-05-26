@@ -6,6 +6,7 @@
 //! sidecar IPC channel (in `ipc::`).
 //!
 //! Story 1.12 adds the project-open + Dev persona spawn pipeline.
+//! Story 1.13 adds claude.md projection from the bundled Dev persona.
 
 mod commands;
 mod ipc;
@@ -25,6 +26,10 @@ pub fn run() {
             commands::spawn_dev_persona,
             commands::dev_persona_status,
             commands::zellij_available,
+            // Story 1.13: claude.md projection (called automatically by
+            // spawn_dev_persona; exposed separately for "re-project
+            // without spawning" flows in M2+).
+            commands::project_claude_md,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

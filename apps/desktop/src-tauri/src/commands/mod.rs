@@ -10,6 +10,20 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
+/// Bundled Dev-persona markdown, sourced from `@c4n/persona-sync` so the
+/// single canonical definition lives in the workspace package. Embedded
+/// at compile time — no runtime FS lookup needed for the default.
+/// (Story 1.13.)
+const BUNDLED_DEV_PERSONA_MD: &str =
+    include_str!("../../../../../packages/persona-sync/src/personas/dev.md");
+
+/// BMAD customize-chain override path. If a user-project contains this
+/// file, we project its contents instead of the bundled default.
+const PROJECT_DEV_OVERRIDE_RELPATH: &str = "_bmad/custom/agents/dev.md";
+
+/// Filename written to the project root. Claude Code reads it on launch.
+const CLAUDE_MD_FILENAME: &str = "claude.md";
+
 #[tauri::command]
 pub fn ping() -> &'static str {
     "pong"
@@ -246,6 +260,12 @@ pub fn dev_persona_status(project_id: String) -> Result<DevPersonaStatus, String
 /// Spawn the Dev persona (Claude Code) into a Zellij pane named
 /// `dev-<project-id>`. Reuses the session if it already exists.
 ///
+/// Per Story 1.13, this also projects the Dev persona markdown into
+/// `<project>/claude.md` before the spawn so Claude Code adopts the
+/// right behavior on its first turn. Projection happens on every spawn
+/// — drift detection between an externally-edited claude.md and the
+/// canonical persona lands in Epic 3 Story 3.4.
+///
 /// Returns the resulting status so the UI can render the same shape it
 /// gets from `dev_persona_status` polling.
 ///
@@ -266,6 +286,12 @@ pub fn spawn_dev_persona(project_id: String) -> Result<DevPersonaStatus, String>
             project.id
         ));
     }
+
+    // Story 1.13: project claude.md before the spawn so Claude Code reads
+    // the right persona on its first turn. If projection fails we surface
+    // the error and DON'T spawn — running a Dev persona without its
+    // persona file produces undefined behavior.
+    project_claude_md_inner(Path::new(&project.path))?;
 
     let session_name = dev_session_name(&project.id);
 
@@ -294,6 +320,87 @@ pub fn spawn_dev_persona(project_id: String) -> Result<DevPersonaStatus, String>
     zellij::spawn_pane(config).map_err(|e| format!("spawn pane: {e}"))?;
 
     Ok(DevPersonaStatus::Running { session_name })
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Story 1.13 — claude.md projection from the Dev persona source
+// ────────────────────────────────────────────────────────────────────
+
+/// Where the resolved Dev persona markdown came from. Surfaced to the
+/// frontend so a future Settings → Personas panel can show which source
+/// is active.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PersonaSource {
+    /// The bundled-default `dev.md` shipped inside the desktop binary.
+    Bundled,
+    /// A project-level override at `<project>/_bmad/custom/agents/dev.md`.
+    ProjectOverride,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ClaudeMdProjection {
+    /// Where the content came from (bundled vs project override).
+    pub source: PersonaSource,
+    /// Absolute path that was written.
+    pub written_to: String,
+    /// Byte length of what was written. Useful for the UI to confirm
+    /// the projection produced non-empty content.
+    pub bytes_written: usize,
+}
+
+/// Internal: resolve + write claude.md for the given project root. Used
+/// by `spawn_dev_persona` (no need to make the frontend call this
+/// separately) and by the public `project_claude_md` command (for
+/// "re-project without spawning" flows in M2+).
+fn project_claude_md_inner(project_root: &Path) -> Result<ClaudeMdProjection, String> {
+    let (content, source) = resolve_dev_persona_content(project_root)?;
+    let target = project_root.join(CLAUDE_MD_FILENAME);
+
+    // Overwrite per AC. Drift detection lives in Story 3.4.
+    std::fs::write(&target, &content).map_err(|e| format!("write {}: {e}", target.display()))?;
+
+    Ok(ClaudeMdProjection {
+        source,
+        written_to: target.to_string_lossy().to_string(),
+        bytes_written: content.len(),
+    })
+}
+
+/// Resolve the Dev persona content to project. BMAD customize-chain
+/// semantics: a project-level override wins over the bundled default.
+///
+/// Future stories may extend this to also read the BMAD module-level
+/// `_bmad/bmm/4-implementation/bmad-agent-dev/SKILL.md` if BMAD 6.7
+/// materializes that file. For 1.13 we only check the custom-override
+/// path because BMAD 6.7 lazy-loads skills and SKILL.md is typically
+/// absent in fresh installs.
+fn resolve_dev_persona_content(project_root: &Path) -> Result<(String, PersonaSource), String> {
+    let override_path = project_root.join(PROJECT_DEV_OVERRIDE_RELPATH);
+    if override_path.exists() {
+        let content = std::fs::read_to_string(&override_path)
+            .map_err(|e| format!("read {}: {e}", override_path.display()))?;
+        return Ok((content, PersonaSource::ProjectOverride));
+    }
+    Ok((BUNDLED_DEV_PERSONA_MD.to_string(), PersonaSource::Bundled))
+}
+
+/// Project the Dev persona markdown into `<project>/claude.md` without
+/// spawning. Useful for "I edited the override — refresh" flows in M2+
+/// and for the Settings → Personas panel preview.
+///
+/// AC source: Story 1.13. Spawn (Story 1.12) calls the same projection
+/// path under the hood — the two commands are convergent.
+#[tauri::command]
+pub fn project_claude_md(project_path: String) -> Result<ClaudeMdProjection, String> {
+    let p = PathBuf::from(&project_path);
+    if !p.exists() {
+        return Err(format!("path does not exist: {project_path}"));
+    }
+    if !p.is_dir() {
+        return Err(format!("not a directory: {project_path}"));
+    }
+    project_claude_md_inner(&p)
 }
 
 #[cfg(test)]
@@ -332,5 +439,80 @@ mod tests {
             dev_session_name("example-project-deadbeef"),
             "dev-example-project-deadbeef"
         );
+    }
+
+    // ── Story 1.13 — claude.md projection ──────────────────────────
+
+    #[test]
+    fn bundled_dev_persona_is_non_empty_and_starts_with_header() {
+        // The include_str! at the top of this module must resolve. Catches
+        // a path mismatch between this crate and the persona-sync package.
+        assert!(
+            BUNDLED_DEV_PERSONA_MD.len() > 200,
+            "bundled persona too short"
+        );
+        assert!(
+            BUNDLED_DEV_PERSONA_MD.starts_with("# claude.md"),
+            "bundled persona must start with the claude.md heading"
+        );
+    }
+
+    #[test]
+    fn resolve_falls_back_to_bundled_when_no_override() {
+        // Use a temp dir that definitely has no _bmad/custom/agents/dev.md.
+        let tmp = std::env::temp_dir().join(format!("c4n-resolve-test-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let (content, source) = resolve_dev_persona_content(&tmp).unwrap();
+        std::fs::remove_dir_all(&tmp).ok();
+        assert!(matches!(source, PersonaSource::Bundled));
+        assert_eq!(content, BUNDLED_DEV_PERSONA_MD);
+    }
+
+    #[test]
+    fn resolve_uses_project_override_when_present() {
+        let tmp = std::env::temp_dir().join(format!("c4n-override-test-{}", std::process::id()));
+        let override_path = tmp.join(PROJECT_DEV_OVERRIDE_RELPATH);
+        std::fs::create_dir_all(override_path.parent().unwrap()).unwrap();
+        std::fs::write(&override_path, "# Custom persona\nhello").unwrap();
+
+        let (content, source) = resolve_dev_persona_content(&tmp).unwrap();
+        std::fs::remove_dir_all(&tmp).ok();
+
+        assert!(matches!(source, PersonaSource::ProjectOverride));
+        assert_eq!(content, "# Custom persona\nhello");
+    }
+
+    #[test]
+    fn project_claude_md_writes_to_project_root() {
+        let tmp = std::env::temp_dir().join(format!("c4n-write-test-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+
+        let result = project_claude_md_inner(&tmp).unwrap();
+        assert!(matches!(result.source, PersonaSource::Bundled));
+        assert_eq!(
+            result.written_to,
+            tmp.join(CLAUDE_MD_FILENAME).to_string_lossy()
+        );
+        assert!(result.bytes_written > 200);
+
+        let on_disk = std::fs::read_to_string(tmp.join(CLAUDE_MD_FILENAME)).unwrap();
+        assert_eq!(on_disk, BUNDLED_DEV_PERSONA_MD);
+
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn project_claude_md_overwrites_existing_file() {
+        // AC: "the file is overwritten on subsequent project opens".
+        let tmp = std::env::temp_dir().join(format!("c4n-overwrite-test-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        std::fs::write(tmp.join(CLAUDE_MD_FILENAME), "stale content").unwrap();
+
+        project_claude_md_inner(&tmp).unwrap();
+        let on_disk = std::fs::read_to_string(tmp.join(CLAUDE_MD_FILENAME)).unwrap();
+        std::fs::remove_dir_all(&tmp).ok();
+
+        assert_eq!(on_disk, BUNDLED_DEV_PERSONA_MD);
+        assert_ne!(on_disk, "stale content");
     }
 }
