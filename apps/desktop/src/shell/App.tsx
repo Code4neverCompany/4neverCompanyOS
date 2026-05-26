@@ -1,22 +1,301 @@
 // Top-level shell. M1 starts here: this component will eventually host
 // Paperclip's React UI (via PaperclipHost from src/paperclip-host/)
 // and inject the workspace panels via createPortal into Paperclip's
-// named slots. For now (M0 scaffolding), it renders a placeholder.
+// named slots. For now (M0 + visual baseline 2026-05-26), it renders the
+// 4never AppShell chrome (TopBar + SideRail) around a HUDFrame placeholder
+// in the main slot — the placeholder is where Paperclip's portal-host
+// React tree will mount in subsequent stories (Story 1.12+).
+
+import { useState } from "react";
+import { Badge, Eyebrow, HUDFrame, StatusDot } from "@c4n/ui-tokens";
+import monogramUrl from "@c4n/ui-tokens/assets/logo/monogram.png";
+
+type RailItem = "projects" | "personas" | "vault" | "memory" | "settings";
+
+const RAIL_ITEMS: ReadonlyArray<{ id: RailItem; label: string; icon: string }> = [
+  { id: "projects", label: "Projects", icon: "▣" },
+  { id: "personas", label: "Personas", icon: "◉" },
+  { id: "vault", label: "Vault", icon: "◈" },
+  { id: "memory", label: "Memory", icon: "⌬" },
+  { id: "settings", label: "Settings", icon: "⚙" },
+];
+
+function TopBar() {
+  const now = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return (
+    <div
+      style={{
+        height: 56,
+        display: "flex",
+        alignItems: "center",
+        borderBottom: "1px solid rgba(255,196,0,0.18)",
+        background: "rgba(10,11,20,0.85)",
+        backdropFilter: "blur(6px)",
+        padding: "0 20px",
+        gap: 24,
+        position: "relative",
+        flexShrink: 0,
+      }}
+    >
+      {/* Logo lockup */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <img
+          src={monogramUrl}
+          alt="4never"
+          style={{
+            height: 30,
+            width: "auto",
+            filter: "drop-shadow(0 0 10px rgba(255,196,0,0.35))",
+          }}
+        />
+        <span
+          style={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 800,
+            fontSize: 16,
+            color: "var(--fn-purple)",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          4nco
+        </span>
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            color: "var(--fg-3)",
+            letterSpacing: "0.15em",
+            marginLeft: 4,
+            paddingLeft: 10,
+            borderLeft: "1px solid var(--border-neutral)",
+          }}
+        >
+          CONSOLE v0.0
+        </span>
+      </div>
+
+      {/* Center strip — BMAD PROTOCOL · ACTIVE + time. Per design decision 2026-05-26. */}
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          justifyContent: "center",
+          gap: 16,
+          alignItems: "center",
+        }}
+      >
+        <StatusDot />
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 11,
+            color: "var(--fg-2)",
+            letterSpacing: "0.08em",
+          }}
+        >
+          BMAD PROTOCOL · ACTIVE
+        </span>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--fg-3)" }}>
+          {now}
+        </span>
+      </div>
+
+      {/* Right meta: persona-status badge (we ship Dev + Designer in 4nCO). */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <Badge color="cyan" dot>
+          2 personas ready
+        </Badge>
+      </div>
+
+      {/* Gold accent line under the bar */}
+      <span
+        style={{
+          position: "absolute",
+          left: 0,
+          right: 0,
+          bottom: -1,
+          height: 1,
+          background: "linear-gradient(90deg, transparent, var(--fn-gold), transparent)",
+        }}
+      />
+    </div>
+  );
+}
+
+function SideRail({
+  active,
+  onNavigate,
+}: {
+  active: RailItem;
+  onNavigate: (id: RailItem) => void;
+}) {
+  return (
+    <nav
+      style={{
+        width: 64,
+        flexShrink: 0,
+        background: "rgba(10,11,20,0.65)",
+        borderRight: "1px solid var(--border-neutral)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        padding: "16px 0",
+        gap: 4,
+      }}
+    >
+      {RAIL_ITEMS.map((it) => (
+        <button
+          key={it.id}
+          className="side-rail-btn"
+          data-active={active === it.id ? "true" : "false"}
+          onClick={() => onNavigate(it.id)}
+          title={it.label}
+          type="button"
+        >
+          <span>{it.icon}</span>
+          <span className="label">{it.label.toUpperCase()}</span>
+        </button>
+      ))}
+      <div style={{ flex: 1 }} />
+      <div
+        style={{
+          width: 28,
+          height: 28,
+          border: "1px solid var(--border-gold-soft)",
+          borderRadius: 999,
+          display: "grid",
+          placeItems: "center",
+          color: "var(--fn-gold)",
+          fontSize: 12,
+        }}
+      >
+        ?
+      </div>
+    </nav>
+  );
+}
+
+/**
+ * MainSlot — where Paperclip's portal-host React tree will mount.
+ * For Story 1.12+ this will:
+ *   1. Boot the Paperclip React UI inside this <main>
+ *   2. Resolve Paperclip's named portal slots (D-13)
+ *   3. Inject workspace panels (BMad Builder, bus channel view, approvals,
+ *      multi-terminal) via createPortal
+ *
+ * Until then, we render a clearly labeled placeholder so the visual
+ * baseline looks like the design system while the actual host is plumbed.
+ */
+function MainSlot({ active }: { active: RailItem }) {
+  return (
+    <main
+      style={{
+        flex: 1,
+        overflow: "auto",
+        position: "relative",
+        padding: 24,
+        display: "flex",
+        flexDirection: "column",
+        gap: 18,
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          gap: 16,
+        }}
+      >
+        <div>
+          <Eyebrow>
+            {active === "projects"
+              ? "Projects · 0 open"
+              : active === "personas"
+                ? "Personas · 2 fixed (Dev + Designer)"
+                : active === "vault"
+                  ? "Vault · ~/.4nevercompanyos"
+                  : active === "memory"
+                    ? "Memory · Hermes (sibling)"
+                    : "Settings"}
+          </Eyebrow>
+          <h1
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 800,
+              fontSize: 32,
+              color: "var(--fn-white)",
+              letterSpacing: "-0.02em",
+              margin: "6px 0 0",
+            }}
+          >
+            {active === "projects" ? (
+              <>
+                The Orchestration <span style={{ color: "var(--fn-gold)" }}>Grid</span>
+              </>
+            ) : (
+              active.charAt(0).toUpperCase() + active.slice(1)
+            )}
+          </h1>
+          <p style={{ color: "var(--fg-3)", fontSize: 13, margin: "4px 0 0" }}>
+            Story 1.12 will replace this placeholder with the Paperclip-host + workspace-injected
+            panels per Architecture D-13.
+          </p>
+        </div>
+      </div>
+
+      <HUDFrame
+        style={{
+          flex: 1,
+          minHeight: 320,
+          display: "grid",
+          placeItems: "center",
+          padding: 32,
+          position: "relative",
+        }}
+      >
+        <div className="scanline" />
+        <div style={{ textAlign: "center", maxWidth: 560 }}>
+          <Eyebrow color="cyan">D-13 portal slot</Eyebrow>
+          <div
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 800,
+              fontSize: 24,
+              color: "var(--fn-white)",
+              letterSpacing: "-0.01em",
+              margin: "8px 0",
+            }}
+          >
+            Paperclip host mounts here
+          </div>
+          <p style={{ color: "var(--fg-3)", fontSize: 13, margin: 0 }}>
+            Once Story 1.12 lands, the Paperclip React UI boots inside this slot. Workspace panels
+            (BMad Builder · bus channel · approvals · multi-terminal) project into Paperclip&apos;s
+            named portal slots.
+          </p>
+        </div>
+      </HUDFrame>
+    </main>
+  );
+}
 
 export function App() {
+  const [active, setActive] = useState<RailItem>("projects");
   return (
-    <main style={{ padding: 32, fontFamily: "system-ui, sans-serif" }}>
-      <h1>4neverCompany OS</h1>
-      <p>
-        Desktop shell scaffolding. M1 stories will replace this placeholder with the Paperclip-host
-        + workspace-injected panels per Architecture D-13.
-      </p>
-      <p>
-        <small>
-          Story 1.2 (monorepo scaffolding) complete. Next: Story 1.6 (vault directory layout spec) →
-          M1 stories.
-        </small>
-      </p>
-    </main>
+    <div
+      style={{
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--bg-0)",
+      }}
+    >
+      <TopBar />
+      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+        <SideRail active={active} onNavigate={setActive} />
+        <MainSlot active={active} />
+      </div>
+    </div>
   );
 }

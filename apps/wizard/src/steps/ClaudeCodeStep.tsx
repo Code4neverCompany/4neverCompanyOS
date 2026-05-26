@@ -12,6 +12,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { useState } from "react";
+import { Btn, Eyebrow, HUDFrame } from "@c4n/ui-tokens";
 import type { WizardState } from "../state";
 
 interface Props {
@@ -42,46 +43,55 @@ export function ClaudeCodeStep({ onNext, onBack }: Props) {
   }
 
   return (
-    <div className="step claude-step">
-      <h2>Verify Claude Code is installed</h2>
-      <p>
+    <HUDFrame className="wizard-card">
+      <div className="title-block">
+        <Eyebrow>Step 3 · Claude Code</Eyebrow>
+        <h2>Verify Claude Code is installed</h2>
+      </div>
+
+      <p className="body-copy">
         The Dev persona spawns a real Claude Code process inside a Zellij pane every time you open a
-        project. This step confirms the <code>claude</code> binary is on your system PATH. The
-        Anthropic key from the previous step will be picked up by Claude Code's standard auth flow
-        automatically.
+        project. This step confirms the <span className="chip-code">claude</span> binary is on your
+        system PATH. The Anthropic key from the previous step will be picked up by Claude
+        Code&apos;s standard auth flow automatically.
       </p>
 
-      {status === "idle" && <p className="step-help">Click below to check.</p>}
+      {status === "idle" && <p className="help-copy">Click below to check.</p>}
 
       {status === "ok" && version && (
-        <p className="success">
+        <div className="alert success">
           ✓ Claude Code is installed.
           <br />
-          <code>{version}</code>
-        </p>
+          <code style={{ color: "var(--fn-cyan)" }}>{version}</code>
+        </div>
       )}
 
       {status === "error" && error && (
-        <div className="error-block">
-          <p className="error">{error}</p>
-          <p className="step-help">
-            If Claude Code isn't installed yet, get it at{" "}
-            <a href="https://docs.anthropic.com/claude-code" target="_blank" rel="noreferrer">
+        <>
+          <div className="alert error">{error}</div>
+          <p className="help-copy">
+            If Claude Code isn&apos;t installed yet, get it at{" "}
+            <a
+              href="https://docs.anthropic.com/claude-code"
+              target="_blank"
+              rel="noreferrer"
+              style={{ color: "var(--fn-cyan)" }}
+            >
               docs.anthropic.com/claude-code
             </a>{" "}
             and re-run this check.
           </p>
-        </div>
+        </>
       )}
 
-      <div className="step-actions">
-        <button onClick={onBack} disabled={status === "checking"}>
-          Back
-        </button>
-        <button className="primary" onClick={check} disabled={status === "checking"}>
-          {status === "checking" ? "Checking…" : status === "ok" ? "Re-check" : "Check now"}
-        </button>
+      <div className="actions">
+        <Btn variant="ghost" onClick={onBack} disabled={status === "checking"}>
+          ← Back
+        </Btn>
+        <Btn variant="primary" onClick={check} disabled={status === "checking"}>
+          {status === "checking" ? "Checking…" : status === "ok" ? "Re-check" : "Check now →"}
+        </Btn>
       </div>
-    </div>
+    </HUDFrame>
   );
 }

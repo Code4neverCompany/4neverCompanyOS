@@ -3,6 +3,7 @@
 
 import { invoke } from "@tauri-apps/api/core";
 import { useState } from "react";
+import { Btn, Eyebrow, HUDFrame } from "@c4n/ui-tokens";
 import type { WizardState } from "../state";
 
 interface Props {
@@ -36,30 +37,45 @@ export function SummaryStep({ state, onNext, onBack }: Props) {
   }
 
   return (
-    <div className="step summary-step">
-      <h2>Review your setup</h2>
+    <HUDFrame className="wizard-card">
+      <div className="title-block">
+        <Eyebrow>Step 4 · Review</Eyebrow>
+        <h2>Review your setup</h2>
+      </div>
 
       <dl className="summary">
         <dt>Vault location</dt>
-        <dd>
-          <code>{state.vaultPath ?? "(not set)"}</code>
-        </dd>
+        <dd className={state.vaultPath ? "" : "muted"}>{state.vaultPath ?? "(not set)"}</dd>
+
         <dt>Anthropic key</dt>
-        <dd>{state.anthropicAuthenticated ? "✓ Validated and saved" : "✗ Not set"}</dd>
+        <dd>
+          {state.anthropicAuthenticated ? (
+            <span className="ok">✓ Validated and saved</span>
+          ) : (
+            <span className="miss">✗ Not set</span>
+          )}
+        </dd>
+
         <dt>Claude Code</dt>
-        <dd>{state.claudeCodeAuthenticated ? "✓ Installed and reachable" : "✗ Not verified"}</dd>
+        <dd>
+          {state.claudeCodeAuthenticated ? (
+            <span className="ok">✓ Installed and reachable</span>
+          ) : (
+            <span className="miss">✗ Not verified</span>
+          )}
+        </dd>
       </dl>
 
-      {error && <p className="error">{error}</p>}
+      {error && <div className="alert error">{error}</div>}
 
-      <div className="step-actions">
-        <button onClick={onBack} disabled={writing}>
-          Back
-        </button>
-        <button className="primary" onClick={finalize} disabled={writing}>
-          {writing ? "Saving…" : "Finish setup"}
-        </button>
+      <div className="actions">
+        <Btn variant="ghost" onClick={onBack} disabled={writing}>
+          ← Back
+        </Btn>
+        <Btn variant="primary" onClick={finalize} disabled={writing}>
+          {writing ? "Saving…" : "Finish setup →"}
+        </Btn>
       </div>
-    </div>
+    </HUDFrame>
   );
 }

@@ -1,253 +1,218 @@
-/* First-run wizard styles. Lean, no UI framework. */
+/* First-run wizard local styles.
+   Tokens, base resets, and HUD primitives come from @c4n/ui-tokens/styles
+   (imported in main.tsx). This file only holds wizard-specific layout
+   that doesn't belong in the shared package. */
 
-:root {
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  font-size: 15px;
-  line-height: 1.5;
-  color: #1f2937;
-  background: #f9fafb;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #f3f4f6;
-    background: #111827;
-  }
+/* Override the global no-scroll so the wizard's vertical content can flow. */
+html,
+body {
+  overflow: auto;
 }
 
 body {
+  /* Subtle radial wash behind the HUD frame, on brand. */
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(176, 0, 255, 0.1) 0%, transparent 55%),
+    radial-gradient(ellipse at 50% 100%, rgba(0, 194, 255, 0.07) 0%, transparent 60%), var(--bg-0);
+  min-height: 100vh;
+}
+
+.wizard-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.wizard-header {
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 20px;
+  border-bottom: 1px solid rgba(255, 196, 0, 0.12);
+  background: rgba(10, 11, 20, 0.55);
+  backdrop-filter: blur(6px);
+  flex-shrink: 0;
+}
+
+.wizard-header .progress-track {
+  flex: 1;
+  height: 2px;
+  background: rgba(0, 194, 255, 0.1);
+  overflow: hidden;
+  border-radius: 0;
+}
+
+.wizard-header .progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--fn-cyan), var(--fn-gold));
+  box-shadow: 0 0 8px rgba(255, 196, 0, 0.45);
+  transition: width 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wizard-body {
+  flex: 1;
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 32px 24px;
+}
+
+.wizard-card {
+  width: min(560px, 100%);
+  padding: 32px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.wizard-card .title-block {
+  text-align: left;
+  margin-bottom: 4px;
+}
+
+.wizard-card h2 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 26px;
+  color: var(--fn-white);
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin: 6px 0 0;
+}
+
+.wizard-card .body-copy {
+  color: var(--fg-2);
+  font-size: 14px;
+  line-height: 1.55;
   margin: 0;
+}
+
+.wizard-card .body-copy a {
+  color: var(--fn-cyan);
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(0, 194, 255, 0.4);
+}
+.wizard-card .body-copy a:hover {
+  color: var(--fn-cyan-glow);
+}
+
+.wizard-card .help-copy {
+  color: var(--fg-3);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.wizard-card .row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.wizard-card .actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+/* Inline alert blocks — error (red) and success (gold-on-dark per brand). */
+.alert {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 10px 12px;
+  border-radius: 2px;
+  line-height: 1.5;
+}
+.alert.error {
+  background: rgba(255, 85, 119, 0.08);
+  border: 1px solid rgba(255, 85, 119, 0.45);
+  color: #ff8fa3;
+}
+.alert.success {
+  background: rgba(255, 196, 0, 0.06);
+  border: 1px solid rgba(255, 196, 0, 0.4);
+  color: var(--fn-gold-highlight);
+}
+.alert code {
+  color: var(--fn-cyan);
+  background: transparent;
   padding: 0;
 }
 
-.wizard {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  padding: 1.5rem 2rem;
-  box-sizing: border-box;
-}
-
-.wizard-header h1 {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.1rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.wizard-progress {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  margin-bottom: 1rem;
-}
-
-.wizard-progress-label {
-  font-size: 0.75rem;
-  color: #6b7280;
-}
-
-.wizard-progress-bar {
-  height: 4px;
-  background: #e5e7eb;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-@media (prefers-color-scheme: dark) {
-  .wizard-progress-bar {
-    background: #374151;
-  }
-}
-
-.wizard-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
-  transition: width 0.25s ease-out;
-}
-
-.wizard-step {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.step {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.step h2 {
-  margin: 0;
-  font-size: 1.4rem;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.step p {
-  margin: 0;
-  max-width: 56ch;
-}
-
-.step-help {
-  color: #6b7280;
-  font-size: 0.9rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  .step-help {
-    color: #9ca3af;
-  }
-}
-
-.row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-input,
-button {
-  font-family: inherit;
-  font-size: 0.95rem;
-  padding: 0.5rem 0.9rem;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  color: inherit;
-}
-
-@media (prefers-color-scheme: dark) {
-  input,
-  button {
-    background: #1f2937;
-    border-color: #4b5563;
-    color: #f3f4f6;
-  }
-}
-
-.path-input,
-.key-input {
-  flex: 1;
-  min-width: 0;
-  font-family: ui-monospace, "JetBrains Mono", "Cascadia Code", Consolas, monospace;
-  font-size: 0.85rem;
-}
-
-button {
-  cursor: pointer;
-  transition:
-    background-color 0.1s,
-    border-color 0.1s;
-}
-
-button:hover {
-  border-color: #6b7280;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
-
-button.primary {
-  background: #2563eb;
-  border-color: #1d4ed8;
-  color: #ffffff;
-}
-
-button.primary:hover:not(:disabled) {
-  background: #1d4ed8;
-}
-
-button.secondary {
-  background: transparent;
-  border-color: #d1d5db;
-}
-
-.step-actions {
-  margin-top: auto;
-  padding-top: 1rem;
-  display: flex;
-  gap: 0.5rem;
-  justify-content: flex-end;
-}
-
-.error,
-.success {
-  font-size: 0.9rem;
-  margin: 0;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-}
-
-.error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  color: #991b1b;
-}
-
-.success {
-  background: #ecfdf5;
-  border: 1px solid #a7f3d0;
-  color: #065f46;
-}
-
-@media (prefers-color-scheme: dark) {
-  .error {
-    background: #450a0a;
-    border-color: #7f1d1d;
-    color: #fca5a5;
-  }
-  .success {
-    background: #052e16;
-    border-color: #14532d;
-    color: #6ee7b7;
-  }
-}
-
+/* Summary review dl/dt/dd grid. */
 .summary {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 0.25rem 1rem;
-  margin: 0;
+  gap: 8px 18px;
+  margin: 4px 0 0;
 }
-
 .summary dt {
-  color: #6b7280;
-  font-size: 0.85rem;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--fn-gold);
+  align-self: center;
 }
-
 .summary dd {
   margin: 0;
-  font-size: 0.95rem;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fn-white);
+  word-break: break-all;
+}
+.summary dd.muted {
+  color: var(--fg-3);
+}
+.summary dd .ok {
+  color: var(--fn-cyan);
+}
+.summary dd .miss {
+  color: #ff5577;
 }
 
-code {
-  font-family: ui-monospace, "JetBrains Mono", Consolas, monospace;
-  font-size: 0.85rem;
-  background: rgba(127, 127, 127, 0.12);
-  padding: 0.1em 0.3em;
-  border-radius: 3px;
+/* Inline mono "code" chips that aren't real pre blocks. */
+.chip-code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fn-cyan);
+  background: rgba(0, 194, 255, 0.06);
+  border: 1px solid rgba(0, 194, 255, 0.25);
+  padding: 1px 6px;
+  border-radius: 2px;
 }
 
-a {
-  color: #2563eb;
-  text-decoration: none;
+/* Welcome-step hero artwork. */
+.welcome-logo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 18px;
 }
-
-a:hover {
-  text-decoration: underline;
+.welcome-logo .monogram {
+  height: 76px;
+  width: auto;
+  filter: drop-shadow(0 0 18px rgba(255, 196, 0, 0.32));
 }
-
-@media (prefers-color-scheme: dark) {
-  a {
-    color: #60a5fa;
-  }
+.welcome-logo .wordmark {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 30px;
+  color: var(--fn-purple);
+  letter-spacing: -0.03em;
+  text-shadow: 0 0 16px rgba(176, 0, 255, 0.4);
+  line-height: 1;
+}
+.welcome-logo .tagline {
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--fn-gold-highlight);
+  margin-top: 4px;
 }

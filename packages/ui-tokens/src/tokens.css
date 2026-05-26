@@ -1,0 +1,484 @@
+/* ============================================================
+   4never Company — Design Tokens
+   Dark-mode-first, sci-fi HUD aesthetic.
+   See README.md for the visual & content fundamentals.
+   ============================================================ */
+
+/* ---- WEB FONT LOADING -----------------------------------------
+   All three families are self-hosted in ./fonts/ as WOFF2 (the modern
+   web standard). No CDN dependency at runtime — works offline, no FOUT.
+
+   - Sora        300, 400, 500, 600, 700, 800  (display / wordmark)
+   - Manrope     300, 400, 500, 600, 700, 800  (body / UI)
+   - JetBrainsMono 400, 500, 700               (code / data)
+
+   Note: Sora caps at 800 in the free distribution; the brand spec calls
+   for 900 on the "Code4Never" gold lockup — we render 800 + gold-bevel
+   gradient clip, which is visually equivalent at display sizes.
+
+   To swap in the proprietary 4never face when it arrives, just add a new
+   @font-face block above with family-name "Sora" — every consumer of
+   --font-display picks it up automatically. See fonts/README.md. ------ */
+
+@font-face {
+  font-family: "Sora";
+  src: url("./fonts/Sora-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Sora";
+  src: url("./fonts/Sora-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Sora";
+  src: url("./fonts/Sora-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Sora";
+  src: url("./fonts/Sora-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Sora";
+  src: url("./fonts/Sora-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Sora";
+  src: url("./fonts/Sora-ExtraBold.woff2") format("woff2");
+  font-weight: 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Manrope";
+  src: url("./fonts/Manrope-Light.woff2") format("woff2");
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Manrope";
+  src: url("./fonts/Manrope-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Manrope";
+  src: url("./fonts/Manrope-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Manrope";
+  src: url("./fonts/Manrope-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Manrope";
+  src: url("./fonts/Manrope-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Manrope";
+  src: url("./fonts/Manrope-ExtraBold.woff2") format("woff2");
+  font-weight: 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("./fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("./fonts/JetBrainsMono-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("./fonts/JetBrainsMono-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+:root {
+  /* ─── PRIMARY BRAND COLORS ─────────────────────────────── */
+  --fn-black: #000000; /* True black — primary background  */
+  --fn-deep-indigo: #14131f; /* Charcoal-indigo — surface 0      */
+  --fn-midnight: #0a0b14; /* Deeper alt background            */
+  --fn-gold: #ffc400; /* Primary brand gold               */
+  --fn-purple: #b000ff; /* Primary brand purple (wordmark)  */
+  --fn-cyan: #00c2ff; /* Primary tech cyan                */
+
+  /* ─── SECONDARY / SUPPORT COLORS ──────────────────────── */
+  --fn-cyan-glow: #00f2ff; /* Bright cyan halo / highlight     */
+  --fn-cyan-mid: #42c8ff; /* Mid-tone circuit lines           */
+  --fn-cyan-deep: #00a3ff; /* Depth / shading                  */
+  --fn-purple-electric: #7c2dcf; /* Electric purple — wordmark v2    */
+  --fn-purple-soft: #a06fef; /* Soft purple glow / lightning     */
+  --fn-purple-pink: #c77dff; /* Soft pink-purple (social wave)   */
+  --fn-magenta: #d946ef; /* Hot magenta (creative splash)    */
+  --fn-magenta-light: #e879f9; /* Light magenta halo               */
+  --fn-gold-highlight: #eacd8f; /* Metallic highlight (warm)        */
+  --fn-gold-mid: #b28c4b; /* Mid-tone gold / bronze           */
+  --fn-gold-shadow: #7f5e29; /* Dark gold shadow                 */
+  --fn-gold-pale: #ffe07a; /* Pale gold bevel highlight        */
+
+  /* ─── NEUTRALS ────────────────────────────────────────── */
+  --fn-white: #ffffff;
+  --fn-gray-100: #f2f2f2;
+  --fn-gray-300: #d0d0d0; /* Body text on dark                */
+  --fn-gray-500: #8a8a95; /* Secondary text                   */
+  --fn-gray-700: #3a3946; /* Borders / dividers               */
+  --fn-gray-800: #22212e; /* Surface 1 (cards on indigo)      */
+  --fn-gray-900: #1a1924; /* Surface 2                        */
+
+  /* ─── SEMANTIC FOREGROUND ─────────────────────────────── */
+  --fg-1: var(--fn-white); /* Headlines, titles */
+  --fg-2: var(--fn-gray-300); /* Body copy         */
+  --fg-3: var(--fn-gray-500); /* Muted / captions  */
+  --fg-gold: var(--fn-gold); /* Premium accents   */
+  --fg-purple: var(--fn-purple); /* Wordmark / brand  */
+  --fg-cyan: var(--fn-cyan); /* Tech / data       */
+  --fg-link: var(--fn-cyan-glow);
+
+  /* ─── SEMANTIC BACKGROUND ─────────────────────────────── */
+  --bg-0: var(--fn-black); /* Page              */
+  --bg-1: var(--fn-deep-indigo); /* Section / surface */
+  --bg-2: var(--fn-gray-900); /* Card              */
+  --bg-3: var(--fn-gray-800); /* Elevated card     */
+  --bg-overlay: rgba(10, 11, 20, 0.72);
+
+  /* ─── BORDERS ─────────────────────────────────────────── */
+  --border-gold: rgba(255, 196, 0, 0.55);
+  --border-gold-soft: rgba(255, 196, 0, 0.18);
+  --border-purple: rgba(176, 0, 255, 0.45);
+  --border-cyan: rgba(0, 194, 255, 0.45);
+  --border-neutral: rgba(255, 255, 255, 0.08);
+  --border-divider: rgba(255, 255, 255, 0.05);
+
+  /* ─── AGENT-ROLE TINTS (from the agent hierarchy) ─────── */
+  --agent-architect: #eacd8f; /* gold/bronze         */
+  --agent-developer: #00c2ff; /* cyan / silver       */
+  --agent-sentinel: #ffc400; /* gold armor          */
+  --agent-strategist: #b28c4b; /* premium gold        */
+  --agent-headchief: #ffc400; /* crown gold          */
+  --agent-design: #b000ff; /* purple / magenta    */
+
+  /* ─── GRADIENTS ───────────────────────────────────────── */
+  --grad-gold: linear-gradient(135deg, #eacd8f 0%, #ffc400 45%, #b28c4b 100%);
+  --grad-gold-bevel: linear-gradient(180deg, #ffe07a 0%, #ffc400 40%, #b28c4b 80%, #7f5e29 100%);
+  --grad-purple: linear-gradient(135deg, #7c2dcf 0%, #b000ff 100%);
+  --grad-cyan: linear-gradient(135deg, #00c2ff 0%, #00f2ff 100%);
+  --grad-hero:
+    radial-gradient(ellipse at 30% 0%, rgba(176, 0, 255, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 100%, rgba(0, 194, 255, 0.12) 0%, transparent 60%),
+    linear-gradient(180deg, #0a0b14 0%, #14131f 100%);
+  --grad-divider: linear-gradient(90deg, transparent, var(--fn-gold) 50%, transparent);
+
+  /* Thematic gradients sampled from official banner artwork. Use these as
+     section backgrounds, hero washes, or accent strokes — one theme per
+     surface. Pair with the matching themed-icon set documented in
+     preview/themes.html and preview/thematic_icons.html. */
+  --grad-ai: linear-gradient(
+    135deg,
+    #7c2dcf 0%,
+    #b000ff 40%,
+    #ffc400 100%
+  ); /* AI / Innovation — purple→gold flowing energy */
+  --grad-business: linear-gradient(
+    180deg,
+    #ffc400 0%,
+    #b28c4b 40%,
+    #7c2dcf 100%
+  ); /* Business / Executive — gold pillar to purple wave */
+  --grad-creative: linear-gradient(
+    120deg,
+    #b000ff 0%,
+    #ffc400 35%,
+    #d946ef 70%,
+    #00c2ff 100%
+  ); /* Creative / Design — rainbow paint flow */
+  --grad-gaming: linear-gradient(
+    135deg,
+    #14131f 0%,
+    #b000ff 30%,
+    #ffc400 60%,
+    #14131f 100%
+  ); /* Gaming / Esports — lightning energy */
+  --grad-sentinel: linear-gradient(
+    135deg,
+    #ffc400 0%,
+    #b28c4b 40%,
+    #14131f 100%
+  ); /* Security / Sentinel — gold shield on indigo */
+  --grad-social: linear-gradient(
+    135deg,
+    #7c2dcf 0%,
+    #c77dff 50%,
+    #ffc400 100%
+  ); /* Social — soft purple flow into gold */
+  --grad-developer: linear-gradient(
+    135deg,
+    #00c2ff 0%,
+    #7c2dcf 50%,
+    #ffc400 100%
+  ); /* Code — cyan circuit into purple into gold */
+  --grad-conference: linear-gradient(
+    180deg,
+    #14131f 0%,
+    #7c2dcf 70%,
+    #ffc400 100%
+  ); /* Tech Conference — spotlight stage */
+  --grad-lightning: linear-gradient(
+    90deg,
+    #ffe07a 0%,
+    #ffc400 30%,
+    #a06fef 70%,
+    #b000ff 100%
+  ); /* Electric bolt sweep */
+  --grad-brain: radial-gradient(
+    circle at 50% 50%,
+    #ffc400 0%,
+    #b000ff 40%,
+    #14131f 80%
+  ); /* Neural-network radial glow */
+
+  /* ─── GLOW SHADOWS (neon system) ──────────────────────── */
+  --glow-gold: 0 0 24px rgba(255, 196, 0, 0.45), 0 0 6px rgba(255, 196, 0, 0.8);
+  --glow-gold-soft: 0 0 16px rgba(255, 196, 0, 0.25);
+  --glow-purple: 0 0 28px rgba(176, 0, 255, 0.55), 0 0 8px rgba(176, 0, 255, 0.85);
+  --glow-cyan: 0 0 24px rgba(0, 194, 255, 0.55), 0 0 6px rgba(0, 242, 255, 0.85);
+
+  /* ─── DEPTH (subtle, since brand favours glow over drop-shadow) */
+  --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 1px 2px rgba(0, 0, 0, 0.6);
+  --shadow-2: 0 6px 18px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--border-neutral);
+  --shadow-3: 0 18px 48px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--border-gold-soft);
+  --inset-hairline: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+
+  /* ─── RADII ───────────────────────────────────────────── */
+  --r-none: 0;
+  --r-xs: 2px;
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 12px;
+  --r-xl: 16px;
+  --r-2xl: 24px;
+  --r-pill: 999px;
+
+  /* ─── SPACING (4-pt scale) ────────────────────────────── */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 20px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-10: 40px;
+  --s-12: 48px;
+  --s-16: 64px;
+  --s-20: 80px;
+  --s-24: 96px;
+
+  /* ─── TYPOGRAPHY — FAMILIES ───────────────────────────── */
+  /* Display / wordmark / headlines */
+  --font-display: "Sora", "Manrope", "Inter", system-ui, sans-serif;
+  /* Body */
+  --font-body: "Manrope", "Inter", system-ui, sans-serif;
+  /* Code / data / technical */
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+
+  /* ─── TYPE SCALE ──────────────────────────────────────── */
+  --t-display: clamp(56px, 7vw, 96px); /* hero wordmark    */
+  --t-h1: clamp(40px, 5vw, 64px); /* page titles       */
+  --t-h2: clamp(32px, 4vw, 48px); /* section headings  */
+  --t-h3: clamp(22px, 2.4vw, 28px); /* sub-sections      */
+  --t-h4: 18px;
+  --t-eyebrow: 12px; /* uppercase tags    */
+  --t-body: 16px;
+  --t-body-lg: 18px;
+  --t-body-sm: 14px;
+  --t-caption: 12px;
+  --t-mono-sm: 13px;
+
+  /* ─── TYPE METRICS ────────────────────────────────────── */
+  --lh-tight: 1.05;
+  --lh-snug: 1.2;
+  --lh-base: 1.55;
+  --lh-loose: 1.7;
+  --ls-display: -0.02em;
+  --ls-tight: -0.01em;
+  --ls-wide: 0.16em; /* eyebrows / uppercase tags */
+
+  /* ─── MOTION ──────────────────────────────────────────── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-bezel: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-1: 120ms;
+  --dur-2: 200ms;
+  --dur-3: 320ms;
+  --dur-4: 560ms;
+}
+
+/* ============================================================
+   BASE ELEMENT STYLES (semantic defaults)
+   ============================================================ */
+
+html,
+body {
+  background: var(--bg-0);
+  color: var(--fg-2);
+  font-family: var(--font-body);
+  font-size: var(--t-body);
+  line-height: var(--lh-base);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+.h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--t-h1);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-display);
+  color: var(--fg-1);
+  text-wrap: balance;
+}
+h2,
+.h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-h2);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-tight);
+  color: var(--fg-1);
+}
+h3,
+.h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--t-h3);
+  line-height: var(--lh-snug);
+  color: var(--fg-1);
+}
+h4,
+.h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--t-h4);
+  line-height: var(--lh-snug);
+  color: var(--fg-1);
+}
+
+/* Wordmark — use for "4never" lockup */
+.wordmark {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--t-display);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--fn-purple);
+}
+
+/* Tagline — gold, supports the wordmark */
+.tagline {
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-style: italic;
+  color: var(--fn-gold-highlight);
+  letter-spacing: 0;
+}
+
+/* Eyebrow / overline — uppercase HUD label */
+.eyebrow {
+  font-family: var(--font-display);
+  font-size: var(--t-eyebrow);
+  font-weight: 600;
+  letter-spacing: var(--ls-wide);
+  text-transform: uppercase;
+  color: var(--fn-gold);
+}
+
+p,
+.body {
+  font-family: var(--font-body);
+  font-size: var(--t-body);
+  line-height: var(--lh-base);
+  color: var(--fg-2);
+  text-wrap: pretty;
+}
+.body-sm {
+  font-size: var(--t-body-sm);
+}
+.body-lg {
+  font-size: var(--t-body-lg);
+}
+.caption {
+  font-size: var(--t-caption);
+  color: var(--fg-3);
+}
+
+a {
+  color: var(--fg-link);
+  text-decoration: none;
+  transition: color var(--dur-2) var(--ease-out);
+}
+a:hover {
+  color: var(--fn-cyan-glow);
+}
+
+code,
+pre,
+kbd,
+samp,
+.mono {
+  font-family: var(--font-mono);
+  font-size: var(--t-mono-sm);
+  color: var(--fn-cyan);
+}
+pre {
+  background: var(--bg-2);
+  border: 1px solid var(--border-cyan);
+  border-radius: var(--r-md);
+  padding: var(--s-4);
+  overflow: auto;
+}
+
+hr {
+  border: 0;
+  height: 1px;
+  background: var(--grad-divider);
+  margin: var(--s-8) 0;
+}
+
+::selection {
+  background: rgba(176, 0, 255, 0.35);
+  color: var(--fn-white);
+}
+
+/* Utility text colors */
+.text-gold {
+  color: var(--fn-gold);
+}
+.text-purple {
+  color: var(--fn-purple);
+}
+.text-cyan {
+  color: var(--fn-cyan);
+}
+.text-muted {
+  color: var(--fg-3);
+}

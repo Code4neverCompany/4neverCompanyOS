@@ -1,0 +1,49 @@
+/* Desktop-shell local styles.
+   Tokens + .hud utility come from @c4n/ui-tokens/styles (imported in main.tsx).
+   This file holds only desktop-shell-specific layout glue. */
+
+/* The shell takes the full viewport; AppShell handles its own overflow. */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--bg-0);
+  overflow: hidden;
+}
+
+/* Side rail nav button shared style. The hover/active variants are inlined
+   in JSX where they're stateful, but the base shape lives here for clarity. */
+.side-rail-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 2px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--fg-3);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.side-rail-btn:hover {
+  color: var(--fn-white);
+}
+.side-rail-btn[data-active="true"] {
+  background: rgba(255, 196, 0, 0.1);
+  border-color: var(--fn-gold);
+  color: var(--fn-gold);
+  box-shadow: var(--glow-gold-soft);
+}
+.side-rail-btn .label {
+  font-size: 7px;
+  letter-spacing: 0.1em;
+}

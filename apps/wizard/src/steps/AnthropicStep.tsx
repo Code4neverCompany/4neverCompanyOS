@@ -13,6 +13,7 @@
 
 import { set as setCredential } from "@c4n/credential-storage";
 import { useState } from "react";
+import { Btn, Eyebrow, HUDFrame, Input } from "@c4n/ui-tokens";
 import type { WizardState } from "../state";
 
 interface Props {
@@ -73,51 +74,63 @@ export function AnthropicStep({ state, onNext, onBack }: Props) {
   }
 
   return (
-    <div className="step anthropic-step">
-      <h2>Add your Anthropic API key</h2>
-      <p>
-        Claude Code (the Dev persona's backing CLI) needs an Anthropic API key. Generate one at{" "}
+    <HUDFrame className="wizard-card">
+      <div className="title-block">
+        <Eyebrow>Step 2 · Anthropic</Eyebrow>
+        <h2>Add your Anthropic API key</h2>
+      </div>
+
+      <p className="body-copy">
+        Claude Code (the Dev persona&apos;s backing CLI) needs an Anthropic API key. Generate one at{" "}
         <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
           console.anthropic.com/settings/keys
         </a>
         . The key is stored locally in your OS keychain. It is never sent anywhere by the workspace
-        beyond the one validation call to <code>api.anthropic.com</code> below.
+        beyond the one validation call to <span className="chip-code">api.anthropic.com</span>{" "}
+        below.
       </p>
 
       <div className="row">
-        <input
+        <Input
+          label="API key"
           type={reveal ? "text" : "password"}
           value={key}
           onChange={(e) => setKey(e.currentTarget.value)}
           placeholder="sk-ant-…"
           disabled={status === "validating"}
-          className="key-input"
           autoComplete="off"
           spellCheck={false}
+          style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}
         />
-        <button onClick={() => setReveal((r) => !r)} disabled={status === "validating"}>
+        <Btn
+          variant="ghost"
+          onClick={() => setReveal((r) => !r)}
+          disabled={status === "validating"}
+        >
           {reveal ? "Hide" : "Show"}
-        </button>
+        </Btn>
       </div>
 
       {status === "valid" && (
-        <p className="success">✓ Key validated against Anthropic and saved to your keychain.</p>
+        <div className="alert success">
+          ✓ Key validated against Anthropic and saved to your keychain.
+        </div>
       )}
-      {status === "error" && error && <p className="error">{error}</p>}
+      {status === "error" && error && <div className="alert error">{error}</div>}
 
-      <div className="step-actions">
-        <button onClick={onBack} disabled={status === "validating"}>
-          Back
-        </button>
+      <div className="actions">
+        <Btn variant="ghost" onClick={onBack} disabled={status === "validating"}>
+          ← Back
+        </Btn>
         {state.anthropicAuthenticated && !key && (
-          <button className="secondary" onClick={continueWithStored}>
-            Use already-saved key
-          </button>
+          <Btn variant="secondary" onClick={continueWithStored}>
+            Use already-saved key →
+          </Btn>
         )}
-        <button className="primary" onClick={validateAndStore} disabled={status === "validating"}>
-          {status === "validating" ? "Validating…" : "Validate and save"}
-        </button>
+        <Btn variant="primary" onClick={validateAndStore} disabled={status === "validating"}>
+          {status === "validating" ? "Validating…" : "Validate and save →"}
+        </Btn>
       </div>
-    </div>
+    </HUDFrame>
   );
 }

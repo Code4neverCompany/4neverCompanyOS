@@ -3,6 +3,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open } from "@tauri-apps/plugin-dialog";
 import { useEffect, useState } from "react";
+import { Btn, Eyebrow, HUDFrame, Input } from "@c4n/ui-tokens";
 import type { WizardState } from "../state";
 
 interface Props {
@@ -61,38 +62,43 @@ export function VaultStep({ state, onNext, onBack }: Props) {
   }
 
   return (
-    <div className="step vault-step">
-      <h2>Choose your vault location</h2>
-      <p>
+    <HUDFrame className="wizard-card">
+      <div className="title-block">
+        <Eyebrow>Step 1 · Vault</Eyebrow>
+        <h2>Choose your vault location</h2>
+      </div>
+
+      <p className="body-copy">
         The vault holds your persona definitions, BMAD artifacts, per-project logs, and any skills
         or memory you accumulate. You can move it later by editing{" "}
-        <code>~/.4nevercompanyos/config.toml</code>.
+        <span className="chip-code">~/.4nevercompanyos/config.toml</span>.
       </p>
 
       <div className="row">
-        <input
+        <Input
+          label="Vault path"
           type="text"
           value={path}
           onChange={(e) => setPath(e.currentTarget.value)}
-          placeholder="Vault location"
+          placeholder="C:\Users\you\4nco-vault"
           disabled={scaffolding}
-          className="path-input"
+          style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}
         />
-        <button onClick={browse} disabled={scaffolding}>
+        <Btn variant="secondary" onClick={browse} disabled={scaffolding}>
           Browse…
-        </button>
+        </Btn>
       </div>
 
-      {error && <p className="error">{error}</p>}
+      {error && <div className="alert error">{error}</div>}
 
-      <div className="step-actions">
-        <button onClick={onBack} disabled={scaffolding}>
-          Back
-        </button>
-        <button className="primary" onClick={confirm} disabled={scaffolding}>
-          {scaffolding ? "Creating vault…" : "Use this location"}
-        </button>
+      <div className="actions">
+        <Btn variant="ghost" onClick={onBack} disabled={scaffolding}>
+          ← Back
+        </Btn>
+        <Btn variant="primary" onClick={confirm} disabled={scaffolding}>
+          {scaffolding ? "Creating vault…" : "Use this location →"}
+        </Btn>
       </div>
-    </div>
+    </HUDFrame>
   );
 }

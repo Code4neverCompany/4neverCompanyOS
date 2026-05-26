@@ -1,0 +1,11 @@
+/* @c4n/ui-tokens — single CSS entry.
+   Import this once at the top of your app:
+     import "@c4n/ui-tokens/styles";
+   It pulls in:
+     - tokens.css: @font-face for Sora/Manrope/JetBrains Mono + the full
+       :root token set (colors, gradients, glows, spacing, radii, type).
+     - hud.css:    the .hud bracketed-container utility + scanline /
+       pulse / flicker animations + custom scrollbar. */
+
+@import "./tokens.css";
+@import "./hud.css";

@@ -16,7 +16,8 @@
     "react-dom": "^19.2.6",
     "@tauri-apps/api": "^2",
     "@c4n/core": "workspace:*",
-    "@c4n/bus-client": "workspace:*"
+    "@c4n/bus-client": "workspace:*",
+    "@c4n/ui-tokens": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.2.15",

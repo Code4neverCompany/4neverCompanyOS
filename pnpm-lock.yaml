@@ -34,6 +34,9 @@ importers:
       "@c4n/core":
         specifier: workspace:*
         version: link:../../packages/core
+      "@c4n/ui-tokens":
+        specifier: workspace:*
+        version: link:../../packages/ui-tokens
       "@tauri-apps/api":
         specifier: ^2
         version: 2.11.0
@@ -74,6 +77,9 @@ importers:
       "@c4n/credential-storage":
         specifier: workspace:*
         version: link:../../packages/credential-storage
+      "@c4n/ui-tokens":
+        specifier: workspace:*
+        version: link:../../packages/ui-tokens
       "@tauri-apps/api":
         specifier: ^2
         version: 2.11.0
@@ -222,6 +228,22 @@ importers:
         specifier: workspace:*
         version: link:../core
     devDependencies:
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.19)
+
+  packages/ui-tokens:
+    dependencies:
+      react:
+        specifier: ^19.2.0
+        version: 19.2.6
+    devDependencies:
+      "@types/react":
+        specifier: ^19.2.15
+        version: 19.2.15
       typescript:
         specifier: 5.8.3
         version: 5.8.3
