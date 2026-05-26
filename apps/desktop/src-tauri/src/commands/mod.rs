@@ -24,6 +24,18 @@ const PROJECT_DEV_OVERRIDE_RELPATH: &str = "_bmad/custom/agents/dev.md";
 /// Filename written to the project root. Claude Code reads it on launch.
 const CLAUDE_MD_FILENAME: &str = "claude.md";
 
+/// Default binary name for the persona-supervisor (Story 1.14b). Resolves
+/// through PATH at spawn time. Production installer puts the binary on
+/// PATH; for `cargo run` development, run
+/// `cargo install --path crates/persona-supervisor --debug` once.
+/// Override via `C4N_PERSONA_SUPERVISOR` env var if a non-standard
+/// install location is needed.
+const SUPERVISOR_BIN_DEFAULT: &str = "c4n-persona-supervisor";
+
+/// Env var that overrides the supervisor binary path. Used for tests
+/// and non-standard installs.
+const SUPERVISOR_BIN_ENV: &str = "C4N_PERSONA_SUPERVISOR";
+
 #[tauri::command]
 pub fn ping() -> &'static str {
     "pong"
@@ -306,11 +318,24 @@ pub fn spawn_dev_persona(project_id: String) -> Result<DevPersonaStatus, String>
         return Ok(DevPersonaStatus::Running { session_name });
     }
 
+    // Story 1.14b: route the Claude Code process through the
+    // persona-supervisor so stdout/stderr land in
+    // <vault>/personas/dev/log/YYYY-MM-DD.jsonl. The supervisor exec-
+    // wraps claude and forwards lines unchanged to its own stdio, so
+    // Zellij's pane display stays identical to spawning claude directly.
+    let workspace_config = read_workspace_config()?;
+    let supervisor_bin = find_supervisor_binary();
+
     let cwd = PathBuf::from(&project.path);
     let config = SpawnPaneConfig {
         session_name: session_name.clone(),
-        command: "claude".to_string(),
-        args: vec![],
+        command: supervisor_bin,
+        args: vec![
+            "dev".to_string(),
+            workspace_config.vault_path,
+            "--".to_string(),
+            "claude".to_string(),
+        ],
         env: HashMap::new(),
         cwd: Some(cwd),
         pane_name: Some(format!("Dev · {}", project.name)),
@@ -320,6 +345,54 @@ pub fn spawn_dev_persona(project_id: String) -> Result<DevPersonaStatus, String>
     zellij::spawn_pane(config).map_err(|e| format!("spawn pane: {e}"))?;
 
     Ok(DevPersonaStatus::Running { session_name })
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Story 1.14b — workspace config + supervisor binary lookup
+// ────────────────────────────────────────────────────────────────────
+
+/// Workspace-level config written by the first-run wizard at
+/// `~/.4nevercompanyos/config.toml`. Read by spawn_dev_persona to know
+/// where the vault lives so the supervisor can write logs into it.
+///
+/// Schema mirrors `apps/wizard/src-tauri/src/commands.rs::WorkspaceConfig`
+/// — they should stay in sync. (Future story: extract to a shared crate
+/// once a third consumer materializes.)
+#[derive(Debug, Deserialize, Serialize)]
+struct WorkspaceConfig {
+    /// Absolute vault path picked in the wizard's vault step.
+    vault_path: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    anthropic_authenticated: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    claude_code_authenticated: Option<bool>,
+}
+
+fn workspace_config_path() -> Result<PathBuf, String> {
+    let home = dirs::home_dir().ok_or_else(|| "home directory not found".to_string())?;
+    Ok(home.join(".4nevercompanyos").join("config.toml"))
+}
+
+/// Read the workspace config. Returns a clear error pointing at the
+/// wizard if the config doesn't exist yet (first-run hasn't happened).
+fn read_workspace_config() -> Result<WorkspaceConfig, String> {
+    let path = workspace_config_path()?;
+    if !path.exists() {
+        return Err(
+            "workspace config not found at ~/.4nevercompanyos/config.toml — please run the first-run wizard before opening a project"
+                .to_string(),
+        );
+    }
+    let raw = std::fs::read_to_string(&path).map_err(|e| format!("read workspace config: {e}"))?;
+    toml::from_str(&raw).map_err(|e| format!("parse workspace config: {e}"))
+}
+
+/// Return the binary name (or path) to use when invoking the
+/// persona-supervisor. Honors the `C4N_PERSONA_SUPERVISOR` env override
+/// (useful for tests and non-standard installs); otherwise returns the
+/// bare binary name for PATH resolution at spawn time.
+fn find_supervisor_binary() -> String {
+    std::env::var(SUPERVISOR_BIN_ENV).unwrap_or_else(|_| SUPERVISOR_BIN_DEFAULT.to_string())
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -499,6 +572,49 @@ mod tests {
         assert_eq!(on_disk, BUNDLED_DEV_PERSONA_MD);
 
         std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    // ── Story 1.14b — supervisor lookup ─────────────────────────────
+
+    #[test]
+    fn find_supervisor_binary_uses_env_override_when_set() {
+        // Note: env var manipulation in tests is process-global and not
+        // hygienic across parallel tests — guard with a unique value so
+        // any concurrent test that reads the var sees a deterministic
+        // result regardless of order.
+        let key = SUPERVISOR_BIN_ENV;
+        let original = std::env::var(key).ok();
+        // Safety: env reads happen on background threads (e.g., test
+        // harness). For a single test that immediately reads, set/unset
+        // pair is well-defined.
+        unsafe {
+            std::env::set_var(key, "/custom/path/c4n-persona-supervisor");
+        }
+        assert_eq!(
+            find_supervisor_binary(),
+            "/custom/path/c4n-persona-supervisor"
+        );
+        unsafe {
+            match original {
+                Some(v) => std::env::set_var(key, v),
+                None => std::env::remove_var(key),
+            }
+        }
+    }
+
+    #[test]
+    fn find_supervisor_binary_falls_back_to_default_name() {
+        let key = SUPERVISOR_BIN_ENV;
+        let original = std::env::var(key).ok();
+        unsafe {
+            std::env::remove_var(key);
+        }
+        assert_eq!(find_supervisor_binary(), SUPERVISOR_BIN_DEFAULT);
+        if let Some(v) = original {
+            unsafe {
+                std::env::set_var(key, v);
+            }
+        }
     }
 
     #[test]
