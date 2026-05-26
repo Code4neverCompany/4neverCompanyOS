@@ -436,6 +436,7 @@ name = "c4n-zellij-adapter"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "serde",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
