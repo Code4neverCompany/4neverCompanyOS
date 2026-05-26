@@ -1223,6 +1223,51 @@ mod tests {
         // the protocol on a real dev box.
     }
 
+    // ── Story 1.18 — M1 E2E exit-criterion smoke test ───────────────
+    //
+    // Same shape as restart_survival_manual_verification — a non-executing
+    // protocol body whose only job is to surface a discoverable pointer
+    // into docs/e2e-smoke-test.md. Automating the full install → wizard →
+    // spawn flow requires either (a) a Tauri WebDriver harness (M2-class
+    // scope) or (b) a hermetic Windows VM with pre-staged Anthropic creds
+    // (CI infra Maurice doesn't have yet). Both are deferred.
+
+    #[test]
+    #[ignore = "manual verification protocol — requires fresh Windows install + Zellij + Claude Code + Anthropic key; see docs/e2e-smoke-test.md"]
+    fn e2e_scenario_manual_verification() {
+        eprintln!(
+            "\n\
+             Story 1.18 — M1 E2E smoke test (≤ 10 min) — manual verification\n\
+             ────────────────────────────────────────────────────────────────\n\
+             \n\
+             Full protocol:  docs/e2e-smoke-test.md\n\
+             Budget table:   top of the protocol — 12 phases, 10:00 cap.\n\
+             Recording slot: tests/manual/m1-exit-criterion-recording.mp4\n\
+             Notes slot:     tests/manual/m1-exit-criterion-notes.md\n\
+             \n\
+             Prerequisites (NOT counted in the 10-min budget):\n\
+               1. Clean Windows 10/11 VM (or fresh user profile).\n\
+               2. Zellij ≥ 0.44.3 on PATH (`winget install zellij-org.zellij`).\n\
+               3. Claude Code on PATH + authenticated.\n\
+               4. Anthropic API key paste-ready.\n\
+               5. Test-project folder picked.\n\
+               6. `c4n-persona-supervisor` on PATH (one-time, until 1.17b\n\
+                  bundles it as a Tauri sidecar):\n\
+                    cargo install --path crates/persona-supervisor\n\
+               7. Stopwatch + screen recorder (OBS / Game Bar / etc.).\n\
+             \n\
+             Start the stopwatch on the double-click of the .exe. Fill in\n\
+             the Sign-off block at the bottom of docs/e2e-smoke-test.md when\n\
+             done. PASS condition: total elapsed ≤ 10:00.\n\
+             \n\
+             Validates PRD success metric SM-1.\n\
+             "
+        );
+        // No assertion: this test only documents the protocol. Pass-or-
+        // fail of the E2E criterion is determined by the human running
+        // the protocol on a real Win 10/11 box.
+    }
+
     // ── Story 1.16b — Hermes spawn ──────────────────────────────────
 
     #[test]
