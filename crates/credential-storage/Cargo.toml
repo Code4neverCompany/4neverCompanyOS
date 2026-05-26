@@ -1,0 +1,15 @@
+[package]
+name = "c4n-credential-storage"
+version = "0.0.1"
+edition = "2021"
+description = "OS keychain abstraction (Win Credential Manager / macOS Keychain / Linux Secret Service). Used for Supermemory + GitHub credentials per Architecture D-9; Anthropic + Google live in their CLI's own stores."
+authors = ["4neverCompany"]
+
+[lib]
+name = "c4n_credential_storage"
+crate-type = ["rlib"]
+
+[dependencies]
+thiserror = { workspace = true }
+keyring = "3"
+serde = { workspace = true }

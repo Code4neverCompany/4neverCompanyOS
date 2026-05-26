@@ -1,9 +1,14 @@
 // First-run wizard entry point.
-// Stories 1.7 (vault location), 1.8 (Anthropic API key), 1.9 (Claude Code OAuth),
-// and 2.1 (Antigravity OAuth) flesh this out across M1 + M2.
+// Stories landing here:
+//   - 1.7: vault location step (this story)
+//   - 1.8: Anthropic API key step
+//   - 1.9: Claude Code authentication step
+//   - 2.1: Antigravity OAuth step (M2)
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { Wizard } from "./wizard";
+import "./styles.css";
 
 const root = document.getElementById("root");
 if (!root) {
@@ -12,9 +17,6 @@ if (!root) {
 
 createRoot(root).render(
   <StrictMode>
-    <main style={{ padding: 32, fontFamily: "system-ui, sans-serif" }}>
-      <h1>4neverCompany OS — Setup</h1>
-      <p>Wizard scaffolding. M1 stories will replace this with the real flow.</p>
-    </main>
+    <Wizard />
   </StrictMode>,
 );

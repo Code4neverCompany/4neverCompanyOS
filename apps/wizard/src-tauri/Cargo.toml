@@ -14,7 +14,11 @@ tauri-build = { workspace = true }
 
 [dependencies]
 tauri = { workspace = true }
+tauri-plugin-dialog = "2"
 serde = { workspace = true }
 serde_json = { workspace = true }
 thiserror = { workspace = true }
 anyhow = { workspace = true }
+c4n-credential-storage = { path = "../../../crates/credential-storage" }
+toml = "0.8"
+dirs = "5"

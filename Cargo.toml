@@ -13,6 +13,7 @@ members = [
   "crates/persona-supervisor",
   "crates/platform-fs",
   "crates/vault-scoping",
+  "crates/credential-storage",
 ]
 
 # Workspace-wide dependency pinning.

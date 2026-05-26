@@ -14,7 +14,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@c4n/core": "workspace:*"
+    "@c4n/core": "workspace:*",
+    "@tauri-apps/api": "^2"
   },
   "devDependencies": {
     "typescript": "5.8.3",
