@@ -1,8 +1,24 @@
 # 4neverCompany OS
 
+> ## ⚠ Pre-release · Work-in-progress · NOT officially published
+>
+> This repository is the in-progress development of 4neverCompany OS. **No version, beta, or release has been published.** The code, documentation, architecture decisions, brief, and commit history are a live snapshot of ongoing exploration — they **will change**, sometimes substantially, without notice. **Do not depend on any of it for production use. There is no support, no SLA, no guarantee of compatibility between commits.** A permanent open-source license will be selected before v1.0; until then see [`LICENSE`](LICENSE) — source-available for evaluation only.
+
 A packaged desktop workspace that bundles **Paperclip** (agent-team control plane), **Hermes Agent** (orchestrator), and the **BMAD Method** (default methodology) into a single, locally-installable product. Two fixed persona agents — **Dev** on Claude Code and **Frontend Designer** on Antigravity CLI — spawn at project start; every other persona is dynamic, spawned on demand via a featured **BMad Builder** UI panel with explicit persistent-vs-ephemeral lifecycle choice. Agents talk on a liberal pub/sub bus; Hermes intervenes only when chatter happens without forward motion on artifacts, code, or stories.
 
-> **Status: M0 in progress.** Planning complete (Analyst → PM → Architect → Epics & Stories → Readiness READY). Today's M0 work has the Tauri spike at FINAL GO, monorepo scaffolded, CI baseline starting, and the M0 license + version audits in DRAFT pending review.
+## Status snapshot
+
+| Milestone                                                                   | State                                           |
+| --------------------------------------------------------------------------- | ----------------------------------------------- |
+| Planning (Analyst → PM → Architect → Epics → Readiness)                     | ✅ Complete (Readiness verdict: READY)          |
+| M0 — monorepo + CI baseline + Tauri spike + LICENSES/pinned-versions audits | ✅ Shipped (audits remain DRAFT pending review) |
+| M1 first batch — credential storage + wizard auth flow + Zellij adapter     | ✅ Shipped                                      |
+| M1 visual baseline — `@c4n/ui-tokens` + wizard restyle + AppShell           | ✅ Shipped                                      |
+| M1 spawn pipeline (Stories 1.12 – 1.18)                                     | ⏳ In progress                                  |
+| M2 — Frontend Designer (Antigravity) + BMad Builder UI                      | ⏳ Not started                                  |
+| M3 / M4 / M5                                                                | ⏳ Not started                                  |
+
+Latest substantive log: see commit history. Local validation gates (prettier, eslint, tsc × 14 packages, vitest, cargo fmt, cargo clippy, vite build × 2 apps) pass on every commit.
 
 ## Authoritative docs
 
@@ -86,12 +102,26 @@ spikes/                     throwaway exploratory code (gitignored)
    pnpm dev:desktop
    ```
 
-## License + attribution
+## Affiliations and trademarks
 
-See [`LICENSES.md`](LICENSES.md) for the full per-component audit. All Tier-1 bundled components are permissive (MIT / Apache-2.0 / BSD-family / WebView2 Distribution Agreement). Tier-2 integrated tools (Claude Code, Antigravity CLI, Obsidian, Supermemory, GitHub) are installed by the first-run wizard via each tool's own installer; the user authenticates with their own credentials.
+This project is **NOT affiliated with, endorsed by, or sponsored by** any of the upstream component owners — Anthropic, Google, Obsidian, Microsoft, JetBrains, BMad Code LLC, NousResearch, or anyone else listed in [`LICENSES.md`](LICENSES.md). It is an independent integration that bundles or integrates with their tools per each tool's published terms.
 
-Canonical attribution copy lives in `packages/core/src/attribution.ts` (Story 1.19).
+- "Claude" and "Claude Code" are products and trademarks of Anthropic PBC.
+- "Antigravity CLI" and "Gemini" are products and trademarks of Google LLC.
+- "Obsidian" is a product and trademark of Dynalist Inc.
+- "BMAD Method" is © 2025 BMad Code, LLC.
+- All other product names, trademarks, and logos referenced in this repository belong to their respective owners.
 
-## Contributing back
+## License (source code)
+
+See [`LICENSE`](LICENSE) for this project's source-code license notice. **Summary while pre-release:** source-available for reading, forking on GitHub, opening issues, and local evaluation only. Redistribution, production use, commercial deployment, derivative products, and use of the project's name / brand are **not permitted** until a final license (intended to be a permissive OSS license such as MIT or Apache-2.0) is published at v1.0.
+
+For the per-component audit of **bundled and integrated third-party components** (Tauri, React, Paperclip, Hermes, BMAD, Zellij, Claude Code, Antigravity, Obsidian, etc.) — including redistribution and commercial-use terms for each — see [`LICENSES.md`](LICENSES.md). All Tier-1 bundled components are permissive (MIT / Apache-2.0 / BSD-family / WebView2 Distribution Agreement). Tier-2 integrated tools (Claude Code, Antigravity CLI, Obsidian, Supermemory, GitHub) are installed by the first-run wizard via each tool's own installer; the user authenticates with their own credentials. Canonical attribution copy lives in `packages/core/src/attribution.ts` (Story 1.19).
+
+## Contributing back upstream
 
 Adapter, plugin, persona, or BMAD module that is **general-purpose** is offered upstream when ready. Maintaining in-tree forks is the exception, not the default. See `LICENSES.md` and `docs/architecture-alternatives-evaluation.md` for the policy context.
+
+## Issues, questions, contact
+
+Open a GitHub issue on this repository. Because this is pre-release, there is no public roadmap commitment, no time-bound support, and no SLA on issue responses. Code review and architectural feedback are welcome.

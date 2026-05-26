@@ -1,0 +1,79 @@
+4neverCompany OS — License Notice
+==================================
+
+Copyright (c) 2026 Code4Never / Maurice (Master4never on GitHub)
+
+------------------------------------------------------------------------
+PRE-RELEASE / WORK-IN-PROGRESS — ALL RIGHTS RESERVED
+------------------------------------------------------------------------
+
+This repository is the in-progress development of 4neverCompany OS, a
+packaged-desktop integration of Paperclip, Hermes Agent, and the BMAD
+Method. The project has NOT been officially released. No version 1.0,
+beta, or general-availability product has been published.
+
+The source code and documentation in this repository are made publicly
+visible for transparency, technical commentary, and to invite issue
+reports — NOT to grant a redistribution or modification license.
+
+WHAT YOU MAY DO
+---------------
+
+  * Read the source code, documentation, and commit history.
+  * Fork this repository on GitHub (per GitHub's Terms of Service).
+  * Open issues, discussions, and pull requests against this repository.
+  * Build and run the project locally for evaluation purposes only.
+  * Quote short excerpts in commentary, reviews, or research with
+    attribution.
+
+WHAT YOU MAY NOT DO (until a final license is published)
+--------------------------------------------------------
+
+  * Redistribute the source code or compiled binaries — in whole or in
+    part, modified or unmodified — outside of GitHub forks of this
+    repository.
+  * Deploy this software in any production, customer-facing, or
+    commercial environment.
+  * Create derivative products or competing distributions based on this
+    codebase.
+  * Use the "4never", "Code4Never", "4neverCompany OS", or related
+    project names, logos, or visual identity for any marketing,
+    branding, or product naming.
+
+A PERMANENT OPEN-SOURCE LICENSE WILL BE SELECTED BEFORE v1.0
+------------------------------------------------------------
+
+The intent is to release this project under a permissive open-source
+license (MIT, Apache-2.0, or similar) once v1.0 ships. Until that
+license is published in this file, treat this repository as
+"source-available for evaluation only."
+
+THIRD-PARTY COMPONENTS
+----------------------
+
+This project bundles, integrates with, or depends on a number of
+third-party open-source and proprietary components. Each retains its
+own license — see LICENSES.md at the project root for the full
+component-by-component audit (bundled vs integrated vs build-time,
+with attribution + commercial-use terms).
+
+This notice covers only the code authored as part of 4neverCompany OS
+itself.
+
+NO WARRANTY
+-----------
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+CONTACT
+-------
+
+For questions about licensing, the public-release roadmap, or
+permissions outside the scope above, open a GitHub issue on this
+repository.
