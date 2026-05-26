@@ -64,8 +64,8 @@ export function VaultStep({ state, onNext, onBack }: Props) {
     <div className="step vault-step">
       <h2>Choose your vault location</h2>
       <p>
-        The vault holds your persona definitions, BMAD artifacts, per-project logs, and any
-        skills or memory you accumulate. You can move it later by editing{" "}
+        The vault holds your persona definitions, BMAD artifacts, per-project logs, and any skills
+        or memory you accumulate. You can move it later by editing{" "}
         <code>~/.4nevercompanyos/config.toml</code>.
       </p>
 

@@ -1,0 +1,9 @@
+{
+  "default": {
+    "identifier": "default",
+    "description": "First-run wizard default capabilities — file picker + workspace commands.",
+    "local": true,
+    "windows": ["main"],
+    "permissions": ["core:default", "dialog:default", "dialog:allow-open"]
+  }
+}

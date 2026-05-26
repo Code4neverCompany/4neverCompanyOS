@@ -51,6 +51,7 @@ Findings that don't fit any theme become standalone items.
 {Description.} **Fix:** {One coherent action.}
 
 **Observations:**
+
 - {finding} — file:line
 - ...
 
@@ -63,15 +64,19 @@ Findings that don't fit any theme become standalone items.
 ## Detailed Analysis
 
 ### Architecture
+
 {Assessment + findings not covered by themes (structural integrity, prose craft, cohesion).}
 
 ### Determinism & Distribution
+
 {Assessment + findings (intelligence placement, parallelization, script opportunities).}
 
 ### Customization Surface
+
 {Assessment + opportunities and abuse findings.}
 
 ### User Experience
+
 {Journeys, headless assessment, facilitative-pattern check, edge cases.}
 
 ## Recommendations

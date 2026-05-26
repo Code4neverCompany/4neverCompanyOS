@@ -9,6 +9,15 @@ edition = "2021"
 name = "c4n_wizard_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
+# Disable cargo's auto-test for the binary. The binary is a Tauri GUI app
+# (Windows tags it for UAC elevation because the name contains "wizard");
+# `cargo test --bin` would try to *launch* it as a test binary and fail
+# with os error 740. There are no unit tests in main.rs anyway.
+[[bin]]
+name = "c4n-wizard"
+path = "src/main.rs"
+test = false
+
 [build-dependencies]
 tauri-build = { workspace = true }
 

@@ -25,15 +25,15 @@ rev_history:
 
 Artifacts found in `_bmad-output/planning-artifacts/`:
 
-| Artifact | File | Status | Source-extractable? |
-|---|---|---|---|
-| Project Brief | `briefs/brief-c4n-4neverCompanyOS-2026-05-25/brief.md` | approved-tier1 | ✓ |
-| Brief Addendum | `briefs/brief-c4n-4neverCompanyOS-2026-05-25/addendum.md` | (companion) | ✓ |
-| PRD | `prds/prd-c4n-4neverCompanyOS-2026-05-25/prd.md` | final | ✓ |
-| PRD Rubric Review | `prds/prd-c4n-4neverCompanyOS-2026-05-25/review-rubric.md` | (reference) | ✓ |
-| Architecture | `architecture.md` | complete | ✓ |
-| **Epics & Stories** | `epics.md` | **complete (5 epics, ~60 stories)** | ✓ ← NEW since rev 1 |
-| UX Specification | — | — | ✗ BLOCKED BY DESIGN (explicit v1 skip) |
+| Artifact            | File                                                       | Status                              | Source-extractable?                    |
+| ------------------- | ---------------------------------------------------------- | ----------------------------------- | -------------------------------------- |
+| Project Brief       | `briefs/brief-c4n-4neverCompanyOS-2026-05-25/brief.md`     | approved-tier1                      | ✓                                      |
+| Brief Addendum      | `briefs/brief-c4n-4neverCompanyOS-2026-05-25/addendum.md`  | (companion)                         | ✓                                      |
+| PRD                 | `prds/prd-c4n-4neverCompanyOS-2026-05-25/prd.md`           | final                               | ✓                                      |
+| PRD Rubric Review   | `prds/prd-c4n-4neverCompanyOS-2026-05-25/review-rubric.md` | (reference)                         | ✓                                      |
+| Architecture        | `architecture.md`                                          | complete                            | ✓                                      |
+| **Epics & Stories** | `epics.md`                                                 | **complete (5 epics, ~60 stories)** | ✓ ← NEW since rev 1                    |
+| UX Specification    | —                                                          | —                                   | ✗ BLOCKED BY DESIGN (explicit v1 skip) |
 
 ---
 
@@ -49,101 +49,101 @@ Artifacts found in `_bmad-output/planning-artifacts/`:
 
 ### Coverage cross-walk (epics.md FR Coverage Map → PRD FRs)
 
-| FR | Primary story | Extension stories | Status |
-|---|---|---|---|
-| FR-1 | 1.1, 1.17 | — | ✓ |
-| FR-2 | 1.8, 1.9 | 2.1 | ✓ |
-| FR-3 | 1.7 | — | ✓ |
-| FR-4 | 1.12 | — | ✓ |
-| FR-5 | 2.2 | — | ✓ |
-| FR-6 | 1.15 | 2.5 | ✓ |
-| FR-7 | 3.1 | — | ✓ |
-| FR-8 | 3.2 | — | ✓ |
-| FR-9 | 3.3 | — | ✓ |
-| FR-10 | 3.6 | — | ✓ |
-| FR-11 | 3.10 | — | ✓ |
-| FR-12 | 3.7 | — | ✓ |
-| FR-13 | 3.8 | — | ✓ |
-| FR-14 | 3.9 | — | ✓ |
-| FR-15 | 2.7, 2.8 | — | ✓ |
-| FR-16 | 2.11 | — | ✓ |
-| FR-17 | 2.10 | — | ✓ |
-| FR-18 | 2.12, 2.13, 2.14, 2.15 | 4.5 | ✓ |
-| FR-19 | 2.18 | 3.11 | ✓ |
-| FR-20 | 1.13 | 2.3 | ✓ |
-| FR-21 | 3.4 | — | ✓ |
-| FR-22 | 1.11 | 2.4 | ✓ |
-| FR-23 | 1.15 (covered by restart story) | — | ✓ |
-| FR-24 | 1.16 | — | ✓ |
-| FR-25 | 4.1 | — | ✓ |
-| FR-26 | 4.2, 4.3 | — | ✓ |
-| FR-27 | 4.4 | — | ✓ |
-| FR-28 | 4.6 | — | ✓ |
-| FR-29 | 3.5 | — | ✓ |
-| FR-30 | 5.1 | — | ✓ |
-| FR-31 | 5.2 | — | ✓ |
-| FR-32 | 5.3 | — | ✓ |
-| FR-33 | 5.4 | — | ✓ |
-| FR-34 | 5.5 | — | ✓ |
-| FR-35 | 1.17 | — | ✓ |
-| FR-36 | 5.9 | — | ✓ |
-| FR-37 | 5.10 | — | ✓ |
+| FR    | Primary story                   | Extension stories | Status |
+| ----- | ------------------------------- | ----------------- | ------ |
+| FR-1  | 1.1, 1.17                       | —                 | ✓      |
+| FR-2  | 1.8, 1.9                        | 2.1               | ✓      |
+| FR-3  | 1.7                             | —                 | ✓      |
+| FR-4  | 1.12                            | —                 | ✓      |
+| FR-5  | 2.2                             | —                 | ✓      |
+| FR-6  | 1.15                            | 2.5               | ✓      |
+| FR-7  | 3.1                             | —                 | ✓      |
+| FR-8  | 3.2                             | —                 | ✓      |
+| FR-9  | 3.3                             | —                 | ✓      |
+| FR-10 | 3.6                             | —                 | ✓      |
+| FR-11 | 3.10                            | —                 | ✓      |
+| FR-12 | 3.7                             | —                 | ✓      |
+| FR-13 | 3.8                             | —                 | ✓      |
+| FR-14 | 3.9                             | —                 | ✓      |
+| FR-15 | 2.7, 2.8                        | —                 | ✓      |
+| FR-16 | 2.11                            | —                 | ✓      |
+| FR-17 | 2.10                            | —                 | ✓      |
+| FR-18 | 2.12, 2.13, 2.14, 2.15          | 4.5               | ✓      |
+| FR-19 | 2.18                            | 3.11              | ✓      |
+| FR-20 | 1.13                            | 2.3               | ✓      |
+| FR-21 | 3.4                             | —                 | ✓      |
+| FR-22 | 1.11                            | 2.4               | ✓      |
+| FR-23 | 1.15 (covered by restart story) | —                 | ✓      |
+| FR-24 | 1.16                            | —                 | ✓      |
+| FR-25 | 4.1                             | —                 | ✓      |
+| FR-26 | 4.2, 4.3                        | —                 | ✓      |
+| FR-27 | 4.4                             | —                 | ✓      |
+| FR-28 | 4.6                             | —                 | ✓      |
+| FR-29 | 3.5                             | —                 | ✓      |
+| FR-30 | 5.1                             | —                 | ✓      |
+| FR-31 | 5.2                             | —                 | ✓      |
+| FR-32 | 5.3                             | —                 | ✓      |
+| FR-33 | 5.4                             | —                 | ✓      |
+| FR-34 | 5.5                             | —                 | ✓      |
+| FR-35 | 1.17                            | —                 | ✓      |
+| FR-36 | 5.9                             | —                 | ✓      |
+| FR-37 | 5.10                            | —                 | ✓      |
 
 **Result: 37 of 37 FRs (100%) have a primary story.** 7 FRs have one or more extension stories where the surface broadens across milestones.
 
 ### Non-Functional Requirements Coverage
 
-| NFR | Covered by |
-|---|---|
-| NFR-Performance | Story 2.16 (telemetry tap), Story 5.6 (budget gates), AS-9 bound |
-| NFR-Reliability | Story 1.15 (restart survival), Story 3.6 (ephemeral cleanup 100-cycle test) |
-| NFR-Security | Architecture D-9 (credentials per CLI), Story 3.5 (vault scoping log); formal security review M3↔M4 scheduled |
-| NFR-Observability | Story 1.14 (persona supervisor capture), Story 2.16 (telemetry tap), Story 5.6 (budget gates) |
-| NFR-Resilience-to-Upstream-Churn | Story 1.4 (pinned-versions.md), quarterly rebase rhythm, `services/` vendored |
-| NFR-Headless-Scriptability | Architecture-level (CLIs on system path); not a story per se |
+| NFR                              | Covered by                                                                                                    |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| NFR-Performance                  | Story 2.16 (telemetry tap), Story 5.6 (budget gates), AS-9 bound                                              |
+| NFR-Reliability                  | Story 1.15 (restart survival), Story 3.6 (ephemeral cleanup 100-cycle test)                                   |
+| NFR-Security                     | Architecture D-9 (credentials per CLI), Story 3.5 (vault scoping log); formal security review M3↔M4 scheduled |
+| NFR-Observability                | Story 1.14 (persona supervisor capture), Story 2.16 (telemetry tap), Story 5.6 (budget gates)                 |
+| NFR-Resilience-to-Upstream-Churn | Story 1.4 (pinned-versions.md), quarterly rebase rhythm, `services/` vendored                                 |
+| NFR-Headless-Scriptability       | Architecture-level (CLIs on system path); not a story per se                                                  |
 
 **Result: 6 of 6 NFRs have story coverage or architectural mechanism.**
 
 ### Architecture Decisions Coverage
 
-| Decision | Implementing stories |
-|---|---|
-| D-1 IPC pattern | 1.11 (Zellij adapter), 2.7 (bus relay) — IPC channels established |
-| D-2 Zellij spawn | 1.11, 2.4, 3.3 |
-| D-3 Bus relay | 2.7, 2.9, 2.11 |
-| D-4 Progress signals | 2.12, 2.13, 4.5 |
-| D-5 Stall detector | 2.14, 2.17 (validation corpus) |
-| D-6 Persona-sync conflict | 3.4 |
-| D-7 Vault scoping log | 3.5 |
-| D-8 Memory precedence | 5.3 |
-| D-9 Credential storage | 1.10 |
-| D-10 Workspace SQLite | 2.11, 4.4, 5.6 |
-| D-11 Telemetry tap | 2.16 |
-| D-12 Workflow engine | 4.2 |
-| D-13 Portal injection | 1.1 (spike + fallback documented), 3.1 (BMB panel uses it) |
-| D-14 Wizard | 1.7, 1.8, 1.9, 2.1 |
-| D-15 Cross-platform installer | 1.17, 5.9, 5.10 |
+| Decision                      | Implementing stories                                              |
+| ----------------------------- | ----------------------------------------------------------------- |
+| D-1 IPC pattern               | 1.11 (Zellij adapter), 2.7 (bus relay) — IPC channels established |
+| D-2 Zellij spawn              | 1.11, 2.4, 3.3                                                    |
+| D-3 Bus relay                 | 2.7, 2.9, 2.11                                                    |
+| D-4 Progress signals          | 2.12, 2.13, 4.5                                                   |
+| D-5 Stall detector            | 2.14, 2.17 (validation corpus)                                    |
+| D-6 Persona-sync conflict     | 3.4                                                               |
+| D-7 Vault scoping log         | 3.5                                                               |
+| D-8 Memory precedence         | 5.3                                                               |
+| D-9 Credential storage        | 1.10                                                              |
+| D-10 Workspace SQLite         | 2.11, 4.4, 5.6                                                    |
+| D-11 Telemetry tap            | 2.16                                                              |
+| D-12 Workflow engine          | 4.2                                                               |
+| D-13 Portal injection         | 1.1 (spike + fallback documented), 3.1 (BMB panel uses it)        |
+| D-14 Wizard                   | 1.7, 1.8, 1.9, 2.1                                                |
+| D-15 Cross-platform installer | 1.17, 5.9, 5.10                                                   |
 
 **Result: All 15 architectural decisions have story coverage.**
 
 ### Open Question Disposition
 
-| OQ | Status |
-|---|---|
-| OQ-A persona-file conflict | Resolved in Architecture D-6; implemented in Story 3.4 |
-| OQ-B memory precedence | Architecture D-8; finalized in Story 5.3 |
-| OQ-C Tauri vs Electron | Resolved at PRD; M0 spike in Story 1.1 |
-| OQ-D Hermes auto-approve policy | Still deferred to M3 detail design (no story-level commitment) |
-| OQ-E stall-window default value | Calibrated by Story 2.17 |
-| OQ-F BMAD module hot-load | Story 3.1 surfaces it; if reload required, documented as known limitation |
-| OQ-G credentials per CLI | Architecture D-9; implemented in Story 1.10 |
-| OQ-H stall-window weighting | Story 2.17 + 2.18 (doc) + 4.5 (rebalance for story-state signal) |
-| OQ-I monorepo | Resolved at PRD; implemented in Story 1.2 |
-| OQ-J version pinning | Resolved at PRD; implemented in Story 1.4 |
-| OQ-K license audit | Resolved at PRD; implemented in Story 1.3 |
-| OQ-L team size + budget | **RESOLVED 2026-05-26**: 4+ engineers, personal project, no formal budget cap; engineering exit criteria are the bar |
+| OQ                                   | Status                                                                                                                                                                                                       |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| OQ-A persona-file conflict           | Resolved in Architecture D-6; implemented in Story 3.4                                                                                                                                                       |
+| OQ-B memory precedence               | Architecture D-8; finalized in Story 5.3                                                                                                                                                                     |
+| OQ-C Tauri vs Electron               | Resolved at PRD; M0 spike in Story 1.1                                                                                                                                                                       |
+| OQ-D Hermes auto-approve policy      | Still deferred to M3 detail design (no story-level commitment)                                                                                                                                               |
+| OQ-E stall-window default value      | Calibrated by Story 2.17                                                                                                                                                                                     |
+| OQ-F BMAD module hot-load            | Story 3.1 surfaces it; if reload required, documented as known limitation                                                                                                                                    |
+| OQ-G credentials per CLI             | Architecture D-9; implemented in Story 1.10                                                                                                                                                                  |
+| OQ-H stall-window weighting          | Story 2.17 + 2.18 (doc) + 4.5 (rebalance for story-state signal)                                                                                                                                             |
+| OQ-I monorepo                        | Resolved at PRD; implemented in Story 1.2                                                                                                                                                                    |
+| OQ-J version pinning                 | Resolved at PRD; implemented in Story 1.4                                                                                                                                                                    |
+| OQ-K license audit                   | Resolved at PRD; implemented in Story 1.3                                                                                                                                                                    |
+| OQ-L team size + budget              | **RESOLVED 2026-05-26**: 4+ engineers, personal project, no formal budget cap; engineering exit criteria are the bar                                                                                         |
 | OQ-M attribution + contribution-back | **RESOLVED 2026-05-26**: attribution in 4 locations (Settings/About + wizard final screen + splash + LICENSES.md), implemented in Story 1.19; contribution-back = always offer upstream when general-purpose |
-| OQ-N vault layout | Resolved in Story 1.6 |
+| OQ-N vault layout                    | Resolved in Story 1.6                                                                                                                                                                                        |
 
 **Result: 13 of 14 OQs are resolved or have a story-level home. 1 remains at deferred status: OQ-D (Hermes auto-approve policy — M3 detail design, not blocking M0/M1/M2 start).** Zero blocking OQs at M0 entry.
 

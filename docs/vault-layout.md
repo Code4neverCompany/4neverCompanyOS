@@ -74,12 +74,12 @@ personas/<persona-id>/
 {
   "$schema": "1.0",
   "persona_id": "dev",
-  "persona_type": "fixed",             // "fixed" | "dynamic"
-  "lifecycle": "persistent",            // "persistent" | "ephemeral" (only meaningful for dynamic)
-  "backing_cli": "claude-code",         // see @c4n/core glossary BACKING_CLIS
+  "persona_type": "fixed", // "fixed" | "dynamic"
+  "lifecycle": "persistent", // "persistent" | "ephemeral" (only meaningful for dynamic)
+  "backing_cli": "claude-code", // see @c4n/core glossary BACKING_CLIS
   "default_model": "claude-opus-4.6-thinking",
   "spawned_at": "2026-05-26T01:42:24Z",
-  "vault_dir_version": "1.0"
+  "vault_dir_version": "1.0",
 }
 ```
 
@@ -120,7 +120,12 @@ Appended-to by `packages/persona-sync` (D-6) whenever two simultaneous edits col
 JSON-lines log written by `crates/vault-scoping` (D-7, Story 3.5) when a persona's process attempts to write outside its scope (`personas/<persona-id>/` or the shared project area). **Detection only**, not enforcement — per FR-29 the workspace logs but does not block (hard sandboxing is deferred to a future story, N-4).
 
 ```jsonl
-{"ts":"2026-05-26T15:00:00Z","attempted_path":"vault/personas/architect/persona.md","write_type":"modify","caller_persona_id":"dev"}
+{
+  "ts": "2026-05-26T15:00:00Z",
+  "attempted_path": "vault/personas/architect/persona.md",
+  "write_type": "modify",
+  "caller_persona_id": "dev"
+}
 ```
 
 ---
@@ -167,7 +172,7 @@ Most users won't need this. It's there for the case where a user wants Dev to be
 
 ### `reviews/` — ephemeral-agent output
 
-When an ephemeral persona runs (Story 3.6 — typical example: a Security Reviewer for one PR), it writes its output to `reviews/<utc-ts>-<persona-id>-<task-slug>/`. The directory is created fresh for each ephemeral spawn; the persona writes any output (typically a single `review.md` plus maybe attachments) and then exits. The directory is **preserved after exit** so the review is reviewable by the user later; only the *agent process* is cleaned up.
+When an ephemeral persona runs (Story 3.6 — typical example: a Security Reviewer for one PR), it writes its output to `reviews/<utc-ts>-<persona-id>-<task-slug>/`. The directory is created fresh for each ephemeral spawn; the persona writes any output (typically a single `review.md` plus maybe attachments) and then exits. The directory is **preserved after exit** so the review is reviewable by the user later; only the _agent process_ is cleaned up.
 
 ### `.decision-log.md` (project-level)
 
@@ -188,8 +193,8 @@ Persisted by `packages/workflow-engine` (D-12). Lets a workflow pause across des
   "last_approval_gate": {
     "phase": "pm",
     "approved_at": "2026-05-26T11:30:00Z",
-    "approver": "user"
-  }
+    "approver": "user",
+  },
 }
 ```
 
@@ -211,22 +216,22 @@ Persisted by `packages/workflow-engine` (D-12). Lets a workflow pause across des
 
 The opt-in GitHub sync (FR-33) syncs the user's vault to a personal/team repo. The default sync policy:
 
-| Path | Synced by default? | Why |
-|---|---|---|
-| `personas/*/persona.md` | ✓ | Canonical persona files are config-as-code per brief §7 |
-| `personas/*/skills/*.md` | ✓ | Skills are config-as-code |
-| `personas/*/memory/*.md` | ✓ (opt-out per-category) | User-curated notes are valuable cross-machine |
-| `personas/*/log/*.jsonl` | ✗ | Transient runtime logs; high volume; not useful cross-machine |
-| `personas/*/conflict-log.md` | ✗ | Local audit trail; doesn't transfer well |
-| `personas/*/out-of-scope-writes.log` | ✗ | Local audit trail |
-| `personas/*/.persona-meta.json` | ✓ | Lets the other machine re-spawn the persona with matching lifecycle/CLI/model |
-| `personas/*/claude.md` / `agy.md` / `agent.md` | ✗ | Auto-derived from `persona.md`; sync the source instead |
-| `projects/*/bmad/**` | ✓ | BMAD artifacts are the project's planning record |
-| `projects/*/personas/**` | ✓ | Project-specific overlays travel with the project |
-| `projects/*/reviews/**` | ✓ | Ephemeral outputs are valuable history |
-| `projects/*/.project-context.md` | ✓ | Auto-generated context for AI consumers |
-| `projects/*/.decision-log.md` | ✓ | The project's decision record |
-| `projects/*/.workflow-state.json` | ✗ | Runtime state; the destination machine re-creates fresh |
+| Path                                           | Synced by default?       | Why                                                                           |
+| ---------------------------------------------- | ------------------------ | ----------------------------------------------------------------------------- |
+| `personas/*/persona.md`                        | ✓                        | Canonical persona files are config-as-code per brief §7                       |
+| `personas/*/skills/*.md`                       | ✓                        | Skills are config-as-code                                                     |
+| `personas/*/memory/*.md`                       | ✓ (opt-out per-category) | User-curated notes are valuable cross-machine                                 |
+| `personas/*/log/*.jsonl`                       | ✗                        | Transient runtime logs; high volume; not useful cross-machine                 |
+| `personas/*/conflict-log.md`                   | ✗                        | Local audit trail; doesn't transfer well                                      |
+| `personas/*/out-of-scope-writes.log`           | ✗                        | Local audit trail                                                             |
+| `personas/*/.persona-meta.json`                | ✓                        | Lets the other machine re-spawn the persona with matching lifecycle/CLI/model |
+| `personas/*/claude.md` / `agy.md` / `agent.md` | ✗                        | Auto-derived from `persona.md`; sync the source instead                       |
+| `projects/*/bmad/**`                           | ✓                        | BMAD artifacts are the project's planning record                              |
+| `projects/*/personas/**`                       | ✓                        | Project-specific overlays travel with the project                             |
+| `projects/*/reviews/**`                        | ✓                        | Ephemeral outputs are valuable history                                        |
+| `projects/*/.project-context.md`               | ✓                        | Auto-generated context for AI consumers                                       |
+| `projects/*/.decision-log.md`                  | ✓                        | The project's decision record                                                 |
+| `projects/*/.workflow-state.json`              | ✗                        | Runtime state; the destination machine re-creates fresh                       |
 
 The list above is the **default**. Each category is overridable per FR-31 (opt-in per content category for Supermemory) and the equivalent setting for GitHub sync.
 
@@ -280,6 +285,6 @@ Sync policy default: persona files + BMAD artifacts + decision logs → GitHub. 
 
 ## Change log
 
-| Date | Action | By |
-|---|---|---|
+| Date       | Action                                                               | By                              |
+| ---------- | -------------------------------------------------------------------- | ------------------------------- |
 | 2026-05-26 | v1.0 — initial spec at M0 close to unblock M1 vault-touching stories | Architect (Winston) + PM (John) |

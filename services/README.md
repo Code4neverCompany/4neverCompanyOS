@@ -2,11 +2,11 @@
 
 Vendored upstreams pinned at the tags listed in [`../docs/pinned-versions.md`](../docs/pinned-versions.md). These directories are populated by M0 work — currently each is empty.
 
-| Subdirectory | Upstream | Pinned tag (at M0 start) | License |
-|---|---|---|---|
-| `paperclip/` | [paperclipai/paperclip](https://github.com/paperclipai/paperclip) | `v2026.525.0` | MIT |
-| `hermes/` | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) | `v2026.5.16` | MIT |
-| `bmad-method/` | already consumed via `bmad-method@6.7.1` npm dep in root `package.json`; no vendored copy here | n/a | MIT |
+| Subdirectory   | Upstream                                                                                       | Pinned tag (at M0 start) | License |
+| -------------- | ---------------------------------------------------------------------------------------------- | ------------------------ | ------- |
+| `paperclip/`   | [paperclipai/paperclip](https://github.com/paperclipai/paperclip)                              | `v2026.525.0`            | MIT     |
+| `hermes/`      | [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)                      | `v2026.5.16`             | MIT     |
+| `bmad-method/` | already consumed via `bmad-method@6.7.1` npm dep in root `package.json`; no vendored copy here | n/a                      | MIT     |
 
 ## Why vendored
 
@@ -18,4 +18,4 @@ Per OQ-J: quarterly rebase window. Next: **August 2026 (Q3)**. Each rebase appen
 
 ## Contribution-back
 
-Per OQ-M: changes to vendored upstreams that are *general-purpose* are offered as PRs to the upstream repo before being carried in-tree. Maintaining a fork is the exception, not the default.
+Per OQ-M: changes to vendored upstreams that are _general-purpose_ are offered as PRs to the upstream repo before being carried in-tree. Maintaining a fork is the exception, not the default.

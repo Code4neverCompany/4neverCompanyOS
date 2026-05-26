@@ -21,6 +21,7 @@ Sections roughly track the source brief's structure so the Architect persona can
 ### A.1 Control Plane — Paperclip
 
 Paperclip is the outer shell defining what work exists: companies, projects, goals, roles, budgets, and the agents assigned. The workspace ships a preconfigured Paperclip instance with:
+
 - Embedded Postgres + local file storage.
 - A BMAD-shaped default starter company.
 - The `hermes-paperclip-adapter` preinstalled.
@@ -32,7 +33,7 @@ Hermes is the conductor sitting above the persona agents. Responsibilities:
 
 - Interpret user intent and dispatch the right persona.
 - Spawn, supervise, and tear down persona-agent processes (fixed and dynamic).
-- Watch the inter-agent message bus for *progress*, intervening only when conversation is happening without forward motion.
+- Watch the inter-agent message bus for _progress_, intervening only when conversation is happening without forward motion.
 - Curate cross-project memory across Hermes native memory + Obsidian vault + Supermemory.
 - Wear a persona "hat" itself when a role is needed for a single quick task and spinning up a full external agent would be overkill.
 
@@ -42,10 +43,10 @@ Hermes is the conductor sitting above the persona agents. Responsibilities:
 
 **Fixed personas (always-on from project start):**
 
-| Persona | Backing CLI | Default Model | Rationale |
-|---|---|---|---|
-| **Dev** | Claude Code | Claude Opus 4.6 (Thinking) | Almost every project needs continuous engineering presence. |
-| **Frontend Designer** | Antigravity CLI (`agy`) | Gemini 3.1 Pro (High) | UX/visual work runs in parallel with engineering; benefits from a different model family. |
+| Persona               | Backing CLI             | Default Model              | Rationale                                                                                 |
+| --------------------- | ----------------------- | -------------------------- | ----------------------------------------------------------------------------------------- |
+| **Dev**               | Claude Code             | Claude Opus 4.6 (Thinking) | Almost every project needs continuous engineering presence.                               |
+| **Frontend Designer** | Antigravity CLI (`agy`) | Gemini 3.1 Pro (High)      | UX/visual work runs in parallel with engineering; benefits from a different model family. |
 
 Both spawn the instant a project opens, get their own attached terminal in the embedded Zellij multiplex, get their own scoped memory directory in the Obsidian vault, and persist across desktop-app restarts.
 
@@ -83,11 +84,12 @@ Two complementary channels:
 **Progress-based stall detection (not a turn budget):**
 
 Hermes watches for forward motion signals:
+
 - Artifacts in the vault changing (PRDs updated, story files closing, architecture revisions committed).
 - Code being written or modified (file changes in the project directory).
 - Stories transitioning state (open → in-progress → review → done).
 
-If chatter is happening *without* progress for a configurable window (default: a few minutes of bus activity with no artifact/code/status change), Hermes intervenes — summarizing the disagreement, asking the user to arbitrate, or proposing a concrete next step. If progress is happening, the bus stays out of the way no matter how many messages fly.
+If chatter is happening _without_ progress for a configurable window (default: a few minutes of bus activity with no artifact/code/status change), Hermes intervenes — summarizing the disagreement, asking the user to arbitrate, or proposing a concrete next step. If progress is happening, the bus stays out of the way no matter how many messages fly.
 
 The user is a first-class participant: read every channel, post anywhere, pause/redirect any persona at any time.
 
@@ -117,6 +119,7 @@ Hermes (autonomous skill creation) and BMAD (structured personas) both treat ski
 ### A.9 Terminal / CLI Interop
 
 CLI is a first-class surface:
+
 - Full Hermes TUI embedded.
 - Embedded Zellij multiplexer owns all persistent persona-agent sessions, attachable from the desktop UI — every persistent agent has a real terminal pane you can watch and type into.
 - `hermes`, `paperclipai`, `bmad-method`, `agy`, and `claude` CLIs all on the system path.
@@ -127,7 +130,7 @@ CLI is a first-class surface:
 
 ## B. Technical Stack (from source §5)
 
-- **Desktop shell:** Tauri preferred; Electron as fallback. *[M0 decision per build plan]*
+- **Desktop shell:** Tauri preferred; Electron as fallback. _[M0 decision per build plan]_
 - **Bundled runtime:** Node.js 20+ and pnpm 9.15+ (Paperclip + BMAD), Python (Hermes), Go binaries (`agy`, Zellij).
 - **Bundled services:** Embedded Postgres for Paperclip; Hermes local stores in `~/.hermes`; BMAD via `npx bmad-method install`; Antigravity CLI from official installer; Claude Code via standard channel.
 - **Process orchestration:** Embedded Zellij as the persistent-session multiplexer. Each fixed and persistent-dynamic persona gets its own Zellij pane; the desktop UI attaches/detaches without killing underlying processes.
@@ -158,14 +161,14 @@ CLI is a first-class surface:
 
 ## D. Phased Build Plan Summary (from build plan)
 
-| Milestone | Goal | Duration | Headline deliverable |
-|---|---|---|---|
-| **M0 — Pre-Work** | Lock decisions and license audit | 1–2 weeks | Decision log, pinned version manifest, LICENSES.md, CI baseline |
-| **M1 — Walking Skeleton** | Bundle installable; one real persistent CLI agent in a managed terminal | 6–8 weeks | Windows `.exe` installer; Dev/Claude Code in a Zellij pane after wizard |
-| **M2 — Second Agent + Bus** | Two agents simultaneously communicating via real pub/sub bus + progress-detection heuristic | 4–6 weeks | Dev + Frontend Designer in panes; bus visible in UI; stall detection working |
-| **M3 — Dynamic Spawning + BMB Minimal** | Any persona spawnable on demand, persistent or ephemeral, by Hermes or user | 6–8 weeks | "Add Agent" panel; 5+ persona types working; ephemeral cleanup; custom personas |
-| **M4 — Full BMAD Workflow** | One-click `greenfield-fullstack` end-to-end | 4–6 weeks | Greenfield run produces working skeleton + all BMAD artifacts in one session |
-| **M5 — Memory, Collab, Polish** | Cross-machine continuity; Supermemory; Win/Mac/Linux installers; hardening | 4–6 weeks | Three installers; round-trip test; public-beta-ready build |
+| Milestone                               | Goal                                                                                        | Duration  | Headline deliverable                                                            |
+| --------------------------------------- | ------------------------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------- |
+| **M0 — Pre-Work**                       | Lock decisions and license audit                                                            | 1–2 weeks | Decision log, pinned version manifest, LICENSES.md, CI baseline                 |
+| **M1 — Walking Skeleton**               | Bundle installable; one real persistent CLI agent in a managed terminal                     | 6–8 weeks | Windows `.exe` installer; Dev/Claude Code in a Zellij pane after wizard         |
+| **M2 — Second Agent + Bus**             | Two agents simultaneously communicating via real pub/sub bus + progress-detection heuristic | 4–6 weeks | Dev + Frontend Designer in panes; bus visible in UI; stall detection working    |
+| **M3 — Dynamic Spawning + BMB Minimal** | Any persona spawnable on demand, persistent or ephemeral, by Hermes or user                 | 6–8 weeks | "Add Agent" panel; 5+ persona types working; ephemeral cleanup; custom personas |
+| **M4 — Full BMAD Workflow**             | One-click `greenfield-fullstack` end-to-end                                                 | 4–6 weeks | Greenfield run produces working skeleton + all BMAD artifacts in one session    |
+| **M5 — Memory, Collab, Polish**         | Cross-machine continuity; Supermemory; Win/Mac/Linux installers; hardening                  | 4–6 weeks | Three installers; round-trip test; public-beta-ready build                      |
 
 **Total estimate:** ~24–32 weeks (≈6–7 months) for a usable v1, assuming 2–3 engineers. Solo work roughly doubles.
 
@@ -225,4 +228,4 @@ The build plan lists these as natural follow-up artifacts, each small enough to 
 
 ---
 
-*End of addendum.*
+_End of addendum._

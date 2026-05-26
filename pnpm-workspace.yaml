@@ -1,6 +1,6 @@
 packages:
-  - 'apps/*'
-  - 'packages/*'
+  - "apps/*"
+  - "packages/*"
 
 # pnpm 11+ build-approval gate (Story 1.1 finding).
 # Each entry maps an npm package name → true/false for whether its

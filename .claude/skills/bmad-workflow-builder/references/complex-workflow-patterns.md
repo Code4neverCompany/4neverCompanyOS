@@ -47,12 +47,12 @@ For workflows that produce revisable artifacts, the Decision-Log Workspace patte
 
 ```markdown
 ---
-title: 'Analysis: Research Topic'
-status: 'discovery'
+title: "Analysis: Research Topic"
+status: "discovery"
 inputs:
-  - '{project-root}/docs/brief.md'
-created: '2025-03-02T10:00:00Z'
-updated: '2025-03-02T11:30:00Z'
+  - "{project-root}/docs/brief.md"
+created: "2025-03-02T10:00:00Z"
+updated: "2025-03-02T11:30:00Z"
 ---
 ```
 
@@ -65,11 +65,11 @@ When SKILL.md routes to a carved-out file, the route is by descriptive name. Use
 ```markdown
 ## Stages
 
-| # | Stage | Purpose | Location |
-|---|-------|---------|----------|
-| 1 | Ignition | Raw concept, enforce customer-first thinking | SKILL.md (above) |
-| 2 | Press Release | Iterative drafting with hard coaching | `references/press-release.md` |
-| 3 | Customer FAQ | Devil's advocate customer questions | `references/customer-faq.md` |
+| #   | Stage         | Purpose                                      | Location                      |
+| --- | ------------- | -------------------------------------------- | ----------------------------- |
+| 1   | Ignition      | Raw concept, enforce customer-first thinking | SKILL.md (above)              |
+| 2   | Press Release | Iterative drafting with hard coaching        | `references/press-release.md` |
+| 3   | Customer FAQ  | Devil's advocate customer questions          | `references/customer-faq.md`  |
 ```
 
 The `#` is a reading aid for the table, not a filename prefix.

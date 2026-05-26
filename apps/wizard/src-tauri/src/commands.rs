@@ -39,11 +39,8 @@ pub fn scaffold_vault(path: String) -> Result<String, String> {
 
     let readme = vault.join("README.md");
     if !readme.exists() {
-        std::fs::write(
-            &readme,
-            include_str!("../../assets/vault-readme.md"),
-        )
-        .map_err(|e| format!("failed to write vault README: {e}"))?;
+        std::fs::write(&readme, include_str!("../../assets/vault-readme.md"))
+            .map_err(|e| format!("failed to write vault README: {e}"))?;
     }
 
     Ok(vault.to_string_lossy().to_string())
@@ -76,11 +73,10 @@ fn config_path() -> Result<PathBuf, String> {
 pub fn write_config(config: WorkspaceConfig) -> Result<String, String> {
     let path = config_path()?;
     if let Some(parent) = path.parent() {
-        std::fs::create_dir_all(parent)
-            .map_err(|e| format!("failed to create config dir: {e}"))?;
+        std::fs::create_dir_all(parent).map_err(|e| format!("failed to create config dir: {e}"))?;
     }
-    let content = toml::to_string_pretty(&config)
-        .map_err(|e| format!("failed to serialize config: {e}"))?;
+    let content =
+        toml::to_string_pretty(&config).map_err(|e| format!("failed to serialize config: {e}"))?;
     std::fs::write(&path, content).map_err(|e| format!("failed to write config: {e}"))?;
     Ok(path.to_string_lossy().to_string())
 }
@@ -110,11 +106,7 @@ impl From<CredentialError> for CmdError {
 }
 
 #[tauri::command]
-pub fn store_credential(
-    service: String,
-    account: String,
-    secret: String,
-) -> Result<(), CmdError> {
+pub fn store_credential(service: String, account: String, secret: String) -> Result<(), CmdError> {
     creds::set(&service, &account, &secret).map_err(Into::into)
 }
 

@@ -19,7 +19,7 @@ tier2_4_questions_status: deferred-to-next-session
 
 **4neverCompany OS** is a packaged desktop workspace — initially a Windows `.exe`, cross-platform to follow — that bundles three existing open-source projects (Paperclip, Hermes Agent, BMAD Method) into a single, locally-installable product. It is not a new orchestrator, not a new methodology, and not a fork: it is the integration layer that makes the existing stack work as one product.
 
-The defining commitment: **two fixed persona agents** (Dev on Claude Code, Frontend Designer on Antigravity CLI) spawn the moment a project opens and stay live; every other persona is **dynamic**, spawned on demand by Hermes or the user via a featured BMad Builder "Add Agent" panel, with each dynamic agent choosing a **persistent** (joins the team) or **ephemeral** (one-shot) lifecycle. Persistent agents run in attachable Zellij terminal panes that survive desktop-app restarts. Agents talk freely on a liberal pub/sub bus; Hermes watches for *progress* on artifacts/code/stories, not chatter, and only intervenes when conversation happens without forward motion.
+The defining commitment: **two fixed persona agents** (Dev on Claude Code, Frontend Designer on Antigravity CLI) spawn the moment a project opens and stay live; every other persona is **dynamic**, spawned on demand by Hermes or the user via a featured BMad Builder "Add Agent" panel, with each dynamic agent choosing a **persistent** (joins the team) or **ephemeral** (one-shot) lifecycle. Persistent agents run in attachable Zellij terminal panes that survive desktop-app restarts. Agents talk freely on a liberal pub/sub bus; Hermes watches for _progress_ on artifacts/code/stories, not chatter, and only intervenes when conversation happens without forward motion.
 
 The friction this product removes is **installation, configuration, methodology onboarding, persona-to-agent wiring, and memory integration** across four moving upstream projects. The product is opinionated, curated, single-binary, local-first.
 
@@ -106,16 +106,16 @@ Two- to three-year horizon: 4neverCompany OS becomes the default way an individu
 
 ## Validation Findings — Brief vs. BMAD Format
 
-| BMAD Section | Source Brief Maps To | Status |
-|---|---|---|
-| Executive Summary | §1 Executive Summary | ✓ direct map |
-| The Problem | §2 "Why now / why bundle" (implicit) | ✓ reframed |
-| The Solution | §1 + §4 MVP Scope | ✓ direct map |
-| What Makes This Different | §7 Differentiators | ✓ direct map |
-| Who This Serves | resolved 2026-05-25: solo dev / AI-tooling power user | ✓ filled |
-| Success Criteria | resolved 2026-05-25: build-plan engineering exit criteria, no additional metrics | ✓ filled |
-| Scope | §4 (in) + §8 (out) | ✓ direct map |
-| Vision | §2 Vision & Positioning (partial) | ✓ expanded for 2–3y horizon |
+| BMAD Section              | Source Brief Maps To                                                             | Status                      |
+| ------------------------- | -------------------------------------------------------------------------------- | --------------------------- |
+| Executive Summary         | §1 Executive Summary                                                             | ✓ direct map                |
+| The Problem               | §2 "Why now / why bundle" (implicit)                                             | ✓ reframed                  |
+| The Solution              | §1 + §4 MVP Scope                                                                | ✓ direct map                |
+| What Makes This Different | §7 Differentiators                                                               | ✓ direct map                |
+| Who This Serves           | resolved 2026-05-25: solo dev / AI-tooling power user                            | ✓ filled                    |
+| Success Criteria          | resolved 2026-05-25: build-plan engineering exit criteria, no additional metrics | ✓ filled                    |
+| Scope                     | §4 (in) + §8 (out)                                                               | ✓ direct map                |
+| Vision                    | §2 Vision & Positioning (partial)                                                | ✓ expanded for 2–3y horizon |
 
 **No strategic decisions in the source brief were redesigned.** Personas (two fixed + dynamic), lifecycle model (persistent vs. ephemeral), methodology choice (BMAD), bus model (liberal with progress-based stall detection), tech stack (Tauri-preferred, Zellij, Obsidian, Supermemory), and v1 scope boundaries are preserved verbatim from v0.6.
 

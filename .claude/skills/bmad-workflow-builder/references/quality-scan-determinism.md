@@ -20,6 +20,7 @@ If `execution-deps-prepass.json` is provided, read it first for compact dependen
 **Script opportunities** — for every operation in a prompt, ask: given identical input, will this always produce identical output? Could you write a unit test for it? If yes, it belongs in a script.
 
 Patterns to surface:
+
 - Validation against schemas, frontmatter checks, naming-convention enforcement
 - Counting, aggregation, metrics extraction
 - Format conversion, parsing, structured-data extraction from large files
@@ -34,6 +35,7 @@ Scripts have access to bash + Python stdlib + PEP 723 deps + git + jq + system t
 Don't flag operations that genuinely require interpreting meaning, tone, context, or ambiguity. Those stay in prompts.
 
 **Distribution opportunities** — sequential or parent-bloating patterns:
+
 - Independent reads / tool calls / operations done sequentially → batch in one message or fan out to subagents
 - "Read all files, then analyze" → delegate the reading; parent stays lean
 - Implicit-read trap (per principles file): language like "review", "acknowledge", "summarize what you have" causes the parent to read files before delegating. Fix: explicit "note paths for subagent scanning; don't read them now"

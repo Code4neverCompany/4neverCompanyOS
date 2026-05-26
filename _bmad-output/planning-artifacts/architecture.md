@@ -9,15 +9,15 @@ inputDocuments:
   - _bmad-output/planning-artifacts/briefs/brief-c4n-4neverCompanyOS-2026-05-25/.decision-log.md
   - _bmad-output/planning-artifacts/prds/prd-c4n-4neverCompanyOS-2026-05-25/prd.md
   - _bmad-output/planning-artifacts/prds/prd-c4n-4neverCompanyOS-2026-05-25/.decision-log.md
-workflowType: 'architecture'
-project_name: 'c4n-4neverCompanyOS'
-user_name: 'Maurice'
-date: '2026-05-26'
+workflowType: "architecture"
+project_name: "c4n-4neverCompanyOS"
+user_name: "Maurice"
+date: "2026-05-26"
 lastStep: 8
-status: 'complete'
-completedAt: '2026-05-26'
-author_role: 'Architect (Winston)'
-working_mode: 'Fast path'
+status: "complete"
+completedAt: "2026-05-26"
+author_role: "Architect (Winston)"
+working_mode: "Fast path"
 locked_strategic_decisions:
   - Two fixed personas (Dev on Claude Code / Claude Opus 4.6 Thinking; Frontend Designer on Antigravity CLI / Gemini 3.1 Pro High)
   - Dynamic persona model with persistent vs ephemeral lifecycle chosen at spawn
@@ -26,15 +26,15 @@ locked_strategic_decisions:
   - Embedded Zellij multiplexer for persistent-agent panes
   - Embedded Postgres for Paperclip; Obsidian local vault; opt-in Supermemory; opt-in GitHub sync
 tier2_resolutions:
-  desktop_shell: 'Tauri preferred; M0 spike validates Paperclip React UI in WebView2; Electron fallback only if spike fails (OQ-C)'
-  repo_structure: 'monorepo with pnpm workspaces (OQ-I)'
-  version_pinning: 'Architect researches current stable tags at M0 start; quarterly cadence (OQ-J)'
-  license_audit: 'LICENSES.md is an M0 deliverable (OQ-K)'
+  desktop_shell: "Tauri preferred; M0 spike validates Paperclip React UI in WebView2; Electron fallback only if spike fails (OQ-C)"
+  repo_structure: "monorepo with pnpm workspaces (OQ-I)"
+  version_pinning: "Architect researches current stable tags at M0 start; quarterly cadence (OQ-J)"
+  license_audit: "LICENSES.md is an M0 deliverable (OQ-K)"
 tier3_4_resolutions:
-  team_size: '4+ engineers; build-plan timeline (24-32 weeks at 2-3 engineers) may compress through parallelization (OQ-L)'
-  budget: 'personal project with no formal cap; pace dictated by engineering exit criteria, not date (OQ-L)'
-  attribution: 'all four locations — Settings/About panel + first-run wizard final screen + app-launch splash screen + LICENSES.md (OQ-M)'
-  contribution_back: 'always offer upstream when general-purpose; adapters/plugins/personas/BMAD modules become PRs when not 4nCO-specific (OQ-M)'
+  team_size: "4+ engineers; build-plan timeline (24-32 weeks at 2-3 engineers) may compress through parallelization (OQ-L)"
+  budget: "personal project with no formal cap; pace dictated by engineering exit criteria, not date (OQ-L)"
+  attribution: "all four locations — Settings/About panel + first-run wizard final screen + app-launch splash screen + LICENSES.md (OQ-M)"
+  contribution_back: "always offer upstream when general-purpose; adapters/plugins/personas/BMAD modules become PRs when not 4nCO-specific (OQ-M)"
 ---
 
 # Architecture Decision Document
@@ -55,15 +55,15 @@ See frontmatter for input-document manifest and locked context. The brief worksp
 
 **Functional Requirements.** 37 FRs grouped into 11 feature groups in the PRD. Architecturally, the FRs cluster into seven concern bands:
 
-| Concern band | FRs | What it means architecturally |
-|---|---|---|
-| **Provisioning & first-run** | FR-1, FR-2, FR-3 | A bundled installer that lays down all subsystems; a wizard UI; OAuth flows for two upstream CLIs; vault scaffolding |
-| **Persona lifecycle (fixed + dynamic)** | FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-14 | A central agent-lifecycle service that knows persona definitions, spawns processes into Zellij, tracks state, cleans up |
-| **Persona-discovery & spawn-proposal (Hermes-directed)** | FR-12, FR-13, FR-14 | Hermes can post proposals to the bus; the UI surfaces approval prompts; the lifecycle service acts on user verdict |
-| **Inter-agent messaging** | FR-15, FR-16, FR-17, FR-18, FR-19 | A pub/sub bus on Paperclip's events + WebSocket relay to UI; progress-signal aggregator; stall-detection algorithm |
-| **Persona-file projection / sync** | FR-20, FR-21 | A bidirectional file-watch loop between vault persona files and CLI-specific tool configs (`claude.md`, `agy.md`, `agent.md`) with conflict rules |
-| **Workspace orchestration UI** | FR-22, FR-23, FR-24, FR-25, FR-26, FR-27, FR-28 | Tauri desktop shell hosting Paperclip's React UI, embedding Zellij panes, exposing BMad Builder, exposing the workflow engine |
-| **Memory & sync** | FR-29, FR-30, FR-31, FR-32, FR-33, FR-34, FR-35, FR-36, FR-37 | Per-persona scoped vault dirs; opt-in Supermemory; opt-in GitHub sync; cross-platform installers |
+| Concern band                                             | FRs                                                           | What it means architecturally                                                                                                                     |
+| -------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Provisioning & first-run**                             | FR-1, FR-2, FR-3                                              | A bundled installer that lays down all subsystems; a wizard UI; OAuth flows for two upstream CLIs; vault scaffolding                              |
+| **Persona lifecycle (fixed + dynamic)**                  | FR-4, FR-5, FR-6, FR-7, FR-8, FR-9, FR-10, FR-11, FR-14       | A central agent-lifecycle service that knows persona definitions, spawns processes into Zellij, tracks state, cleans up                           |
+| **Persona-discovery & spawn-proposal (Hermes-directed)** | FR-12, FR-13, FR-14                                           | Hermes can post proposals to the bus; the UI surfaces approval prompts; the lifecycle service acts on user verdict                                |
+| **Inter-agent messaging**                                | FR-15, FR-16, FR-17, FR-18, FR-19                             | A pub/sub bus on Paperclip's events + WebSocket relay to UI; progress-signal aggregator; stall-detection algorithm                                |
+| **Persona-file projection / sync**                       | FR-20, FR-21                                                  | A bidirectional file-watch loop between vault persona files and CLI-specific tool configs (`claude.md`, `agy.md`, `agent.md`) with conflict rules |
+| **Workspace orchestration UI**                           | FR-22, FR-23, FR-24, FR-25, FR-26, FR-27, FR-28               | Tauri desktop shell hosting Paperclip's React UI, embedding Zellij panes, exposing BMad Builder, exposing the workflow engine                     |
+| **Memory & sync**                                        | FR-29, FR-30, FR-31, FR-32, FR-33, FR-34, FR-35, FR-36, FR-37 | Per-persona scoped vault dirs; opt-in Supermemory; opt-in GitHub sync; cross-platform installers                                                  |
 
 **Non-Functional Requirements.** From PRD §10: Performance (idle agent ≤ 300 MB / ≤ 500 input tokens per hour), Reliability (agents survive desktop-app crashes, ephemerals leave zero orphans), Security (sandboxing leans on each CLI's own permission model — workspace does not invent a parallel one), Observability (per-persona token-cost telemetry from M2; structured logs), Resilience to Upstream Churn (reserve ~10% of each milestone for rebases), Headless-Scriptability (all UI actions reachable from CLI).
 
@@ -79,6 +79,7 @@ See frontmatter for input-document manifest and locked context. The brief worksp
 ### Technical Constraints & Dependencies
 
 **Hard constraints (locked, not negotiable):**
+
 1. Two-fixed-personas model (Dev on Claude Code, Frontend Designer on Antigravity).
 2. Embedded Zellij for persistent agent panes.
 3. Liberal pub/sub bus with progress-based stall detection.
@@ -87,15 +88,17 @@ See frontmatter for input-document manifest and locked context. The brief worksp
 6. Monorepo with pnpm workspaces.
 
 **Soft constraints (architect-defined, subject to M0/M2 validation):**
+
 1. AS-2 / AS-3 / AS-6 / AS-7 / AS-8 / AS-9 latency and resource targets (all "initial; Architect may revise at M2 baseline").
 2. Quarterly upstream-rebase cadence (per OQ-J).
 3. Postgres embedded version (TBD at M0; track Paperclip's preference).
 
 **Upstream dependencies (each with churn risk):**
-- Paperclip: control plane + event system. Pinned tag set at M0. *MIT, clear redistribution.*
-- Hermes Agent: orchestrator. Pinned tag set at M0. *Licence verified at M0 (OQ-K).*
+
+- Paperclip: control plane + event system. Pinned tag set at M0. _MIT, clear redistribution._
+- Hermes Agent: orchestrator. Pinned tag set at M0. _Licence verified at M0 (OQ-K)._
 - BMAD Method: methodology + persona library + workflow YAML. **Currently 6.7.1 in this project.** Pinned via `bmad-method@6.7.1` in `package.json`.
-- Antigravity CLI (`agy`): Frontend-Designer backing CLI. *Public preview as of May 2026; RCE issue reported May 2026 — verify state at M2 start before fixed-persona spawn lands.*
+- Antigravity CLI (`agy`): Frontend-Designer backing CLI. _Public preview as of May 2026; RCE issue reported May 2026 — verify state at M2 start before fixed-persona spawn lands._
 - Claude Code CLI: Dev-backing CLI. Anthropic standard channel.
 - Zellij: terminal multiplexer. Pinned tag set at M0. **Known weaker PTY handling on Windows historically — spike during M1.**
 - Embedded Postgres: track Paperclip's preferred version.
@@ -115,6 +118,7 @@ See frontmatter for input-document manifest and locked context. The brief worksp
 ### Primary Technology Domain
 
 **Desktop application bundling multiple subsystems**, with these well-known archetypes:
+
 - Tauri desktop shell hosting a React UI (Paperclip's React UI runs inside the Tauri WebView2).
 - pnpm-workspace monorepo for cross-package code in TypeScript.
 - Rust on the Tauri side for native sidecars (process orchestration, Zellij control, file-watching that out-performs Node's `chokidar` on Windows).
@@ -123,12 +127,12 @@ See frontmatter for input-document manifest and locked context. The brief worksp
 
 ### Starter Options Considered
 
-| Option | Verdict |
-|---|---|
+| Option                                                           | Verdict                                                                                                                                                                                |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **`create-tauri-app`** with `React + TypeScript + pnpm` template | **Selected.** Official Tauri starter. Establishes the Tauri shell, pnpm-workspace scaffolding, Rust toolchain, and basic dev/build commands. Maps cleanly onto OQ-I monorepo decision. |
-| `electron-vite-react` | Fallback if M0 Tauri spike fails (OQ-C). Not selected at outset. |
-| `nextra` / `vitepress` / docs-style starters | Not relevant; we are not a docs site. |
-| Hand-rolled scaffolding | Rejected — costs M0 days, no upside over the official starter. |
+| `electron-vite-react`                                            | Fallback if M0 Tauri spike fails (OQ-C). Not selected at outset.                                                                                                                       |
+| `nextra` / `vitepress` / docs-style starters                     | Not relevant; we are not a docs site.                                                                                                                                                  |
+| Hand-rolled scaffolding                                          | Rejected — costs M0 days, no upside over the official starter.                                                                                                                         |
 
 ### Selected Starter: `create-tauri-app` (React + TypeScript + pnpm template)
 
@@ -159,20 +163,20 @@ pnpm install
 
 Per OQ-J, the Architect will verify and finalize these at M0 start. Initial pre-baseline pins (Architect updates after M0 research):
 
-| Component | Pre-baseline pin | Source / note |
-|---|---|---|
-| Node.js | `>=20.0.0` (LTS line) | Brief §5 |
-| pnpm | `>=9.15.0` | Brief §5 |
-| Tauri CLI | latest 2.x stable at M0 | Re-verified during M0 spike |
-| Rust toolchain | stable channel as of M0 | `rust-toolchain.toml` |
-| Python | `>=3.11` | For Hermes |
-| `bmad-method` | `6.7.1` *(already installed)* | locked in this project's `package.json` |
-| Paperclip | TBD at M0 (pin to latest stable tag at M0 start) | Pre-spike via `paperclipai/paperclip` releases |
-| Hermes Agent | TBD at M0 (pin to latest stable tag at M0 start) | Pre-spike via `NousResearch/hermes-agent` releases |
-| Zellij | latest stable at M0; **verify Windows PTY status before pinning** | Brief §9 calls out the Windows PTY risk |
-| Antigravity CLI (`agy`) | **public-preview state must be re-verified at M2 before Frontend-Designer ships**; RCE issue from May 2026 must be confirmed fixed | Brief §9 |
-| Embedded Postgres | track Paperclip's preferred version | Brief §5 |
-| `webview2-com` (Tauri) | matches Tauri CLI's pinned version | M0 spike will surface compatibility |
+| Component               | Pre-baseline pin                                                                                                                   | Source / note                                      |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Node.js                 | `>=20.0.0` (LTS line)                                                                                                              | Brief §5                                           |
+| pnpm                    | `>=9.15.0`                                                                                                                         | Brief §5                                           |
+| Tauri CLI               | latest 2.x stable at M0                                                                                                            | Re-verified during M0 spike                        |
+| Rust toolchain          | stable channel as of M0                                                                                                            | `rust-toolchain.toml`                              |
+| Python                  | `>=3.11`                                                                                                                           | For Hermes                                         |
+| `bmad-method`           | `6.7.1` _(already installed)_                                                                                                      | locked in this project's `package.json`            |
+| Paperclip               | TBD at M0 (pin to latest stable tag at M0 start)                                                                                   | Pre-spike via `paperclipai/paperclip` releases     |
+| Hermes Agent            | TBD at M0 (pin to latest stable tag at M0 start)                                                                                   | Pre-spike via `NousResearch/hermes-agent` releases |
+| Zellij                  | latest stable at M0; **verify Windows PTY status before pinning**                                                                  | Brief §9 calls out the Windows PTY risk            |
+| Antigravity CLI (`agy`) | **public-preview state must be re-verified at M2 before Frontend-Designer ships**; RCE issue from May 2026 must be confirmed fixed | Brief §9                                           |
+| Embedded Postgres       | track Paperclip's preferred version                                                                                                | Brief §5                                           |
+| `webview2-com` (Tauri)  | matches Tauri CLI's pinned version                                                                                                 | M0 spike will surface compatibility                |
 
 Cadence: quarterly rebase (per OQ-J). Each rebase produces a delta entry in `pinned-versions.md` (path: `docs/pinned-versions.md`) with rationale and a smoke-test result.
 
@@ -183,6 +187,7 @@ Cadence: quarterly rebase (per OQ-J). Each rebase produces a delta entry in `pin
 ### Already Decided (Don't re-decide these)
 
 From locked brief, locked PRD §4 FRs, Tier 1 + Tier 2 resolutions, and the starter:
+
 - Two fixed personas: Dev / Claude Code + Frontend Designer / Antigravity.
 - Dynamic-persona lifecycle model (persistent vs ephemeral).
 - BMAD as methodology; BMB featured top-level.
@@ -207,7 +212,7 @@ From locked brief, locked PRD §4 FRs, Tier 1 + Tier 2 resolutions, and the star
 
 **D-5. Stall detector = rolling-window algorithm in `stall-detector` package, configurable window + per-signal weight.** A simple algorithm: maintain a rolling window (default 300s — AS-5 / OQ-E) of (bus-message-count, progress-signal-fires). If `bus-message-count > N && progress-signal-fires == 0` within the window, fire intervention. M2 calibrates `N` and the window. Per-signal weights let M4 add the story-state signal without re-tuning the others. Rationale: O(window-size) memory, no ML, deterministic, easy to debug. Affects: FR-18, NFR-Observability.
 
-**D-6. Persona-file ↔ tool-config sync = file-watch loop with last-writer-wins + conflict log.** A Rust `persona-sync` package watches both directions. On file change in either direction, propagate; on simultaneous change (within debounce window — 1000ms), the most-recently-saved wins and the *other* version is appended to a per-persona `conflict-log.md` in the vault. Rationale: hard conflict resolution (3-way merge) is overkill for single-user; last-writer-wins is simple and the conflict log preserves the lost edit for user review. Affects: FR-20, FR-21, OQ-A.
+**D-6. Persona-file ↔ tool-config sync = file-watch loop with last-writer-wins + conflict log.** A Rust `persona-sync` package watches both directions. On file change in either direction, propagate; on simultaneous change (within debounce window — 1000ms), the most-recently-saved wins and the _other_ version is appended to a per-persona `conflict-log.md` in the vault. Rationale: hard conflict resolution (3-way merge) is overkill for single-user; last-writer-wins is simple and the conflict log preserves the lost edit for user review. Affects: FR-20, FR-21, OQ-A.
 
 **D-7. Per-persona vault scoping = filesystem path convention + write-attempt logger (best-effort).** Each persistent persona gets `vault/personas/{persona-id}/` as its scope. The `vault-scoping` package monitors writes via fs-watcher; writes outside the persona's scope are logged to a per-persona `out-of-scope-writes.log` (NOT prevented). Hard enforcement is deferred per FR-29 [NOTE FOR PM]. Rationale: matches PRD constraint that enforcement is best-effort per CLI permission model. Affects: FR-29.
 
@@ -223,7 +228,7 @@ From locked brief, locked PRD §4 FRs, Tier 1 + Tier 2 resolutions, and the star
 
 **D-12. BMAD workflow execution engine = TypeScript service in `workflow-engine` package, reads BMAD YAML, dispatches phases.** Reads the BMAD-installed workflow YAML files from `_bmad/bmm/workflows/`; runs each phase as: (1) check for prerequisite artifacts in vault, (2) propose persona spawn (or activate existing persona), (3) wait for phase artifact in vault, (4) emit phase-completion event. User-approval gates are HTTP endpoints the UI calls. Workflow run state in SQLite. Pause/resume = walk to current phase + replay. Affects: FR-25, FR-26, FR-27, FR-28.
 
-**D-13. UI = Paperclip's React app + workspace-injected panels.** We do not author our own SPA. We host Paperclip's UI in the Tauri WebView2 and inject our panels (BMad Builder Add-Agent, bus channel view, approval prompts, terminal pane view) via a React-portal pattern: Paperclip exposes named portal slots; we provide React components that render into them via `react-dom/portal`. Affects: FR-7, FR-17, FR-22, FR-25. *(Architect note: if M0 spike shows Paperclip's UI doesn't expose portal slots, fall back to injecting via DOM mounts.)*
+**D-13. UI = Paperclip's React app + workspace-injected panels.** We do not author our own SPA. We host Paperclip's UI in the Tauri WebView2 and inject our panels (BMad Builder Add-Agent, bus channel view, approval prompts, terminal pane view) via a React-portal pattern: Paperclip exposes named portal slots; we provide React components that render into them via `react-dom/portal`. Affects: FR-7, FR-17, FR-22, FR-25. _(Architect note: if M0 spike shows Paperclip's UI doesn't expose portal slots, fall back to injecting via DOM mounts.)_
 
 **D-14. First-run wizard = standalone React app in `apps/wizard`, runs before main shell.** The wizard is its own Tauri window; on completion, it writes config to `~/.4nevercompanyos/config.toml` and the main shell reads it. Skipping or interrupting the wizard leaves config absent; main shell detects and re-runs wizard. Affects: FR-2, FR-3.
 
@@ -240,16 +245,17 @@ From locked brief, locked PRD §4 FRs, Tier 1 + Tier 2 resolutions, and the star
 
 **Implementation sequence (M0 → M5):**
 
-| Milestone | Architectural deliverables (this doc → engineering) |
-|---|---|
-| M0 | Tauri/WebView2 spike (validates D-13); LICENSES.md (OQ-K); pinned-versions.md (OQ-J); monorepo scaffolding via `create-tauri-app` + pnpm-workspace conversion (OQ-I) |
-| M1 | D-1 IPC; D-2 Zellij adapter (Dev only); D-14 wizard; D-9 credential storage; D-10 SQLite addition; OQ-N vault layout spec lands |
-| M2 | D-3 bus relay; D-4 progress signals (artifact + code, not story-state); D-5 stall detector v1; D-11 telemetry tap; D-2 extended to Frontend Designer |
-| M3 | D-2 extended to dynamic persona library; D-6 persona-sync; D-7 vault scoping log; D-8 memory-tier precedence draft; D-13 BMB Add-Agent portal panel |
-| M4 | D-4 + story-state signal; D-5 + story-state weight; D-12 workflow engine |
-| M5 | Supermemory integration; GitHub sync; cross-platform installers via D-15; D-8 finalize; per-persona budget gates; project-level kill switch |
+| Milestone | Architectural deliverables (this doc → engineering)                                                                                                                  |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| M0        | Tauri/WebView2 spike (validates D-13); LICENSES.md (OQ-K); pinned-versions.md (OQ-J); monorepo scaffolding via `create-tauri-app` + pnpm-workspace conversion (OQ-I) |
+| M1        | D-1 IPC; D-2 Zellij adapter (Dev only); D-14 wizard; D-9 credential storage; D-10 SQLite addition; OQ-N vault layout spec lands                                      |
+| M2        | D-3 bus relay; D-4 progress signals (artifact + code, not story-state); D-5 stall detector v1; D-11 telemetry tap; D-2 extended to Frontend Designer                 |
+| M3        | D-2 extended to dynamic persona library; D-6 persona-sync; D-7 vault scoping log; D-8 memory-tier precedence draft; D-13 BMB Add-Agent portal panel                  |
+| M4        | D-4 + story-state signal; D-5 + story-state weight; D-12 workflow engine                                                                                             |
+| M5        | Supermemory integration; GitHub sync; cross-platform installers via D-15; D-8 finalize; per-persona budget gates; project-level kill switch                          |
 
 **Cross-component dependencies:**
+
 - D-13 (Paperclip portal slots) MUST validate in M0 spike before D-2 / D-3 / D-12 can rely on it.
 - D-3 bus relay MUST stabilize in M2 before D-12 workflow engine can use it for handoffs in M4.
 - D-4/D-5 progress signals must be calibrated in M2 before M3 stories add the dynamic-persona load that exercises the heuristic at scale.
@@ -263,6 +269,7 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 ### Naming Patterns
 
 **Database (Postgres + SQLite):**
+
 - Tables: `snake_case`, plural (`users`, `agent_spawns`).
 - Columns: `snake_case`. Primary key: `id`. Foreign key: `<other_table_singular>_id` (e.g. `user_id`, `project_id`).
 - Indexes: `idx_<table>_<columns>` (e.g. `idx_agent_spawns_persona_id`).
@@ -270,6 +277,7 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 - Workspace SQLite tables prefixed `ws_` to keep them visually distinct from Paperclip's Postgres tables in shared diagrams.
 
 **HTTP / WebSocket / IPC (where they exist):**
+
 - HTTP endpoint paths: `/api/<resource>/<sub-resource>`, plural resource, kebab-case for multi-word (`/api/persona-spawns/{id}`).
 - Path parameters: `{id}` style, not `:id`.
 - Query parameters: `camelCase` (matches JS convention, decoded server-side).
@@ -277,14 +285,17 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 - WebSocket message types: `dotted.lower` (`bus.message.posted`, `workflow.phase.advanced`).
 
 **TypeScript / React code:**
+
 - Files: `kebab-case.ts` and `kebab-case.tsx`. Component file mirrors the component name in PascalCase: `bmb-add-agent.tsx` exports `BmbAddAgent`.
 - Components: `PascalCase`. Hooks: `useCamelCase`. Variables / functions: `camelCase`. Types / interfaces: `PascalCase`. Constants: `UPPER_SNAKE_CASE`.
 - Tests: co-located with source as `*.test.ts` / `*.test.tsx`. E2E tests in `tests/e2e/` at workspace root.
 
 **Rust code:**
+
 - Files: `snake_case.rs`. Modules: `snake_case`. Structs / Enums / Traits: `PascalCase`. Functions / variables: `snake_case`. Constants: `UPPER_SNAKE_CASE`.
 
 **Python (Hermes wrappers only):**
+
 - Files: `snake_case.py`. Functions / variables: `snake_case`. Classes: `PascalCase`. Constants: `UPPER_SNAKE_CASE`.
 
 **Go (not authored by us — Zellij and `agy` are bundled binaries):** their own conventions; we do not write Go in this repo.
@@ -292,6 +303,7 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 ### Structure Patterns
 
 **Monorepo organization (pnpm workspaces):**
+
 - `apps/` — runnable applications with their own bundlers (desktop shell, installer-wizard).
 - `packages/` — TypeScript packages consumed by `apps/`.
 - `crates/` — Rust crates consumed by `apps/desktop` as Tauri sidecars.
@@ -302,6 +314,7 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 - `scripts/` — pnpm-script-callable maintenance scripts.
 
 **File-organization rules within a package:**
+
 - `src/index.ts` is the only public entry point. Internal modules are private.
 - One concept per file. Co-locate related types with implementation.
 - Tests co-located: `foo.ts` ↔ `foo.test.ts`.
@@ -310,6 +323,7 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 ### Format Patterns
 
 **Internal message envelopes (bus + IPC):**
+
 - Every message has frame: `{ "v": 1, "type": "...", "from": "...", "ts": "ISO-8601", "id": "uuid", "payload": {...} }`.
 - `v` is the schema version; bumped only on breaking changes.
 - `type` is dotted-lower (see naming above).
@@ -319,51 +333,61 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 - `payload` is type-specific; schemas defined in `packages/core/src/schemas/`.
 
 **HTTP response envelope (where we expose HTTP — wizard's tiny config server + telemetry endpoints):**
+
 - Success: `{ "data": <result> }`.
 - Error: `{ "error": { "code": "...", "message": "...", "details": {...} } }`.
 - Status codes: `200` success, `400` validation, `401` unauthorized, `403` forbidden, `404` not found, `409` conflict, `429` rate-limited (if we ever rate-limit), `500` server error.
 
 **Date / time:**
+
 - All persisted dates ISO-8601 UTC strings.
 - UI renders local with explicit timezone label.
 
 **Boolean / null:**
+
 - Booleans are JSON `true` / `false`.
 - Missing-vs-explicit-null: explicit `null` only when "we know it's absent"; missing key when "we didn't observe."
 
 ### Communication Patterns
 
 **Event naming on the bus:**
+
 - `dotted.lower` with action in past tense: `persona.spawned`, `workflow.phase.advanced`, `vault.artifact.changed`.
 - Two main categories: `*.<changed|advanced|spawned|exited|posted>` (state-change events) vs. `*.requested` (proposals / commands).
 
 **Bus payload schemas:**
+
 - Defined in `packages/core/src/schemas/bus.ts` as Zod schemas, exported as `BusMessage<T>` typed unions.
 - All bus producers / subscribers import from `packages/core` — no inline schemas.
 - Schema changes require a `v` bump and a migration of stored messages (or a wipe — we are pre-v1).
 
 **State updates (UI):**
+
 - The desktop UI uses Paperclip's existing state-management system for Paperclip-owned state (we don't fight it).
 - Our injected panels (BMad Builder, bus view, approval prompts) use **React `useState` + custom hooks reading from the bus WebSocket** — no Redux / Zustand / etc. layered on. Rule of Three before abstraction (Winston's principle): if we end up with three panels duplicating the same store pattern, extract a hook.
 
 ### Process Patterns
 
 **Error handling:**
+
 - TypeScript: errors are `Error` subclasses with `code: string` and optional `cause: Error`. Never throw raw strings.
 - Rust: `thiserror` for library errors, `anyhow` for application code. Always preserve the cause chain.
 - Python (Hermes wrappers): standard exceptions; raise with `from` clause.
 - Cross-boundary errors (IPC, bus): always serialize as `{ code, message, details }` per the response envelope; never serialize stack traces in production builds.
 
 **Loading states:**
+
 - UI: panels show a skeleton on initial load; spinner only for inline async actions; "stale data + refreshing" indicator if we have last-known-good but are refetching.
-- Agent processes are *long-lived* and the UI shows three states per persona: `spawning` (yellow), `attached` (green), `stalled` (orange — Hermes intervention pending). No spinner for these.
+- Agent processes are _long-lived_ and the UI shows three states per persona: `spawning` (yellow), `attached` (green), `stalled` (orange — Hermes intervention pending). No spinner for these.
 
 **Retry policy:**
+
 - Bus message delivery: at-least-once from producer to relay; relay deduplicates by `id`.
 - HTTP calls (wizard's OAuth callbacks): exponential backoff, max 3 retries, then user-visible failure.
 - Filesystem ops: no retry; surface error immediately. Retries hide bugs.
 
 **Logging:**
+
 - Structured JSON to stdout (per process). One log file per persistent persona in `vault/personas/{persona-id}/log/`.
 - Levels: `error`, `warn`, `info`, `debug`. Default `info` in production builds, `debug` in dev.
 - Every log line has `ts`, `level`, `component`, `message`, `extra` (object).
@@ -372,6 +396,7 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 ### Enforcement Guidelines
 
 **All contributors (human or AI persona) MUST:**
+
 1. Use the Glossary terms from PRD §3 verbatim in code symbols and docs. No synonyms.
 2. Add a Zod schema to `packages/core/src/schemas/` for any new bus / IPC / HTTP payload.
 3. Co-locate tests with source.
@@ -380,6 +405,7 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 6. Update `LICENSES.md` whenever adding a runtime dependency.
 
 **Anti-patterns to avoid:**
+
 - Reaching across package boundaries except via the package's `src/index.ts` exports.
 - Putting Paperclip-aware code in `packages/core` (core is upstream-agnostic).
 - Hand-rolling JSON envelopes outside `packages/core/src/schemas/`.
@@ -505,57 +531,64 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 ### Architectural Boundaries
 
 **Tauri front-end (TypeScript) ↔ Tauri back-end (Rust):**
+
 - Synchronous calls: `invoke('command-name', args)` → Tauri command in `apps/desktop/src-tauri/src/commands/`. (D-1)
 - Streaming: Tauri front-end opens an IPC subscription to the bus-relay sidecar via `apps/desktop/src-tauri/src/ipc/`. (D-1)
 
 **Workspace ↔ Paperclip:**
+
 - Paperclip's React UI is hosted inside the Tauri WebView2.
 - Workspace panels inject via Paperclip's portal slots (D-13). If slots are not exposed at M0, fall back to DOM mounts (less clean, more brittle, but unblocks M1).
 - Workspace reads from Paperclip's event system via the `bus-relay` crate (D-3).
 - Workspace does **not** write to Paperclip's database directly. Any state we need is in workspace SQLite (D-10).
 
 **Workspace ↔ Hermes:**
+
 - Hermes runs as a sidecar process; the workspace wraps it via `persona-supervisor` crate.
 - Hermes exposes its existing TUI (FR-24); workspace embeds it in a Zellij pane.
 - Workspace contributes proposals to the bus that Hermes can react to (FR-12).
 
 **Workspace ↔ Zellij:**
+
 - Single owner: `zellij-adapter` crate. All spawn / attach / detach / kill flows go through it.
 - Persistence is Zellij-native: we use Zellij sessions, not our own session abstraction (D-2).
 
 **Workspace ↔ Obsidian:**
+
 - Obsidian manages the vault directory; we treat the vault as a filesystem. We do **not** call Obsidian's API.
 - File-watching is via `platform-fs` crate (Rust-side fs-watcher), not Obsidian plugins.
 
 **Workspace ↔ Supermemory / GitHub (M5):**
+
 - Both are opt-in per content category (FR-31, FR-33).
 - Credentials in OS keychain via `credential-storage` package (D-9).
 - Local-only content never reaches either (NFR-Privacy).
 
 ### Requirements → Structure Mapping
 
-| FR group | Lives in |
-|---|---|
-| FR-1 / FR-2 / FR-3 (installer + wizard) | `apps/wizard/`, `scripts/build-installer.sh`, `crates/credential-storage/` |
-| FR-4 / FR-5 / FR-6 (fixed personas) | `crates/zellij-adapter/`, `crates/persona-supervisor/`, `apps/desktop/src/shell/` |
-| FR-7 / FR-8 / FR-9 / FR-10 / FR-11 / FR-14 (dynamic personas, BMB) | `apps/desktop/src/panels/bmb-add-agent/`, `packages/persona-sync/` |
-| FR-12 / FR-13 (Hermes-initiated spawn) | `apps/desktop/src/panels/approval-prompt/`, `packages/bus-client/` |
-| FR-15 / FR-16 / FR-17 (bus) | `crates/bus-relay/`, `packages/bus-client/`, `apps/desktop/src/panels/bus-channel-view/` |
-| FR-18 (progress + stall detection) | `packages/progress-signal/`, `packages/stall-detector/` |
-| FR-19 (user pause / redirect) | `apps/desktop/src/panels/bus-channel-view/`, `crates/persona-supervisor/` |
-| FR-20 / FR-21 (persona-file sync) | `packages/persona-sync/`, `crates/platform-fs/` |
-| FR-22 / FR-23 (multi-terminal view) | `apps/desktop/src/panels/multi-terminal/`, `crates/zellij-adapter/` |
-| FR-24 (Hermes TUI embedded) | `apps/desktop/src/panels/multi-terminal/` (Hermes TUI is one of the panes) |
-| FR-25 / FR-26 / FR-27 / FR-28 (workflow execution) | `packages/workflow-engine/`, `apps/desktop/src/panels/` |
-| FR-29 / FR-30 (vault scoping + layout) | `crates/vault-scoping/`, `packages/vault-layout/`, `docs/vault-layout.md` |
-| FR-31 (Supermemory opt-in) | `packages/supermemory-client/` |
-| FR-32 (memory tier precedence) | `docs/memory-precedence.md`, `packages/core/` |
-| FR-33 / FR-34 (GitHub sync) | `packages/github-sync/` |
-| FR-35 / FR-36 / FR-37 (cross-platform installers) | `scripts/build-installer.sh`, `.github/workflows/release.yml`, Tauri's bundler |
+| FR group                                                           | Lives in                                                                                 |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| FR-1 / FR-2 / FR-3 (installer + wizard)                            | `apps/wizard/`, `scripts/build-installer.sh`, `crates/credential-storage/`               |
+| FR-4 / FR-5 / FR-6 (fixed personas)                                | `crates/zellij-adapter/`, `crates/persona-supervisor/`, `apps/desktop/src/shell/`        |
+| FR-7 / FR-8 / FR-9 / FR-10 / FR-11 / FR-14 (dynamic personas, BMB) | `apps/desktop/src/panels/bmb-add-agent/`, `packages/persona-sync/`                       |
+| FR-12 / FR-13 (Hermes-initiated spawn)                             | `apps/desktop/src/panels/approval-prompt/`, `packages/bus-client/`                       |
+| FR-15 / FR-16 / FR-17 (bus)                                        | `crates/bus-relay/`, `packages/bus-client/`, `apps/desktop/src/panels/bus-channel-view/` |
+| FR-18 (progress + stall detection)                                 | `packages/progress-signal/`, `packages/stall-detector/`                                  |
+| FR-19 (user pause / redirect)                                      | `apps/desktop/src/panels/bus-channel-view/`, `crates/persona-supervisor/`                |
+| FR-20 / FR-21 (persona-file sync)                                  | `packages/persona-sync/`, `crates/platform-fs/`                                          |
+| FR-22 / FR-23 (multi-terminal view)                                | `apps/desktop/src/panels/multi-terminal/`, `crates/zellij-adapter/`                      |
+| FR-24 (Hermes TUI embedded)                                        | `apps/desktop/src/panels/multi-terminal/` (Hermes TUI is one of the panes)               |
+| FR-25 / FR-26 / FR-27 / FR-28 (workflow execution)                 | `packages/workflow-engine/`, `apps/desktop/src/panels/`                                  |
+| FR-29 / FR-30 (vault scoping + layout)                             | `crates/vault-scoping/`, `packages/vault-layout/`, `docs/vault-layout.md`                |
+| FR-31 (Supermemory opt-in)                                         | `packages/supermemory-client/`                                                           |
+| FR-32 (memory tier precedence)                                     | `docs/memory-precedence.md`, `packages/core/`                                            |
+| FR-33 / FR-34 (GitHub sync)                                        | `packages/github-sync/`                                                                  |
+| FR-35 / FR-36 / FR-37 (cross-platform installers)                  | `scripts/build-installer.sh`, `.github/workflows/release.yml`, Tauri's bundler           |
 
 ### Integration Points
 
 **Internal communication:**
+
 - IPC (sync calls): Tauri `invoke()`.
 - IPC (streams): Unix socket / named pipe, framed as JSON-lines, schema in `packages/core/src/schemas/ipc.ts`.
 - Bus: pub/sub over Paperclip events + WebSocket relay; schema in `packages/core/src/schemas/bus.ts`.
@@ -563,12 +596,14 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 - Database: Paperclip Postgres for Paperclip state; workspace SQLite for workspace state (D-10).
 
 **External integrations:**
+
 - **Anthropic API** via Claude Code CLI (credentials in Claude Code's store, D-9).
 - **Google API** via Antigravity CLI (credentials in `agy`'s store, D-9).
 - **Supermemory API** (opt-in, M5).
 - **GitHub** (opt-in, M5; uses GitHub CLI or libgit2 via Rust).
 
 **Data flow:**
+
 - User input → Tauri UI → IPC → backend service → file system / Postgres / SQLite → event → bus → UI updates.
 - Agent output → process stdout/stderr → `persona-supervisor` → telemetry SQLite + bus + log file in vault → UI.
 
@@ -579,6 +614,7 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 ### Coherence Validation
 
 **Decision compatibility.** All ten critical decisions (D-1 through D-10) and five important decisions (D-11 through D-15) compose cleanly:
+
 - D-1 IPC pattern feeds D-3 bus relay and D-12 workflow engine on the streaming side.
 - D-2 Zellij adapter is the sole spawn path for D-7 vault scoping and D-11 telemetry tap (both wrap persona processes).
 - D-3 bus relay is consumed by D-4 progress signals, D-5 stall detector, D-12 workflow engine, and D-13 UI panels.
@@ -587,41 +623,44 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 - D-13 (Paperclip portal injection) is the **biggest single coherence dependency** — if Paperclip's UI doesn't cooperate, D-13's fallback path (DOM mounts) kicks in but everything downstream still works.
 
 **Pattern consistency.** §5 patterns align with §4 decisions:
+
 - Bus message envelope (§5 format patterns) implements D-3 bus + D-1 IPC frame.
 - Bus event naming (§5 communication patterns) used by D-4 progress signals, D-5 stall detector, D-12 workflow engine.
 - Error handling (§5 process patterns) used uniformly across Rust crates and TS packages.
 
 **Structure alignment.** §6 monorepo structure supports every decision:
+
 - Each crate / package has exactly one Architectural Decision as its primary motivation (see Requirements → Structure mapping).
 - Cross-cutting concerns (`packages/core` schemas, `crates/platform-fs` fs-watch) live in dedicated packages, not duplicated.
 - Vendored upstreams in `services/` keep upstream rebase work isolated.
 
 ### Requirements Coverage Validation
 
-| PRD FR | Coverage in this doc | Status |
-|---|---|---|
-| FR-1 installer | D-15, `scripts/build-installer.sh`, `apps/wizard` | ✓ |
-| FR-2 wizard credentials | D-9, D-14, `crates/credential-storage` | ✓ |
-| FR-3 vault location | D-14, OQ-N spec in `docs/vault-layout.md` | ✓ (depends on OQ-N landing at M1) |
-| FR-4 / FR-5 / FR-6 fixed personas | D-2, `crates/zellij-adapter`, `crates/persona-supervisor` | ✓ |
-| FR-7 BMB panel | D-13, `apps/desktop/src/panels/bmb-add-agent` | ✓ (depends on D-13 portal slots — fallback path exists) |
-| FR-8 / FR-9 / FR-10 lifecycle | D-2, D-7, `packages/core` lifecycle types | ✓ |
-| FR-11 custom personas | `packages/persona-sync`, `_bmad/custom/` | ✓ |
-| FR-12 / FR-13 Hermes-initiated | D-3 (Hermes posts proposals via bus), `apps/desktop/src/panels/approval-prompt` | ✓ |
-| FR-14 promotion path | `packages/workflow-engine` tracks ephemeral spawn count per persona type | ✓ |
-| FR-15 / FR-16 / FR-17 bus | D-3, `crates/bus-relay`, `packages/bus-client` | ✓ |
-| FR-18 stall detection | D-4, D-5, `packages/progress-signal`, `packages/stall-detector` | ✓ |
-| FR-19 user pause / redirect | `crates/persona-supervisor` exposes pause; `packages/bus-client` handles redirect | ✓ |
-| FR-20 / FR-21 sync | D-6, `packages/persona-sync` | ✓ |
-| FR-22 / FR-23 / FR-24 multi-terminal | D-2, `apps/desktop/src/panels/multi-terminal` | ✓ |
-| FR-25 / FR-26 / FR-27 / FR-28 workflows | D-12, `packages/workflow-engine` | ✓ |
-| FR-29 / FR-30 vault scope | D-7, OQ-N spec | ✓ |
-| FR-31 Supermemory | `packages/supermemory-client` | ✓ |
-| FR-32 memory precedence | D-8, `docs/memory-precedence.md` | ✓ (M3 draft / M5 finalize) |
-| FR-33 / FR-34 GitHub sync | `packages/github-sync` | ✓ |
-| FR-35 / FR-36 / FR-37 installers | D-15, Tauri bundler, CI release workflow | ✓ |
+| PRD FR                                  | Coverage in this doc                                                              | Status                                                  |
+| --------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| FR-1 installer                          | D-15, `scripts/build-installer.sh`, `apps/wizard`                                 | ✓                                                       |
+| FR-2 wizard credentials                 | D-9, D-14, `crates/credential-storage`                                            | ✓                                                       |
+| FR-3 vault location                     | D-14, OQ-N spec in `docs/vault-layout.md`                                         | ✓ (depends on OQ-N landing at M1)                       |
+| FR-4 / FR-5 / FR-6 fixed personas       | D-2, `crates/zellij-adapter`, `crates/persona-supervisor`                         | ✓                                                       |
+| FR-7 BMB panel                          | D-13, `apps/desktop/src/panels/bmb-add-agent`                                     | ✓ (depends on D-13 portal slots — fallback path exists) |
+| FR-8 / FR-9 / FR-10 lifecycle           | D-2, D-7, `packages/core` lifecycle types                                         | ✓                                                       |
+| FR-11 custom personas                   | `packages/persona-sync`, `_bmad/custom/`                                          | ✓                                                       |
+| FR-12 / FR-13 Hermes-initiated          | D-3 (Hermes posts proposals via bus), `apps/desktop/src/panels/approval-prompt`   | ✓                                                       |
+| FR-14 promotion path                    | `packages/workflow-engine` tracks ephemeral spawn count per persona type          | ✓                                                       |
+| FR-15 / FR-16 / FR-17 bus               | D-3, `crates/bus-relay`, `packages/bus-client`                                    | ✓                                                       |
+| FR-18 stall detection                   | D-4, D-5, `packages/progress-signal`, `packages/stall-detector`                   | ✓                                                       |
+| FR-19 user pause / redirect             | `crates/persona-supervisor` exposes pause; `packages/bus-client` handles redirect | ✓                                                       |
+| FR-20 / FR-21 sync                      | D-6, `packages/persona-sync`                                                      | ✓                                                       |
+| FR-22 / FR-23 / FR-24 multi-terminal    | D-2, `apps/desktop/src/panels/multi-terminal`                                     | ✓                                                       |
+| FR-25 / FR-26 / FR-27 / FR-28 workflows | D-12, `packages/workflow-engine`                                                  | ✓                                                       |
+| FR-29 / FR-30 vault scope               | D-7, OQ-N spec                                                                    | ✓                                                       |
+| FR-31 Supermemory                       | `packages/supermemory-client`                                                     | ✓                                                       |
+| FR-32 memory precedence                 | D-8, `docs/memory-precedence.md`                                                  | ✓ (M3 draft / M5 finalize)                              |
+| FR-33 / FR-34 GitHub sync               | `packages/github-sync`                                                            | ✓                                                       |
+| FR-35 / FR-36 / FR-37 installers        | D-15, Tauri bundler, CI release workflow                                          | ✓                                                       |
 
 **NFR coverage:**
+
 - NFR-Performance (≤300 MB / ≤500 input tokens per hour idle): instrumented via D-11 telemetry; baselined at M2.
 - NFR-Reliability: D-2 (Zellij session-resume), D-10 (workspace SQLite for run state), `crates/persona-supervisor` (clean ephemeral exit).
 - NFR-Security: D-9 (credentials per CLI), D-7 (best-effort vault scoping), formal security review between M3 and M4.
@@ -630,6 +669,7 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 - NFR-Headless-Scriptability: all CLIs on system path; HTTP endpoints for wizard config and workflow control are documented.
 
 **Constraints coverage:**
+
 - Safety: D-8 (lifecycle gate at spawn), D-11 (cost telemetry from M2), project-level kill switch at M5.
 - Privacy: D-9 (no credential aggregation), FR-31 (opt-in Supermemory per category), FR-33 (opt-in GitHub).
 - Cost: D-11 (per-persona token meter), per-persona budgets at M5.
@@ -637,16 +677,19 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 ### Implementation Readiness
 
 **Decision completeness:**
+
 - All 15 decisions documented with versions (where applicable) and rationale.
 - Each FR has a delivering crate / package.
 - Each OQ has an owning decision or is parked with a clear revisit (memory precedence, vault layout, auto-approve policy, hot-load vs reload).
 
 **Structure completeness:**
+
 - Complete project tree at §6 with every directory and key file.
 - Component boundaries explicit (Tauri front/back, Workspace ↔ Paperclip / Hermes / Zellij / Obsidian).
 - Requirements → Structure mapping covers every FR.
 
 **Pattern completeness:**
+
 - Naming, structure, format, communication, process patterns all defined.
 - Anti-patterns enumerated.
 - Enforcement guidelines listed for both human and AI contributors.
@@ -656,12 +699,14 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 **Critical gaps (block implementation): NONE.** All Tier 1 + Tier 2 questions resolved. D-13's risk (Paperclip portal slots) is mitigated by a documented fallback (DOM mounts).
 
 **Important gaps:**
+
 - **G-1.** D-13 Paperclip portal-slot validation must succeed in the M0 spike. If it fails, we exercise the DOM-mount fallback path and the architecture stands; if both fail, we re-evaluate UI strategy. Owner: Architect at M0.
 - **G-2.** OQ-N vault layout spec is referenced everywhere (FR-3, FR-29, FR-30, D-7, D-8) but the spec itself lands at M1. Until it lands, downstream package skeletons can be stubbed but their internals are blocked. Owner: PM + Architect, M1.
 - **G-3.** Antigravity CLI public-preview state must be re-verified at M2 start before Frontend-Designer spawn ships. RCE issue from May 2026 must be confirmed fixed. Owner: Architect at M2 start.
 - **G-4.** OQ-E stall-window default value is intentionally tunable at M2. Until M2 telemetry runs, FR-18's "default" is a placeholder. Owner: PM + Architect at M2.
 
 **Nice-to-have gaps:**
+
 - **G-5.** OQ-D Hermes auto-approve policy specifics (M3 detail design).
 - **G-6.** OQ-F hot-load vs. reload of newly installed BMAD modules (M3 detail design).
 - **G-7.** N-4 sandbox-grade vault scoping enforcement (post-v1).
@@ -669,6 +714,7 @@ These patterns are for **the team building the product** (TS/Rust/Python/Go code
 ### Validation Issues Addressed
 
 Issues found during validation and resolved in this document:
+
 - **Resolved:** D-13 portal-slot dependency mitigated with explicit fallback (DOM mounts).
 - **Resolved:** D-10 added to separate workspace state from Paperclip state — protects upstream rebases.
 - **Resolved:** OQ-G credential storage policy made concrete in D-9.
@@ -679,24 +725,28 @@ Issues found during validation and resolved in this document:
 ### Architecture Completeness Checklist
 
 **Requirements Analysis**
+
 - [x] Project context thoroughly analyzed (§2)
 - [x] Scale and complexity assessed (§2)
 - [x] Technical constraints identified (§2)
 - [x] Cross-cutting concerns mapped (§2)
 
 **Architectural Decisions**
+
 - [x] Critical decisions documented with versions (§3 + §4)
 - [x] Technology stack fully specified (§3)
 - [x] Integration patterns defined (§4 + §6)
 - [x] Performance considerations addressed (NFR-Performance + D-11)
 
 **Implementation Patterns**
+
 - [x] Naming conventions established (§5)
 - [x] Structure patterns defined (§5)
 - [x] Communication patterns specified (§5)
 - [x] Process patterns documented (§5)
 
 **Project Structure**
+
 - [x] Complete directory structure defined (§6)
 - [x] Component boundaries established (§6)
 - [x] Integration points mapped (§6)
@@ -709,6 +759,7 @@ Issues found during validation and resolved in this document:
 **Confidence level: high.** The architecture preserves every locked strategic decision, gives every PRD FR a concrete delivering package/crate, and lays out a clean cross-cutting story for telemetry, security, privacy, and cost. The M0 spike (G-1) is genuinely a spike, not a gamble — both the success path and the fallback path are described.
 
 **Key strengths:**
+
 - Single ownership of fs-watch and Zellij spawn (one crate each); no duplicated implementations.
 - Workspace SQLite (D-10) isolates our state from Paperclip's — major resilience win for upstream rebases.
 - Telemetry pattern (D-11) reuses each CLI's own structured output; no upstream patching.
@@ -716,6 +767,7 @@ Issues found during validation and resolved in this document:
 - Bus envelope versioning (`v` field) gives a clean migration path when payload shapes change.
 
 **Areas for future enhancement:**
+
 - N-4: hard sandbox enforcement of vault scoping (post-v1).
 - Workflow forking / branching mid-run (post-M4).
 - Custom workflow authoring via BMB (post-v1).
@@ -724,12 +776,14 @@ Issues found during validation and resolved in this document:
 ### Implementation Handoff
 
 **AI Agent / Human Implementer Guidelines:**
+
 - Follow every locked strategic decision (frontmatter: `locked_strategic_decisions`) and every architectural decision in §4 exactly as documented.
 - Use implementation patterns from §5 consistently; the enforcement guidelines spell out the bar.
 - Respect project structure and boundaries from §6.
 - For any question this document does not answer, raise it as a new OQ — do not invent.
 
 **First implementation priority (M0):**
+
 1. **Tauri/WebView2 spike** — validate Paperclip's React UI hosts cleanly (D-13). Time-box: one day. Output: spike-report.md with go/fallback decision.
 2. **LICENSES.md** — bundling rights, redistribution, attribution, commercial-use for every component (OQ-K).
 3. **pinned-versions.md** — concrete tags for every upstream (OQ-J).
@@ -745,6 +799,7 @@ After M0, M1 work begins per PRD Release Plan.
 The architecture is complete and ready for Scrum Master handoff. The SM persona will source-extract from this document to produce the epics-and-stories listing.
 
 **What was achieved:**
+
 - Every PRD FR has a concrete delivering crate/package, documented in §6.
 - Every locked strategic decision preserved verbatim and threaded through §3–§6.
 - Every Tier 2 question resolved in the frontmatter and §3–§4.
@@ -752,6 +807,7 @@ The architecture is complete and ready for Scrum Master handoff. The SM persona 
 - 15 architectural decisions (10 critical, 5 important), 4 implementation pattern categories, complete monorepo tree, validation checklist passed with READY WITH MINOR GAPS.
 
 **Recommended next steps in the BMAD chain (per `bmad-help` routing):**
+
 1. **`bmad-create-epics-and-stories`** (Scrum Master persona — Bob) — break PRD FRs + Architecture decisions into epics and stories ready for Dev execution.
 2. **`bmad-create-story`** — produces individual story files. First story should be the Tauri/WebView2 spike from M0.
 3. **`bmad-check-implementation-readiness`** — once epics, stories, PRD, architecture are all in place, sanity-check alignment.

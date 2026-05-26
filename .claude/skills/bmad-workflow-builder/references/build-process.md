@@ -4,10 +4,10 @@
 
 **Outcome:** you and the user agree on the skill type and whether it's part of a module. Reasoning is shared, not hidden.
 
-| Type | When |
-|---|---|
-| **Simple Utility** | Composable building block with clear input → processing → output. Often deterministic. No multi-turn discovery. |
-| **Simple Workflow** | Multi-step process that fits inline in SKILL.md as named sections (`## Discovery`, `## Constraints`, etc.). Default. |
+| Type                 | When                                                                                                                                                                        |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Simple Utility**   | Composable building block with clear input → processing → output. Often deterministic. No multi-turn discovery.                                                             |
+| **Simple Workflow**  | Multi-step process that fits inline in SKILL.md as named sections (`## Discovery`, `## Constraints`, etc.). Default.                                                        |
 | **Complex Workflow** | SKILL.md routing + carved-out sections in `references/` with descriptive filenames. Reserved for workflows whose SKILL.md would otherwise be too big to scan (~250+ lines). |
 
 Default to Simple Workflow. Carving is a SIZE decision, not a stage-count decision.
@@ -24,21 +24,21 @@ For Workflows that produce an artifact: confirm whether `--headless` should be s
 
 Through what's already known or further conversation, determine all of the following that are relevant:
 
-| Field | Applies | Notes |
-|---|---|---|
-| Name | All | kebab-case. `{module-code}-{name}` for modules, `{name}` standalone. `bmad-` reserved for official. |
-| Description | All | `[5-8 word summary]. [Use when user says 'specific phrase'.]` See `references/standard-fields.md`. |
-| Overview | All | What / How / Why-Outcome. Domain framing + theory of mind for interactive or complex skills. |
-| Role | Workflows | "Act as a [role/expert]" primer. |
-| Design rationale | Where non-obvious | Choices the executing agent should understand so it doesn't optimize them away. |
-| External skills | All | Which other skills this calls. |
-| Scripts | All | Deterministic operations to push out of prompts; see `references/script-opportunities-reference.md`. List non-stdlib deps and get user approval (`uv` required). |
-| Output documents | All | Yes/no — uses `{document_output_language}` if yes. |
-| Revisable artifact | If output doc | If Update / Validate intents are likely, propose the Decision-Log Workspace pattern (`references/skill-quality-principles.md`). |
-| Inputs / outputs | Simple Utility | Format, schema, required fields. |
-| Stages | Workflows | Named sections (Simple) or carved files in `references/` with descriptive filenames (Complex). |
-| Module capability | If module-based | phase-name, after, before, is-required, short description. |
-| Customization | All | Fixed, or swappable templates / paths / hooks? Default no. If yes, walk each scalar (`<purpose>_template`, `<purpose>_output_path`, `on_<event>`); auto-promote in headless. |
+| Field              | Applies           | Notes                                                                                                                                                                        |
+| ------------------ | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Name               | All               | kebab-case. `{module-code}-{name}` for modules, `{name}` standalone. `bmad-` reserved for official.                                                                          |
+| Description        | All               | `[5-8 word summary]. [Use when user says 'specific phrase'.]` See `references/standard-fields.md`.                                                                           |
+| Overview           | All               | What / How / Why-Outcome. Domain framing + theory of mind for interactive or complex skills.                                                                                 |
+| Role               | Workflows         | "Act as a [role/expert]" primer.                                                                                                                                             |
+| Design rationale   | Where non-obvious | Choices the executing agent should understand so it doesn't optimize them away.                                                                                              |
+| External skills    | All               | Which other skills this calls.                                                                                                                                               |
+| Scripts            | All               | Deterministic operations to push out of prompts; see `references/script-opportunities-reference.md`. List non-stdlib deps and get user approval (`uv` required).             |
+| Output documents   | All               | Yes/no — uses `{document_output_language}` if yes.                                                                                                                           |
+| Revisable artifact | If output doc     | If Update / Validate intents are likely, propose the Decision-Log Workspace pattern (`references/skill-quality-principles.md`).                                              |
+| Inputs / outputs   | Simple Utility    | Format, schema, required fields.                                                                                                                                             |
+| Stages             | Workflows         | Named sections (Simple) or carved files in `references/` with descriptive filenames (Complex).                                                                               |
+| Module capability  | If module-based   | phase-name, after, before, is-required, short description.                                                                                                                   |
+| Customization      | All               | Fixed, or swappable templates / paths / hooks? Default no. If yes, walk each scalar (`<purpose>_template`, `<purpose>_output_path`, `on_<event>`); auto-promote in headless. |
 
 The customization opt-in question (interactive only):
 
@@ -117,12 +117,12 @@ Load `assets/SKILL-template.md` and `references/template-substitution-rules.md`.
 
 Never put workflow content (`*.md` prompt files) directly at skill root — that's `SKILL.md`'s job. Carve-outs always go in `references/`.
 
-| Location          | Contains                                                  | LLM relationship                     |
-| ----------------- | --------------------------------------------------------- | ------------------------------------ |
-| **SKILL.md**      | Overview, Activation, inline workflow OR routing to refs  | LLM identity, the workflow itself    |
-| **`references/`** | Carved-out workflow sections (descriptive names)          | Loaded on demand by SKILL.md routing |
-| **`assets/`**     | Templates, starter files, static content                  | Copied/transformed into output       |
-| **`scripts/`**    | Python, shell scripts with tests                          | Invoked for deterministic operations |
+| Location          | Contains                                                 | LLM relationship                     |
+| ----------------- | -------------------------------------------------------- | ------------------------------------ |
+| **SKILL.md**      | Overview, Activation, inline workflow OR routing to refs | LLM identity, the workflow itself    |
+| **`references/`** | Carved-out workflow sections (descriptive names)         | Loaded on demand by SKILL.md routing |
+| **`assets/`**     | Templates, starter files, static content                 | Copied/transformed into output       |
+| **`scripts/`**    | Python, shell scripts with tests                         | Invoked for deterministic operations |
 
 **If the built skill includes scripts**, also load `references/script-standards.md` — ensures PEP 723 metadata, correct shebangs, and `uv run` invocation from the start.
 

@@ -18,6 +18,7 @@ If no `customize.toml`, scan opportunity-side only: would this skill benefit fro
 ## What to Find
 
 **Opportunities — things to lift:**
+
 - Hardcoded template paths in SKILL.md or stages → `<purpose>_template` scalars (each separate, don't bundle)
 - Hardcoded output destinations → `<purpose>_output_path` (weaker than templates; flag low unless org-dependent)
 - Workflow produces an artifact and stops → consider `on_complete` hook
@@ -26,6 +27,7 @@ If no `customize.toml`, scan opportunity-side only: would this skill benefit fro
 - Workflow has 2+ hardcoded templates and no `customize.toml` at all → high-opportunity to opt in
 
 **Abuse — things to trim:**
+
 - Boolean toggles (3+ in one file = the surface is doing the job of a variant skill; suggest two skills or fewer knobs)
 - Identity / communication-style / principles in `[workflow]` (those are agent-shape fields — point the author at agent-builder; remove from workflow surface)
 - 4+ `on_<event>` hooks (workflow internals leaking into the override surface; users can interleave hooks at so many points they break the workflow's contract)

@@ -54,9 +54,9 @@ Load `./references/quality-analysis.md` to begin.
 
 | Intent                      | Trigger Phrases                                       | Route                                    |
 | --------------------------- | ----------------------------------------------------- | ---------------------------------------- |
-| **Build new**               | "build/create/design a new agent"                     | Load `./references/build-process.md`                |
+| **Build new**               | "build/create/design a new agent"                     | Load `./references/build-process.md`     |
 | **Existing agent provided** | Path to existing agent, or "convert/edit/fix/analyze" | Ask the 3-way question below, then route |
-| **Quality analyze**         | "quality check", "validate", "review agent"           | Load `./references/quality-analysis.md`             |
+| **Quality analyze**         | "quality check", "validate", "review agent"           | Load `./references/quality-analysis.md`  |
 | **Unclear**                 | —                                                     | Present options and ask                  |
 
 ### When given an existing agent, ask:

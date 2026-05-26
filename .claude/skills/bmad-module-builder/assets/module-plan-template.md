@@ -1,16 +1,16 @@
 ---
-title: 'Module Plan'
-status: 'ideation'
-module_name: ''
-module_code: ''
-module_description: ''
-architecture: ''
+title: "Module Plan"
+status: "ideation"
+module_name: ""
+module_code: ""
+module_description: ""
+architecture: ""
 standalone: true
-expands_module: ''
+expands_module: ""
 skills_planned: []
 config_variables: []
-created: ''
-updated: ''
+created: ""
+updated: ""
 ---
 
 # Module Plan

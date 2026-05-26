@@ -24,7 +24,7 @@ This PRD is structured as: Vision → Target User (with JTBD + non-users + user 
 
 4neverCompany OS is a packaged Windows desktop binary — cross-platform later — that bundles Paperclip (agent-team control plane), Hermes Agent (orchestrator), BMAD Method (methodology), embedded Zellij (terminal multiplexer), and Obsidian (local vault) into a single one-click install. Two fixed persona agents — **Dev** on Claude Code and **Frontend Designer** on Antigravity CLI — spawn the moment a project opens and persist across restarts. Every other persona is **dynamic**: spawned on demand by Hermes (with user approval) or by the user (via a featured BMad Builder panel), and each dynamic agent chooses **persistent** (joins the team) or **ephemeral** (one-shot) at spawn time. Agents talk freely on a liberal pub/sub bus; Hermes intervenes only when chatter happens without forward motion on artifacts, code, or stories.
 
-The product is the **integration layer** — installer, first-run wizard, dynamic-spawn UI, message bus, persona-file projection, lifecycle management, vault layout, GitHub sync, Supermemory integration. It is *not* a new orchestrator, *not* a new methodology, *not* a fork of any upstream.
+The product is the **integration layer** — installer, first-run wizard, dynamic-spawn UI, message bus, persona-file projection, lifecycle management, vault layout, GitHub sync, Supermemory integration. It is _not_ a new orchestrator, _not_ a new methodology, _not_ a fork of any upstream.
 
 ## 2. Target User
 
@@ -145,6 +145,7 @@ Each subsection is a coherent feature: behavioral description, FRs nested, optio
 The installer can provision all bundled runtime components in one run on a clean Windows 10/11 machine: Node.js 20+, pnpm 9.15+, Python (for Hermes), embedded Postgres, Zellij binary, Antigravity CLI, Claude Code CLI, Paperclip + Hermes + BMAD packages, and the Obsidian vault scaffolding. [ASSUMPTION: macOS and Linux installers add the platform-specific equivalents in M5; binaries differ but the FR shape is the same.]
 
 **Consequences (testable):**
+
 - A clean install completes without manual intervention beyond the explicit wizard prompts (model API keys, OAuth flows for Claude Code and Antigravity, Obsidian vault location, optional Supermemory key, optional GitHub credentials) — no other system dialogs, terminal prompts, or installer choices.
 - Total install-plus-wizard wall-clock time ≤ 10 minutes on a representative reference Windows 10/11 machine (per M1 exit criterion).
 - Failed component installs surface a clean error and offer a retry of just that component.
@@ -154,6 +155,7 @@ The installer can provision all bundled runtime components in one run on a clean
 The wizard sequentially collects: (a) model API keys (Anthropic required; others optional), (b) Anthropic OAuth for Claude Code, (c) Google OAuth for Antigravity CLI [added M2 when Frontend Designer ships], (d) optional Supermemory API key, (e) optional GitHub credentials for sync.
 
 **Consequences (testable):**
+
 - All credentials are stored using each CLI's own permission model (Anthropic via Claude Code, Google via Antigravity) — workspace does not invent its own credential store. [NOTE FOR PM: Architect must confirm credential storage exactly mirrors each upstream's pattern; brief §9 flags trust & permissions.]
 - OAuth retry on failure does not lose prior step's state.
 - Missing optional credentials do not block project creation; only the keys required for the personas the user will spawn block.
@@ -163,6 +165,7 @@ The wizard sequentially collects: (a) model API keys (Anthropic required; others
 The wizard lets the user choose the on-disk location of the Obsidian vault. A default is offered.
 
 **Consequences (testable):**
+
 - Vault location is persisted; all subsequent workspace operations resolve `{vault}` to this location.
 - A vault at the chosen location is scaffolded with the documented directory layout (see OQ-N).
 
@@ -175,6 +178,7 @@ The wizard lets the user choose the on-disk location of the Obsidian vault. A de
 When a project is opened, a Dev persona spawns: backing CLI is Claude Code, default model is Claude Opus 4.6 (Thinking), persona file `dev.md` is loaded from the BMAD library and projected to `claude.md` at the project root.
 
 **Consequences (testable):**
+
 - A Claude Code process is running and visible in a Zellij pane within **5 seconds** of project open. [ASSUMPTION: AS-2 — initial UX target; Architect may revise downward in M2 baselining.]
 - `claude.md` exists at project root and reflects the Dev persona file.
 
@@ -183,6 +187,7 @@ When a project is opened, a Dev persona spawns: backing CLI is Claude Code, defa
 When a project is opened, a Frontend Designer persona spawns: backing CLI is Antigravity CLI (`agy`), default model is Gemini 3.1 Pro (High), persona file `frontend-designer.md` is loaded from the BMAD library and projected to `agy.md` at the project root. [Lands at M2.]
 
 **Consequences (testable):**
+
 - An `agy` process is running and visible in a Zellij pane within **5 seconds** of project open. [ASSUMPTION: AS-2 — same UX target as FR-4.]
 - `agy.md` exists at project root and reflects the Frontend Designer persona file.
 
@@ -191,6 +196,7 @@ When a project is opened, a Frontend Designer persona spawns: backing CLI is Ant
 When the desktop app closes and reopens, both fixed personas re-attach to their existing Zellij sessions without spawning duplicates.
 
 **Consequences (testable):**
+
 - A "close app → reopen app" cycle does not leave orphan processes.
 - Re-attached panes show **≥ the last 1000 lines** of scrollback (subject to the underlying Zellij session's scrollback limit).
 
@@ -203,6 +209,7 @@ When the desktop app closes and reopens, both fixed personas re-attach to their 
 The panel shows all installed BMAD personas (Analyst, PM, Architect, SM, QA, UX, Security Reviewer, plus any installed via `bmad-method install --source ...`) plus the user's custom personas.
 
 **Consequences (testable):**
+
 - After `bmad-method install` adds a new module, that module's personas appear in the panel without app restart. [NOTE FOR PM: confirm hot-load vs. reload requirement with Architect.]
 
 #### FR-8: Lifecycle selection at spawn time
@@ -210,6 +217,7 @@ The panel shows all installed BMAD personas (Analyst, PM, Architect, SM, QA, UX,
 For each dynamic persona spawn, the user picks **persistent** or **ephemeral** before the spawn completes.
 
 **Consequences (testable):**
+
 - Spawn UI does not allow proceeding without a lifecycle choice.
 - The choice is recorded in the persona's runtime metadata and is visible in the channels / agents view.
 
@@ -218,6 +226,7 @@ For each dynamic persona spawn, the user picks **persistent** or **ephemeral** b
 A persistent dynamic agent gets the same scaffolding as a fixed persona: a Zellij pane, a scoped vault directory, a bus identity, restart-survival.
 
 **Consequences (testable):**
+
 - After spawning a persistent Architect, app close + reopen reattaches the Architect pane.
 - The Architect's vault directory exists and is gitignored / committed per the GitHub sync policy (FR-33).
 
@@ -226,6 +235,7 @@ A persistent dynamic agent gets the same scaffolding as a fixed persona: a Zelli
 An ephemeral persona runs to task completion, writes its output to the vault as an artifact, posts a final message to the bus, and exits. No process or vault residue.
 
 **Consequences (testable):**
+
 - After 100 spawn/exit cycles, zero orphan processes remain (per M3 exit criterion).
 - Ephemeral agents do not appear in the persistent-agents UI after exit.
 
@@ -234,6 +244,7 @@ An ephemeral persona runs to task completion, writes its output to the vault as 
 A user can define a custom persona (name, role, backing CLI, model, tools, personality) via the BMB panel, spawn it immediately, and optionally save it as a reusable BMAD module under their vault.
 
 **Consequences (testable):**
+
 - A saved custom persona can be installed and used in a different project via the standard `bmad-method install --source <path>` flow.
 - Custom personas are markdown files — readable, git-diffable.
 
@@ -246,6 +257,7 @@ A user can define a custom persona (name, role, backing CLI, model, tools, perso
 When Hermes detects a need (e.g., "this change touches auth, recommend a Security Reviewer"), it posts a proposal to the bus and surfaces an approval prompt in the UI containing the proposed persona, suggested lifecycle, and a one-sentence rationale.
 
 **Consequences (testable):**
+
 - Proposal includes persona name, backing CLI, suggested lifecycle, and rationale text.
 - User can approve, override (change CLI / lifecycle / persona), or veto.
 
@@ -254,6 +266,7 @@ When Hermes detects a need (e.g., "this change touches auth, recommend a Securit
 A Hermes proposal does not spawn until the user approves (or the user has set a per-project auto-approve policy for specific persona types). [NOTE FOR PM: auto-approve policy is M3-or-later; specify in M3 detail design.]
 
 **Consequences (testable):**
+
 - An unapproved proposal expires after a configurable **per-proposal** window (system-wide default: 24 hours) without spawning.
 
 #### FR-14: Promotion path — ephemeral → persistent
@@ -261,6 +274,7 @@ A Hermes proposal does not spawn until the user approves (or the user has set a 
 When the same persona type has been spawned ephemerally 3+ times in a project, Hermes prompts the user to promote it to a persistent persona or save it as a reusable custom module.
 
 **Consequences (testable):**
+
 - After 3 ephemeral spawns of the same persona type, the promotion prompt appears.
 - "Promote to persistent" spawns the persona with persistent lifecycle and reuses its accumulated context (vault dir from the most recent spawn).
 
@@ -273,6 +287,7 @@ When the same persona type has been spawned ephemerally 3+ times in a project, H
 Any agent can post to the bus; any agent (or the user) can subscribe.
 
 **Consequences (testable):**
+
 - Posting from agent A is visible to agent B within N ms. [ASSUMPTION: N ≤ 500ms — Architect to confirm.]
 - No per-message rate limit; no enforced turn cap.
 
@@ -281,6 +296,7 @@ Any agent can post to the bus; any agent (or the user) can subscribe.
 Bus messages persist; restarting Paperclip does not lose the last N messages in any channel.
 
 **Consequences (testable):**
+
 - After Paperclip restart, the last 1000 messages per channel are still queryable. [ASSUMPTION: 1000 is the retention default — Architect / source review to confirm.]
 
 #### FR-17: UI channel view per project
@@ -288,6 +304,7 @@ Bus messages persist; restarting Paperclip does not lose the last N messages in 
 The desktop UI shows the bus channel for the current project in real time. User can read, filter, and post messages.
 
 **Consequences (testable):**
+
 - New messages from agents render in the UI within **200 ms** of bus delivery. [ASSUMPTION: AS-6 — initial UX target for "feels live"; Architect may revise.]
 - User posts are tagged as user-origin and are visible to all subscribed agents.
 
@@ -296,6 +313,7 @@ The desktop UI shows the bus channel for the current project in real time. User 
 Hermes watches for these progress signals: artifact changes in the vault, file changes in the project directory, story-state transitions [story-state signal added at M4]. When the configurable stall window passes with bus activity and no progress signals, Hermes intervenes.
 
 **Consequences (testable):**
+
 - Default stall window is configurable (initial default: a few minutes per source brief). [ASSUMPTION: specific default value (e.g., 5 minutes) is a tunable; M2 stress-tests find the right initial default.]
 - Hermes intervention takes one of: summarize disagreement, prompt user to arbitrate, propose a concrete next step.
 - Productive multi-message exchanges (chatter with concurrent progress signals firing) do NOT trigger intervention.
@@ -306,6 +324,7 @@ Hermes watches for these progress signals: artifact changes in the vault, file c
 User is a first-class bus participant. They can pause any agent, post a redirect, or dismiss a persona.
 
 **Consequences (testable):**
+
 - "Pause persona" stops that agent's outbound bus posts and CLI work within **2 seconds**. [ASSUMPTION: AS-7 — initial UX target so the user knows they got control back; Architect may revise.]
 - "Redirect" posts a user message to the bus and the persona resumes from there.
 
@@ -318,6 +337,7 @@ User is a first-class bus participant. They can pause any agent, post a redirect
 When a persona is bound to a backing CLI, the workspace projects the persona file into the CLI-specific config and keeps the projection synced.
 
 **Consequences (testable):**
+
 - Each spawned persona has a corresponding tool config at the expected location.
 - A change to the persona file in the vault propagates to the tool config within **30 seconds**. [ASSUMPTION: AS-8 — file-watch loop target, not real-time; Architect may revise.]
 
@@ -326,6 +346,7 @@ When a persona is bound to a backing CLI, the workspace projects the persona fil
 If a user edits a tool config directly (e.g., they edit `claude.md` in their editor), the edits flow back into the canonical persona file in the vault.
 
 **Consequences (testable):**
+
 - Edits to a tool config are reflected in the vault persona file within **30 seconds**. [ASSUMPTION: AS-8 — same file-watch loop target as FR-20.]
 - Conflict resolution rules are documented and applied. [NOTE FOR PM: conflict rules are an open question — see § 8 OQ-A.]
 
@@ -338,6 +359,7 @@ If a user edits a tool config directly (e.g., they edit `claude.md` in their edi
 Each persistent persona owns exactly one Zellij pane. The pane is the agent's interactive surface.
 
 **Consequences (testable):**
+
 - N persistent personas → N panes visible in the UI.
 - A pane is attachable from the UI and disconnectable without killing the agent process.
 
@@ -346,6 +368,7 @@ Each persistent persona owns exactly one Zellij pane. The pane is the agent's in
 Closing the desktop app does not kill the agent processes inside Zellij; reopening reattaches.
 
 **Consequences (testable):**
+
 - Force-quit of the desktop app leaves the Zellij sessions running.
 - Reopen reattaches to the existing Zellij session and the agents resume.
 
@@ -354,6 +377,7 @@ Closing the desktop app does not kill the agent processes inside Zellij; reopeni
 The full Hermes TUI is available inside the workspace as one of the panes (or a dedicated UI surface).
 
 **Consequences (testable):**
+
 - All Hermes TUI commands work from inside the workspace identically to running `hermes` standalone.
 
 ### 4.8 BMAD Workflow Execution
@@ -365,6 +389,7 @@ The full Hermes TUI is available inside the workspace as one of the panes (or a 
 The main UI exposes a "Start a BMAD project" action. User picks a workflow; the workspace begins executing it.
 
 **Consequences (testable):**
+
 - At least two workflows are available: `greenfield-fullstack` and `brownfield`.
 - Starting a workflow records the workflow run in Paperclip and the vault.
 
@@ -373,6 +398,7 @@ The main UI exposes a "Start a BMAD project" action. User picks a workflow; the 
 The workflow engine reads BMAD YAML and spawns dynamic personas at each phase (Analyst → PM → Architect → SM → Dev/QA), with user approval gates between handoffs.
 
 **Consequences (testable):**
+
 - Approval gates surface in the UI; the default action is "approve and continue" with one keystroke.
 - Spawned personas appear in panes and on the bus.
 
@@ -381,6 +407,7 @@ The workflow engine reads BMAD YAML and spawns dynamic personas at each phase (A
 A Workflow in progress can be paused, the app closed, and the Workflow resumed cleanly from where it left off.
 
 **Consequences (testable):**
+
 - A "pause Workflow" action is available at any phase boundary.
 - After app reopen, the Workflow shows its current phase and "resume" continues from there.
 
@@ -389,6 +416,7 @@ A Workflow in progress can be paused, the app closed, and the Workflow resumed c
 `brownfield` runs on an existing repo and produces a refactor plan.
 
 **Consequences (testable):**
+
 - A `brownfield` run on at least one real test repo (per M4 exit criterion) produces a plan artifact.
 
 ### 4.9 Memory Tiers
@@ -400,6 +428,7 @@ A Workflow in progress can be paused, the app closed, and the Workflow resumed c
 Each persistent persona owns a scoped subdirectory inside the project's vault for notes and skills.
 
 **Consequences (testable):**
+
 - The Dev persona writes to `vault/personas/dev/` (or equivalent); the Frontend Designer writes to its own dir.
 - Writes outside the scoped dir or the shared project area are **detected and logged**; enforcement is best-effort per each backing CLI's permission model (not a hard sandbox). [NOTE FOR PM: hard-enforcement is a future story; Architect to characterize what each CLI's permission model actually prevents.]
 - Per-persona vault directory layout follows OQ-N spec.
@@ -409,6 +438,7 @@ Each persistent persona owns a scoped subdirectory inside the project's vault fo
 The shared Obsidian vault is the source of truth for BMAD artifacts, decisions, and project context. All personas in the project can read; writes follow the persona's scope.
 
 **Consequences (testable):**
+
 - BMAD artifacts (brief, PRD, architecture, story files, QA reports) live at documented paths in the vault.
 - The vault layout is documented in the spec produced for OQ-N.
 
@@ -417,6 +447,7 @@ The shared Obsidian vault is the source of truth for BMAD artifacts, decisions, 
 Supermemory is available as a cross-project semantic memory layer. The user opts in per content category (e.g., "share decisions across projects" yes; "share secrets" no).
 
 **Consequences (testable):**
+
 - A per-category toggle exists in the settings UI.
 - Local-only categories never reach Supermemory.
 
@@ -425,6 +456,7 @@ Supermemory is available as a cross-project semantic memory layer. The user opts
 A documented precedence spec defines what wins when the same fact appears in multiple tiers (Hermes native vs. per-persona vault dir vs. project vault vs. Supermemory).
 
 **Consequences (testable):**
+
 - The precedence spec is documented and shipped with the workspace.
 - Conflict resolution behaves per spec on a test corpus. [NOTE FOR PM: specific precedence is an open question — see § 8 OQ-B.]
 
@@ -437,6 +469,7 @@ A documented precedence spec defines what wins when the same fact appears in mul
 The workspace can push its project files (configs, BMAD artifacts, skills, persona files) to a GitHub repository.
 
 **Consequences (testable):**
+
 - A "sync to GitHub" action commits and pushes the documented set of files.
 - The documented set of synced-vs-local files is in a single policy doc shipped with the workspace.
 
@@ -445,6 +478,7 @@ The workspace can push its project files (configs, BMAD artifacts, skills, perso
 On a second machine, after the workspace is installed and the user pulls the repo, opening the project spawns the same fixed personas and offers to respawn the same persistent dynamic personas.
 
 **Consequences (testable):**
+
 - Round-trip test: project on Windows → push → pull on macOS → open: fixed personas spawn, persistent dynamic personas are listed and can be respawned. (Per M5 exit criterion, extended to Linux as well.)
 
 ### 4.11 Cross-Platform Distribution
@@ -456,6 +490,7 @@ On a second machine, after the workspace is installed and the user pulls the rep
 Generated by Tauri (per OQ-C resolution; Electron fallback if the M0 Tauri/WebView2 spike surfaces blocking pain hosting Paperclip's React UI).
 
 **Consequences (testable):**
+
 - A clean install on Windows 10 and Windows 11 succeeds.
 - Installer size and bundle composition documented.
 
@@ -464,6 +499,7 @@ Generated by Tauri (per OQ-C resolution; Electron fallback if the M0 Tauri/WebVi
 [Lands at M5.]
 
 **Consequences (testable):**
+
 - A clean install on at least one current macOS version succeeds.
 
 #### FR-37: Linux installer
@@ -471,6 +507,7 @@ Generated by Tauri (per OQ-C resolution; Electron fallback if the M0 Tauri/WebVi
 AppImage and/or distro packages. [Lands at M5.]
 
 **Consequences (testable):**
+
 - A clean install on at least one current Linux distribution succeeds.
 
 ## 5. Non-Goals (Explicit)
@@ -524,7 +561,7 @@ Per Tier 1 decision: **v1 success is defined exclusively by the build-plan engin
 **Counter-metrics (do not optimize)**
 
 - **SM-C1:** Bus messages per minute. Do **not** optimize this downward — the bus is liberal by design. If chatter is correlated with progress signals firing, that is success, not noise. Counterbalances SM-4.
-- **SM-C2:** Number of Hermes interventions per session. Do **not** optimize this upward — Hermes intervening *more* is not better. Calibrate the stall window to intervene only when progress signals are flat. Counterbalances SM-4.
+- **SM-C2:** Number of Hermes interventions per session. Do **not** optimize this upward — Hermes intervening _more_ is not better. Calibrate the stall window to intervene only when progress signals are flat. Counterbalances SM-4.
 - **SM-C3:** Time-to-first-spawn for a dynamic persona. Do **not** optimize this without bound — fast spawn at the cost of poor persona setup is a regression. Counterbalances FR-7.
 
 ## 8. Open Questions
@@ -552,15 +589,15 @@ Tier 2 questions (OQ-C, OQ-I, OQ-J, OQ-K) were resolved on 2026-05-26 — Archit
 
 Every `[ASSUMPTION]` from the document, surfaced for explicit confirmation. All AS entries are **initial UX or system targets**; the Architect may revise downward (faster) after M2 telemetry baselines.
 
-- **AS-1:** macOS and Linux installers in M5 add platform-specific binaries but the FR-1 shape is the same on each platform. *(Inferred from build plan M5 scope.)*
-- **AS-2:** Fixed-persona spawn latency ≤ 5 seconds on the reference machine (FR-4, FR-5). *(Inferred from "the instant a project opens" in source brief §1; PM-set UX target.)*
-- **AS-3:** Bus delivery latency ≤ 500 ms peer-to-peer (FR-15). *(Architect-tunable internal-system target.)*
-- **AS-4:** Bus retention: last 1000 messages per channel survive Paperclip restart (FR-16). *(Architect to confirm against Paperclip event-system capacity.)*
-- **AS-5:** Stall-window default is "a few minutes" — specific tunable values per OQ-E (FR-18). *(Source brief §3.5 is qualitative; M2 stress-tests determine the right default.)*
-- **AS-6:** UI render of new bus messages ≤ 200 ms after bus delivery (FR-17). *(PM-set UX target for "feels live.")*
-- **AS-7:** Pause-persona response ≤ 2 seconds (FR-19). *(PM-set UX target so the user knows they got control back.)*
-- **AS-8:** Persona-file ↔ tool-config propagation ≤ 30 seconds in either direction (FR-20, FR-21). *(File-watch loop target, not real-time.)*
-- **AS-9:** Idle persistent agent ≤ 300 MB resident memory and ≤ 500 input tokens per hour (NFR-Performance). *(Initial ceiling for Architect target; revise after M2 telemetry baseline.)*
+- **AS-1:** macOS and Linux installers in M5 add platform-specific binaries but the FR-1 shape is the same on each platform. _(Inferred from build plan M5 scope.)_
+- **AS-2:** Fixed-persona spawn latency ≤ 5 seconds on the reference machine (FR-4, FR-5). _(Inferred from "the instant a project opens" in source brief §1; PM-set UX target.)_
+- **AS-3:** Bus delivery latency ≤ 500 ms peer-to-peer (FR-15). _(Architect-tunable internal-system target.)_
+- **AS-4:** Bus retention: last 1000 messages per channel survive Paperclip restart (FR-16). _(Architect to confirm against Paperclip event-system capacity.)_
+- **AS-5:** Stall-window default is "a few minutes" — specific tunable values per OQ-E (FR-18). _(Source brief §3.5 is qualitative; M2 stress-tests determine the right default.)_
+- **AS-6:** UI render of new bus messages ≤ 200 ms after bus delivery (FR-17). _(PM-set UX target for "feels live.")_
+- **AS-7:** Pause-persona response ≤ 2 seconds (FR-19). _(PM-set UX target so the user knows they got control back.)_
+- **AS-8:** Persona-file ↔ tool-config propagation ≤ 30 seconds in either direction (FR-20, FR-21). _(File-watch loop target, not real-time.)_
+- **AS-9:** Idle persistent agent ≤ 300 MB resident memory and ≤ 500 input tokens per hour (NFR-Performance). _(Initial ceiling for Architect target; revise after M2 telemetry baseline.)_
 
 ## 10. Cross-Cutting NFRs
 
@@ -593,22 +630,22 @@ System-wide non-functional requirements not tied to a single feature.
 - **Idling cost ceiling.** Per NFR-Performance: a persistent agent at idle does not exceed a documented token-per-hour budget.
 - **Project-level kill switch.** A single "stop everything in this project now" action halts all agents and clears their bus subscriptions. Validated as M5 deliverable.
 
-## 12. Integration & Dependencies *(invented section — central to this product)*
+## 12. Integration & Dependencies _(invented section — central to this product)_
 
 This product is integration. Each bundled component is a hard dependency; each carries upstream risk.
 
-| Component | Role | Version pinning policy | Upstream risk |
-|---|---|---|---|
-| **Paperclip** | Control plane + event system the bus runs on | Pinned tag per Tier 2 OQ-J | Active development; integration surface across both the React UI host and the event system |
-| **Hermes Agent** | Conductor + persona-spawn supervisor + memory curator | Pinned tag per OQ-J | Active development; we rely on `hermes-paperclip-adapter` |
-| **BMAD Method** | Methodology, persona library, workflow YAML | Pinned tag per OQ-J | Active development; workflow YAML format evolves; M4 risk |
-| **Antigravity CLI (`agy`)** | Backing CLI for Frontend Designer | Pinned tag per OQ-J | Public preview as of May 2026; RCE issue reported May 2026 — verify state at M2 start; Gemini CLI deprecation 2026-06-18 makes `agy` the standard |
-| **Claude Code CLI** | Backing CLI for Dev | Pinned via Anthropic standard channel | Stable but evolving |
-| **Zellij** | Embedded multiplexer for persistent agent panes | Pinned tag per OQ-J | Stable; weaker PTY handling on Windows historically — M1 risk |
-| **Embedded Postgres** | Paperclip backing store | Tied to Paperclip's preferred version | Standard |
-| **Obsidian** | Local vault | User-installed; workspace manages the vault directory | Stable |
-| **Supermemory** | Cross-project semantic memory (opt-in) | API integration | Pricing and rate limits need M5 testing per build plan risk register |
-| **GitHub** | Sync target for configs/artifacts/skills/personas | Public API | Standard |
+| Component                   | Role                                                  | Version pinning policy                                | Upstream risk                                                                                                                                     |
+| --------------------------- | ----------------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Paperclip**               | Control plane + event system the bus runs on          | Pinned tag per Tier 2 OQ-J                            | Active development; integration surface across both the React UI host and the event system                                                        |
+| **Hermes Agent**            | Conductor + persona-spawn supervisor + memory curator | Pinned tag per OQ-J                                   | Active development; we rely on `hermes-paperclip-adapter`                                                                                         |
+| **BMAD Method**             | Methodology, persona library, workflow YAML           | Pinned tag per OQ-J                                   | Active development; workflow YAML format evolves; M4 risk                                                                                         |
+| **Antigravity CLI (`agy`)** | Backing CLI for Frontend Designer                     | Pinned tag per OQ-J                                   | Public preview as of May 2026; RCE issue reported May 2026 — verify state at M2 start; Gemini CLI deprecation 2026-06-18 makes `agy` the standard |
+| **Claude Code CLI**         | Backing CLI for Dev                                   | Pinned via Anthropic standard channel                 | Stable but evolving                                                                                                                               |
+| **Zellij**                  | Embedded multiplexer for persistent agent panes       | Pinned tag per OQ-J                                   | Stable; weaker PTY handling on Windows historically — M1 risk                                                                                     |
+| **Embedded Postgres**       | Paperclip backing store                               | Tied to Paperclip's preferred version                 | Standard                                                                                                                                          |
+| **Obsidian**                | Local vault                                           | User-installed; workspace manages the vault directory | Stable                                                                                                                                            |
+| **Supermemory**             | Cross-project semantic memory (opt-in)                | API integration                                       | Pricing and rate limits need M5 testing per build plan risk register                                                                              |
+| **GitHub**                  | Sync target for configs/artifacts/skills/personas     | Public API                                            | Standard                                                                                                                                          |
 
 **Contribution-back policy.** Adapter, plugin, persona, or BMAD module that's general-purpose should be offered upstream per build plan cross-cutting concern. Specific copy + workflow for this is OQ-M (Tier 4 deferred).
 
@@ -616,7 +653,7 @@ This product is integration. Each bundled component is a hard dependency; each c
 
 Three signals make the timing load-bearing:
 
-1. **Multiple terminal-native agent CLIs are now stable enough to bundle.** Claude Code, Antigravity CLI, MiniMax — each strongest in different domains. The natural unit of work is *one persona = one agent process = one CLI*. That unit didn't exist 12 months ago.
+1. **Multiple terminal-native agent CLIs are now stable enough to bundle.** Claude Code, Antigravity CLI, MiniMax — each strongest in different domains. The natural unit of work is _one persona = one agent process = one CLI_. That unit didn't exist 12 months ago.
 2. **Gemini CLI deprecation (2026-06-18 for individual Pro/Ultra users).** Forces a standardization decision on Frontend Designer. Antigravity CLI is the inheritor; building around it now is a one-decision migration, not a recurring one.
 3. **BMAD has stabilized into a methodology with a real persona library and YAML workflow format** (v6.7.1 as of install). Bundling BMAD as the default methodology is feasible today; it wasn't 12 months ago.
 
@@ -630,18 +667,18 @@ The friction this product removes — installation, configuration, methodology o
 
 No web, mobile, or hosted variants in v1.
 
-## 15. Release Plan *(invented section — FRs mapped to M0–M5 from the build plan)*
+## 15. Release Plan _(invented section — FRs mapped to M0–M5 from the build plan)_
 
 This section ties every FR to the milestone delivering it. M0 is pre-work (no FRs delivered; Tier 2 OQs resolved there). The build plan is the source of truth for milestone duration and risk.
 
-| Milestone | Duration | FRs delivered or advanced | Open questions resolved |
-|---|---|---|---|
-| **M0 — Pre-Work** | 1–2 weeks | (none — pre-work) | OQ-C, OQ-I, OQ-J, OQ-K all resolved 2026-05-26 (Tauri spike + monorepo + version pins + LICENSES.md are M0 deliverables) |
-| **M1 — Walking Skeleton** | 6–8 weeks | FR-1 (Win), FR-2 (Anthropic + vault), FR-3, FR-4, FR-6 (Dev only), FR-20 (claude.md), FR-22 (Dev only), FR-23, FR-24, FR-35 | OQ-N (vault directory layout spec — before stories are written) |
-| **M2 — Second Agent + Bus** | 4–6 weeks | FR-2 (+ Antigravity OAuth), FR-5, FR-6 (+ Frontend Designer), FR-15, FR-16, FR-17, FR-18 (initial signals), FR-20 (agy.md), FR-22 (+ Frontend Designer) | OQ-E, OQ-H (stall window tuning); bus protocol schema; progress-signal taxonomy (follow-up artifacts) |
-| **M3 — Dynamic Spawn + BMB Minimal** | 6–8 weeks | FR-7, FR-8, FR-9, FR-10, FR-11, FR-12, FR-13, FR-14, FR-19, FR-21 | OQ-A, OQ-D, OQ-F, OQ-G |
-| **M4 — Full BMAD Workflow** | 4–6 weeks | FR-18 (+ story-state signals), FR-25, FR-26, FR-27, FR-28 | (none open at this milestone) |
-| **M5 — Memory, Collab, Polish** | 4–6 weeks | FR-29, FR-30, FR-31, FR-32, FR-33, FR-34, FR-36, FR-37 | OQ-B; OQ-L, OQ-M (if not already resolved by Maurice before launch) |
+| Milestone                            | Duration  | FRs delivered or advanced                                                                                                                               | Open questions resolved                                                                                                  |
+| ------------------------------------ | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| **M0 — Pre-Work**                    | 1–2 weeks | (none — pre-work)                                                                                                                                       | OQ-C, OQ-I, OQ-J, OQ-K all resolved 2026-05-26 (Tauri spike + monorepo + version pins + LICENSES.md are M0 deliverables) |
+| **M1 — Walking Skeleton**            | 6–8 weeks | FR-1 (Win), FR-2 (Anthropic + vault), FR-3, FR-4, FR-6 (Dev only), FR-20 (claude.md), FR-22 (Dev only), FR-23, FR-24, FR-35                             | OQ-N (vault directory layout spec — before stories are written)                                                          |
+| **M2 — Second Agent + Bus**          | 4–6 weeks | FR-2 (+ Antigravity OAuth), FR-5, FR-6 (+ Frontend Designer), FR-15, FR-16, FR-17, FR-18 (initial signals), FR-20 (agy.md), FR-22 (+ Frontend Designer) | OQ-E, OQ-H (stall window tuning); bus protocol schema; progress-signal taxonomy (follow-up artifacts)                    |
+| **M3 — Dynamic Spawn + BMB Minimal** | 6–8 weeks | FR-7, FR-8, FR-9, FR-10, FR-11, FR-12, FR-13, FR-14, FR-19, FR-21                                                                                       | OQ-A, OQ-D, OQ-F, OQ-G                                                                                                   |
+| **M4 — Full BMAD Workflow**          | 4–6 weeks | FR-18 (+ story-state signals), FR-25, FR-26, FR-27, FR-28                                                                                               | (none open at this milestone)                                                                                            |
+| **M5 — Memory, Collab, Polish**      | 4–6 weeks | FR-29, FR-30, FR-31, FR-32, FR-33, FR-34, FR-36, FR-37                                                                                                  | OQ-B; OQ-L, OQ-M (if not already resolved by Maurice before launch)                                                      |
 
 **Total estimated duration:** ~24–32 weeks (≈6–7 months) at the build-plan's 2–3-engineer assumption. With Maurice's resolved team size of **4+ engineers** (OQ-L), the timeline may compress through parallelization (notably Epic 1 + Epic 5 cross-platform tracks can overlap), but per the resolved budget envelope (no formal cap; engineering exit criteria are the bar), the headline goal is the criteria not a calendar date.
 

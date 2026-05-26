@@ -12,9 +12,7 @@ The runner accepts two file shapes, both compatible with Anthropic's skill-creat
       "id": 1,
       "prompt": "I want to create a brief for ...",
       "expected_output": "A run folder with brief.md and decision-log.md ...",
-      "files": [
-        "evals/.../files/some-fixture.md"
-      ],
+      "files": ["evals/.../files/some-fixture.md"],
       "expectations": [
         "brief.md exists in the run folder",
         "decision-log.md exists",
@@ -42,13 +40,14 @@ The grader writes `grading.json` next to each eval's artifacts; the runner aggre
 ```json
 [
   { "query": "Help me write a product brief for ...", "should_trigger": true },
-  { "query": "Help me brainstorm ideas for ...",      "should_trigger": false }
+  { "query": "Help me brainstorm ideas for ...", "should_trigger": false }
 ]
 ```
 
 The runner creates a synthetic command file in the sandbox's `.claude/commands/<skill-name>.md` containing the skill's description, then runs each query against `claude -p` with stream-JSON output and detects whether the skill (or a Read of its SKILL.md) appears as a tool call. Each query is run `--runs-per-query` times (default 3); `trigger_rate` is the fraction of runs that fired.
 
 A query passes when:
+
 - `should_trigger=true` and `trigger_rate >= --trigger-threshold` (default 0.5)
 - `should_trigger=false` and `trigger_rate < --trigger-threshold`
 
@@ -75,15 +74,17 @@ Most multi-turn workflow skills can be evaluated single-shot if you design the e
 Force the skill into headless mode and pack the prompt with everything Discovery would have surfaced. Grade what comes out: the artifact, its structure, whether it reflects the inputs without inventing.
 
 Use when:
+
 - The deliverable is the artifact (brief, PRD, doc, plan)
 - You can write a complete pre-Discovery prompt
 - You want regression coverage on drafting/format/extraction
 
 ### Pattern B — process discipline (headless + transcript and side-artifact inspection)
 
-Same single-shot mechanics, but the expectations look at *what the skill did internally* — not just the final output. The grader reads the stream-JSON transcript for tool calls, walks side-artifacts (decision logs, addenda, distillates), checks file mtimes, and verifies phase ordering.
+Same single-shot mechanics, but the expectations look at _what the skill did internally_ — not just the final output. The grader reads the stream-JSON transcript for tool calls, walks side-artifacts (decision logs, addenda, distillates), checks file mtimes, and verifies phase ordering.
 
 Use when:
+
 - The skill enforces a protocol (decision log, polish phase, finalize sequence)
 - The skill has read-only intents (Validate must not write)
 - You need to catch "drafting works but the discipline went soft" regressions
@@ -96,14 +97,16 @@ Facilitation arc: vague-input → sharper pushback → user clarifies → better
 
 ## Writing good expectations
 
-The grader's job is easier when expectations are *discriminating* — hard to pass without actually doing the work.
+The grader's job is easier when expectations are _discriminating_ — hard to pass without actually doing the work.
 
 **Weak patterns to avoid:**
+
 - **Filename-only checks** — "brief.md exists" passes for an empty file. Pair with a content check.
 - **Wholly subjective phrasing** — "the brief is high quality" cannot be evaluated. State the property concretely.
 - **Tautologies** — anything that follows from the prompt being understood is not a useful expectation.
 
 **Strong patterns for artifact correctness (Pattern A):**
+
 - Specific facts that should appear ("incorporates at least 2 specific findings from section X")
 - Structural claims a wrong output would fail ("word count between 250 and 1500")
 - Negative assertions ("does not introduce content from unrelated sections")
@@ -111,6 +114,7 @@ The grader's job is easier when expectations are *discriminating* — hard to pa
 - Bounded JSON output ("final assistant message contains a JSON object with intent='create'")
 
 **Strong patterns for process discipline (Pattern B):**
+
 - **Side-artifact existence + content** ("decision-log.md exists AND captures the pricing decision with rejected alternative and rationale")
 - **Transcript tool-call patterns** ("the transcript contains a Skill tool call invoking bmad-editorial-review-prose")
 - **Phase ordering** ("the polish-phase Skill calls occur after the brief body Write and before the final JSON status block")

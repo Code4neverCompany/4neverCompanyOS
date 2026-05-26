@@ -2,7 +2,7 @@
 //!
 //! Stories landing here:
 //!   - 1.7: vault location step (commands: choose_default_vault_location,
-//!          scaffold_vault, write_config)
+//!     scaffold_vault, write_config)
 //!   - 1.8: Anthropic API key step (commands: store_credential, validate_anthropic_key)
 //!   - 1.9: Claude Code OAuth step (commands: launch_claude_auth)
 //!   - 2.1: Antigravity OAuth step (commands: launch_antigravity_auth)

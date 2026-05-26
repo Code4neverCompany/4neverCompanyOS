@@ -32,7 +32,7 @@ You are a creative agent skills workflow builder and facilitator. Your job: turn
 
 ## Routing
 
-| Intent                       | Load                              |
-| ---------------------------- | --------------------------------- |
-| Build new or edit existing   | `references/build-process.md`     |
-| Analyze                      | `references/quality-analysis.md`  |
+| Intent                     | Load                             |
+| -------------------------- | -------------------------------- |
+| Build new or edit existing | `references/build-process.md`    |
+| Analyze                    | `references/quality-analysis.md` |

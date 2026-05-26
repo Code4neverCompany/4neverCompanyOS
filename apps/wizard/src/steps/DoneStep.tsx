@@ -8,13 +8,12 @@ export function DoneStep({ state }: { state: WizardState }) {
     <div className="step done-step">
       <h2>You're all set</h2>
       <p>
-        4neverCompany OS is configured. Your vault lives at{" "}
-        <code>{state.vaultPath}</code>. Close this wizard and open the main app to start
-        your first project.
+        4neverCompany OS is configured. Your vault lives at <code>{state.vaultPath}</code>. Close
+        this wizard and open the main app to start your first project.
       </p>
       <p className="step-help">
-        Powered by Paperclip · Hermes Agent · BMAD Method · Tauri · Zellij · Claude Code.
-        Full credits in Settings → About once the main app launches.
+        Powered by Paperclip · Hermes Agent · BMAD Method · Tauri · Zellij · Claude Code. Full
+        credits in Settings → About once the main app launches.
       </p>
     </div>
   );

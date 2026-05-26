@@ -18,7 +18,7 @@ The defining architectural commitments in this revision:
 
 - **Two fixed persona agents** spawn the moment a project opens and stay persistent: **Dev** (Claude Code, strong Claude model) and **Frontend Designer** (Antigravity CLI / `agy`, strong Gemini model). These are the always-on backbone.
 - **Every other persona is dynamic**: spawned on demand either by Hermes (autonomously, when the workflow calls for it) or by the user (one-click via a featured BMB-powered UI). Each dynamic agent picks a lifecycle — **persistent** (joins the team for the rest of the project) or **ephemeral** (runs one task, returns, disappears).
-- **Inter-agent message bus is liberal, not capped.** Personas talk freely peer-to-peer; Hermes watches for *progress*, not chatter, and only intervenes when conversation is happening *without* forward motion on artifacts, code, or stories.
+- **Inter-agent message bus is liberal, not capped.** Personas talk freely peer-to-peer; Hermes watches for _progress_, not chatter, and only intervenes when conversation is happening _without_ forward motion on artifacts, code, or stories.
 - **Persistent agents live in real attachable terminals**, managed by an embedded Zellij multiplexer that survives desktop-app restarts.
 
 Around that core, the workspace adds an integrated Obsidian vault for local memory, a Supermemory layer for server-side memory, automatic generation and lifecycle management of per-agent configuration files (`agent.md`, `claude.md`, `agy.md`, etc.), and first-class CLI/terminal interop on top of the existing Hermes TUI.
@@ -29,18 +29,20 @@ The product is a curated, opinionated **distribution** — not a new orchestrato
 
 ## 2. Vision & Positioning
 
-**One-line pitch:** *A desktop workspace where Dev and Designer are always at the table, every other role shows up when the work needs it, and Hermes conducts the whole team in real time.*
+**One-line pitch:** _A desktop workspace where Dev and Designer are always at the table, every other role shows up when the work needs it, and Hermes conducts the whole team in real time._
 
 **Category:** AIO (all-in-one) desktop workspace for AI-agent-driven work — sitting between developer agent CLIs (Claude Code, Antigravity CLI, MiniMax) and orchestration platforms (Paperclip), with methodology (BMAD), memory, and skills as first-class artifacts.
 
 **Why now / why bundle:**
+
 - Paperclip provides the org/governance/goal layer for an agent "company."
 - Hermes Agent provides a powerful CLI/TUI agent with skill auto-creation, subagent spawning, multi-platform gateways, and a `hermes-paperclip-adapter`.
 - BMAD provides a proven, artifact-driven methodology that maps cleanly onto Paperclip companies and Hermes skills/subagents.
-- Multiple terminal-native coding agents (Claude Code, Antigravity CLI, MiniMax) now exist, each strongest in different domains — the natural unit of work is *one persona = one agent process = one CLI*.
+- Multiple terminal-native coding agents (Claude Code, Antigravity CLI, MiniMax) now exist, each strongest in different domains — the natural unit of work is _one persona = one agent process = one CLI_.
 - The remaining friction is **installation, configuration, methodology onboarding, persona-to-agent wiring, and memory integration** — that is the gap this product fills.
 
 **What it is not:**
+
 - Not a fork or replacement of Paperclip, Hermes, or BMAD.
 - Not a new model or a new agent runtime.
 - Not a cloud-only SaaS — the default install runs entirely on the user's machine.
@@ -51,7 +53,7 @@ The product is a curated, opinionated **distribution** — not a new orchestrato
 
 ### 3.1 Control Plane — Paperclip
 
-Paperclip is the outer shell that defines *what work exists*: companies, projects, goals, roles, budgets, and the agents assigned to them. The workspace ships a preconfigured Paperclip instance with an embedded Postgres + local file storage, a BMAD-shaped default starter company, the `hermes-paperclip-adapter` preinstalled, and adapter plugins for Claude Code, Antigravity CLI, MiniMax, and other sub-agents.
+Paperclip is the outer shell that defines _what work exists_: companies, projects, goals, roles, budgets, and the agents assigned to them. The workspace ships a preconfigured Paperclip instance with an embedded Postgres + local file storage, a BMAD-shaped default starter company, the `hermes-paperclip-adapter` preinstalled, and adapter plugins for Claude Code, Antigravity CLI, MiniMax, and other sub-agents.
 
 ### 3.2 Conductor — Hermes Agent
 
@@ -59,7 +61,7 @@ Hermes is the conductor sitting above the persona agents. Its responsibilities:
 
 - Interpreting user intent and dispatching the right persona for the job.
 - Spawning, supervising, and tearing down persona-agent processes (both fixed and dynamic).
-- Watching the inter-agent message bus (§3.5) for *progress*, intervening only when conversation is happening without forward motion.
+- Watching the inter-agent message bus (§3.5) for _progress_, intervening only when conversation is happening without forward motion.
 - Curating cross-project memory across Hermes native memory + Obsidian vault + Supermemory.
 - Wearing a persona "hat" itself when a role is needed for a single quick task and spinning up a full external agent would be overkill.
 
@@ -71,10 +73,10 @@ This is the central architectural model.
 
 **Fixed personas (always-on from project start):**
 
-| Persona | Backing CLI | Default Model | Why fixed |
-|---|---|---|---|
-| **Dev** | **Claude Code** | **Claude Opus 4.6 (Thinking)** | Almost every project needs continuous engineering presence |
-| **Frontend Designer** | **Antigravity CLI (`agy`)** | **Gemini 3.1 Pro (High)** | UX/visual work runs in parallel with engineering; benefits from a different model family |
+| Persona               | Backing CLI                 | Default Model                  | Why fixed                                                                                |
+| --------------------- | --------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------- |
+| **Dev**               | **Claude Code**             | **Claude Opus 4.6 (Thinking)** | Almost every project needs continuous engineering presence                               |
+| **Frontend Designer** | **Antigravity CLI (`agy`)** | **Gemini 3.1 Pro (High)**      | UX/visual work runs in parallel with engineering; benefits from a different model family |
 
 Both spawn the instant a project opens, get their own attached terminal in the embedded Zellij multiplex, get their own scoped memory directory in the Obsidian vault, and persist across desktop-app restarts.
 
@@ -108,16 +110,16 @@ BMAD is the default, not the only option. Users who prefer a different methodolo
 
 Agents communicate through two complementary channels:
 
-- **Durable artifact handoff (file-based).** The primary BMAD loop runs through markdown artifacts in the Obsidian vault — PRDs, architecture docs, story files. This is the *async, persistent* lane: a Dev agent finishes Story 07, writes its result, and a QA agent picks it up later. Artifacts are the source of truth and survive every restart.
+- **Durable artifact handoff (file-based).** The primary BMAD loop runs through markdown artifacts in the Obsidian vault — PRDs, architecture docs, story files. This is the _async, persistent_ lane: a Dev agent finishes Story 07, writes its result, and a QA agent picks it up later. Artifacts are the source of truth and survive every restart.
 - **Live message bus (chat-based, liberal).** A pub/sub bus (backed by Paperclip's event system) lets agents talk to each other in real time, peer-to-peer, with no per-message cap. Any agent can post; any agent (or the user) can subscribe. The bus is intentionally expansive — productive collaboration sometimes looks like a lot of chatter.
 
-**Progress-based stall detection (not a turn budget).** Instead of capping messages, Hermes watches for *forward motion*:
+**Progress-based stall detection (not a turn budget).** Instead of capping messages, Hermes watches for _forward motion_:
 
 - Are artifacts in the vault changing? (PRDs updated, story files closing, architecture revisions committed.)
 - Is code being written or modified? (File changes in the project directory.)
 - Are stories transitioning state? (open → in-progress → review → done.)
 
-If chatter is happening *without* progress on those signals for a configurable window (default: a few minutes of bus activity with no artifact/code/status change), Hermes intervenes — summarizing the disagreement, asking the user to arbitrate, or proposing a concrete next step. If progress is happening, the bus stays out of the way no matter how many messages fly.
+If chatter is happening _without_ progress on those signals for a configurable window (default: a few minutes of bus activity with no artifact/code/status change), Hermes intervenes — summarizing the disagreement, asking the user to arbitrate, or proposing a concrete next step. If progress is happening, the bus stays out of the way no matter how many messages fly.
 
 The user is a first-class participant: read every channel, post anywhere, pause/redirect any persona at any time.
 

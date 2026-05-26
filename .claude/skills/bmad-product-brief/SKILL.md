@@ -44,7 +44,12 @@ When invoked headless, do not ask. Complete the intent using what is provided, w
   "decision_log": "{doc_workspace}/.decision-log.md",
   "open_questions": [],
   "external_handoffs": [
-    {"directive": "Confluence upload", "tool": "corp:confluence_upload", "url": "https://confluence.corp/PROD/123", "status": "ok"}
+    {
+      "directive": "Confluence upload",
+      "tool": "corp:confluence_upload",
+      "url": "https://confluence.corp/PROD/123",
+      "status": "ok"
+    }
   ]
 }
 ```
@@ -74,7 +79,7 @@ The workspace persists; stop and resume freely. The opener's philosophy (not in 
 
 - **Right-size to purpose.** A passion project does not need investor-grade rigor. A VC pitch input does. Read the room.
 - **Persistence is real-time.** Once Create intent is confirmed, the workspace (run folder, `brief.md` skeleton with `status: draft`, `.decision-log.md`) exists on disk and the user knows the path.
-- **File roles.** `.decision-log.md` is canonical memory and audit trail — every decision, change, and override (including headless overrides) is recorded there as the conversation unfolds. `addendum.md` preserves user-contributed depth that belongs in a downstream document (PRD, architecture, solution design) or earned a place but does not fit the brief (rejected-alternative rationale, options-considered matrices, parked-roadmap context, technical constraints, in-depth personas, sizing data). Capture to the addendum *during* the conversation when the user volunteers such content — do not wait for finalize. Audit and override information never goes in the addendum.
+- **File roles.** `.decision-log.md` is canonical memory and audit trail — every decision, change, and override (including headless overrides) is recorded there as the conversation unfolds. `addendum.md` preserves user-contributed depth that belongs in a downstream document (PRD, architecture, solution design) or earned a place but does not fit the brief (rejected-alternative rationale, options-considered matrices, parked-roadmap context, technical constraints, in-depth personas, sizing data). Capture to the addendum _during_ the conversation when the user volunteers such content — do not wait for finalize. Audit and override information never goes in the addendum.
 - **Continuity across sessions.** If a prior in-progress draft for this project exists, the user is offered to resume.
 - **Extract, don't ingest.** Source artifacts (provided by the user or discovered during the run — transcripts, brainstorms, research reports, code, web results, prior briefs) enter the parent conversation as relevance-filtered extracts, not loaded wholesale. Subagents do the extraction against the user's stated focus; the parent context stays lean.
 - **Length and coherence.** Aim for 1-2 pages — if it is longer, the detail belongs in the addendum. Structure in service of the product; downstream consumers (PRD workflow, etc.) read this, so coherent shape matters.

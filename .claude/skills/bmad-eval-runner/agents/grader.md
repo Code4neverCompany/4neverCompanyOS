@@ -28,7 +28,6 @@ You receive in your prompt:
 2. **List and inspect artifacts.** Walk `artifacts_dir`. For each expectation, open the files it implicates and read their contents — do not rely on filenames alone. Note file modification times when ordering or read-only behavior matters.
 
 3. **Grade each expectation independently.** For each entry in `expectations`, identify what kind of check it is and gather the right evidence:
-
    - **Side-artifact existence + content** ("decision-log.md exists AND captures decision X") → open the file, read it, check the content matches.
    - **Transcript tool-call patterns** ("transcript contains a Skill call to bmad-editorial-review-prose") → scan the transcript for `tool_use` events with the matching `name` and `input`. Quote the matching event.
    - **Phase ordering** ("polish call occurs after the Write to brief.md and before the final JSON block") → find the line numbers / event indices of each landmark and verify the order.

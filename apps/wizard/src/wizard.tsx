@@ -41,15 +41,9 @@ export function Wizard() {
       <section className="wizard-step">
         {step === "welcome" && <WelcomeStep onNext={goNext} />}
         {step === "vault" && <VaultStep state={state} onNext={goNext} onBack={goBack} />}
-        {step === "anthropic" && (
-          <AnthropicStep state={state} onNext={goNext} onBack={goBack} />
-        )}
-        {step === "claude" && (
-          <ClaudeCodeStep state={state} onNext={goNext} onBack={goBack} />
-        )}
-        {step === "summary" && (
-          <SummaryStep state={state} onNext={goNext} onBack={goBack} />
-        )}
+        {step === "anthropic" && <AnthropicStep state={state} onNext={goNext} onBack={goBack} />}
+        {step === "claude" && <ClaudeCodeStep state={state} onNext={goNext} onBack={goBack} />}
+        {step === "summary" && <SummaryStep state={state} onNext={goNext} onBack={goBack} />}
         {step === "done" && <DoneStep state={state} />}
       </section>
     </main>

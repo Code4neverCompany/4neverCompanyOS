@@ -80,7 +80,7 @@ spikes/                     throwaway exploratory code (gitignored)
    ```powershell
    & 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\Common7\Tools\Launch-VsDevShell.ps1' -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
    ```
-   *(This populates LIB + INCLUDE so Tauri's Rust crates can link.)*
+   _(This populates LIB + INCLUDE so Tauri's Rust crates can link.)_
 5. **Run desktop in dev:**
    ```powershell
    pnpm dev:desktop

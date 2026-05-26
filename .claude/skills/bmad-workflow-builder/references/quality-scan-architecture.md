@@ -20,6 +20,7 @@ If pre-pass JSON files are provided (`workflow-integrity-prepass.json`, `prompt-
 Run the principles file against the skill and surface findings in three buckets:
 
 **Structural integrity** — does what should exist exist, and is it wired correctly?
+
 - Frontmatter follows the description format with quoted trigger phrases; no extra fields
 - `## Overview` and `## On Activation` present and meaningful
 - When SKILL.md references multiple internal files, the Conventions block is stamped (per the principles file's path-conventions section)
@@ -36,6 +37,7 @@ Run the principles file against the skill and surface findings in three buckets:
 - Workflow type claim matches actual structure (Complex Workflow with everything inline → reclassify; Simple Workflow with carved references → either inline back or reclassify)
 
 **Prose craft** — does the SKILL.md and reference prose enable judgment without bloat?
+
 - Overview establishes role, mission, and (where relevant) domain framing, theory of mind, design rationale
 - No re-teaching of LLM-native skills (scoring formulas, calibration tables, adapter proliferation, format-the-output templates)
 - No defensive padding ("make sure", "remember to", "this workflow is designed to")
@@ -44,6 +46,7 @@ Run the principles file against the skill and surface findings in three buckets:
 - Size matches purpose (principles file thresholds); large data tables and reference material lifted out of SKILL.md
 
 **Cohesion** — does the skill hang together as a purposeful whole?
+
 - Description matches what the skill actually does
 - Workflow flows logically — earlier sections produce what later sections consume; no dead-ends, no overlaps
 - **Promises-vs-behavior check** — if the Overview or design rationale states a principle ("we do X before Y"), trace through the workflow and verify the instructions enforce or at minimum don't contradict it. Implicit instructions ("acknowledge what you received") that violate stated principles are the most dangerous misalignment because they look correct on casual review.

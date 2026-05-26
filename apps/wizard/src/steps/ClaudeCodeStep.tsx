@@ -45,15 +45,13 @@ export function ClaudeCodeStep({ onNext, onBack }: Props) {
     <div className="step claude-step">
       <h2>Verify Claude Code is installed</h2>
       <p>
-        The Dev persona spawns a real Claude Code process inside a Zellij pane every time
-        you open a project. This step confirms the <code>claude</code> binary is on your
-        system PATH. The Anthropic key from the previous step will be picked up by Claude
-        Code's standard auth flow automatically.
+        The Dev persona spawns a real Claude Code process inside a Zellij pane every time you open a
+        project. This step confirms the <code>claude</code> binary is on your system PATH. The
+        Anthropic key from the previous step will be picked up by Claude Code's standard auth flow
+        automatically.
       </p>
 
-      {status === "idle" && (
-        <p className="step-help">Click below to check.</p>
-      )}
+      {status === "idle" && <p className="step-help">Click below to check.</p>}
 
       {status === "ok" && version && (
         <p className="success">
@@ -68,11 +66,7 @@ export function ClaudeCodeStep({ onNext, onBack }: Props) {
           <p className="error">{error}</p>
           <p className="step-help">
             If Claude Code isn't installed yet, get it at{" "}
-            <a
-              href="https://docs.anthropic.com/claude-code"
-              target="_blank"
-              rel="noreferrer"
-            >
+            <a href="https://docs.anthropic.com/claude-code" target="_blank" rel="noreferrer">
               docs.anthropic.com/claude-code
             </a>{" "}
             and re-run this check.
@@ -85,11 +79,7 @@ export function ClaudeCodeStep({ onNext, onBack }: Props) {
           Back
         </button>
         <button className="primary" onClick={check} disabled={status === "checking"}>
-          {status === "checking"
-            ? "Checking…"
-            : status === "ok"
-              ? "Re-check"
-              : "Check now"}
+          {status === "checking" ? "Checking…" : status === "ok" ? "Re-check" : "Check now"}
         </button>
       </div>
     </div>

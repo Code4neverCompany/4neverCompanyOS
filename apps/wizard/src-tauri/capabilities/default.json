@@ -3,9 +3,5 @@
   "identifier": "default",
   "description": "First-run wizard default capabilities — file picker + workspace commands.",
   "windows": ["main"],
-  "permissions": [
-    "core:default",
-    "dialog:default",
-    "dialog:allow-open"
-  ]
+  "permissions": ["core:default", "dialog:default", "dialog:allow-open"]
 }

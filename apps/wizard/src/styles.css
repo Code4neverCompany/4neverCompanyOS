@@ -1,7 +1,12 @@
 /* First-run wizard styles. Lean, no UI framework. */
 
 :root {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
   font-size: 15px;
   line-height: 1.5;
   color: #1f2937;
@@ -137,7 +142,9 @@ button {
 
 button {
   cursor: pointer;
-  transition: background-color 0.1s, border-color 0.1s;
+  transition:
+    background-color 0.1s,
+    border-color 0.1s;
 }
 
 button:hover {

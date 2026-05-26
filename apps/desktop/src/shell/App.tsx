@@ -8,13 +8,13 @@ export function App() {
     <main style={{ padding: 32, fontFamily: "system-ui, sans-serif" }}>
       <h1>4neverCompany OS</h1>
       <p>
-        Desktop shell scaffolding. M1 stories will replace this placeholder with
-        the Paperclip-host + workspace-injected panels per Architecture D-13.
+        Desktop shell scaffolding. M1 stories will replace this placeholder with the Paperclip-host
+        + workspace-injected panels per Architecture D-13.
       </p>
       <p>
         <small>
-          Story 1.2 (monorepo scaffolding) complete. Next: Story 1.6 (vault
-          directory layout spec) → M1 stories.
+          Story 1.2 (monorepo scaffolding) complete. Next: Story 1.6 (vault directory layout spec) →
+          M1 stories.
         </small>
       </p>
     </main>

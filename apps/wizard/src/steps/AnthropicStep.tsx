@@ -76,13 +76,12 @@ export function AnthropicStep({ state, onNext, onBack }: Props) {
     <div className="step anthropic-step">
       <h2>Add your Anthropic API key</h2>
       <p>
-        Claude Code (the Dev persona's backing CLI) needs an Anthropic API key. Generate
-        one at{" "}
+        Claude Code (the Dev persona's backing CLI) needs an Anthropic API key. Generate one at{" "}
         <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
           console.anthropic.com/settings/keys
         </a>
-        . The key is stored locally in your OS keychain. It is never sent anywhere by the
-        workspace beyond the one validation call to <code>api.anthropic.com</code> below.
+        . The key is stored locally in your OS keychain. It is never sent anywhere by the workspace
+        beyond the one validation call to <code>api.anthropic.com</code> below.
       </p>
 
       <div className="row">
@@ -115,11 +114,7 @@ export function AnthropicStep({ state, onNext, onBack }: Props) {
             Use already-saved key
           </button>
         )}
-        <button
-          className="primary"
-          onClick={validateAndStore}
-          disabled={status === "validating"}
-        >
+        <button className="primary" onClick={validateAndStore} disabled={status === "validating"}>
           {status === "validating" ? "Validating…" : "Validate and save"}
         </button>
       </div>

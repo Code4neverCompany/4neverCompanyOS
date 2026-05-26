@@ -34,31 +34,31 @@ Check for uncommitted changes. In headless mode, note warnings and proceed. In i
 
 Run instantly, cost zero tokens, produce structured JSON:
 
-| #  | Script                           | Focus                                   | Output File                |
-| -- | -------------------------------- | --------------------------------------- | -------------------------- |
-| S1 | `scripts/scan-path-standards.py` | Path conventions                        | `path-standards-temp.json` |
-| S2 | `scripts/scan-scripts.py`        | Script portability, PEP 723, unit tests | `scripts-temp.json`        |
+| #   | Script                           | Focus                                   | Output File                |
+| --- | -------------------------------- | --------------------------------------- | -------------------------- |
+| S1  | `scripts/scan-path-standards.py` | Path conventions                        | `path-standards-temp.json` |
+| S2  | `scripts/scan-scripts.py`        | Script portability, PEP 723, unit tests | `scripts-temp.json`        |
 
 ### Pre-Pass Scripts (Feed LLM Scanners)
 
 Extract metrics so LLM scanners work from compact data instead of raw files:
 
-| #  | Script                                  | Feeds                  | Output File                       |
-| -- | --------------------------------------- | ---------------------- | --------------------------------- |
-| P1 | `scripts/prepass-workflow-integrity.py` | architecture scanner   | `workflow-integrity-prepass.json` |
-| P2 | `scripts/prepass-prompt-metrics.py`     | architecture scanner   | `prompt-metrics-prepass.json`     |
-| P3 | `scripts/prepass-execution-deps.py`     | determinism scanner    | `execution-deps-prepass.json`     |
+| #   | Script                                  | Feeds                | Output File                       |
+| --- | --------------------------------------- | -------------------- | --------------------------------- |
+| P1  | `scripts/prepass-workflow-integrity.py` | architecture scanner | `workflow-integrity-prepass.json` |
+| P2  | `scripts/prepass-prompt-metrics.py`     | architecture scanner | `prompt-metrics-prepass.json`     |
+| P3  | `scripts/prepass-execution-deps.py`     | determinism scanner  | `execution-deps-prepass.json`     |
 
 ### LLM Scanners (Judgment-Based — Run After Scripts)
 
 Each scanner loads `references/skill-quality-principles.md` and writes a free-form analysis document:
 
-| #  | Scanner                              | Focus                                                                          | Pre-Pass | Output File                  |
-| -- | ------------------------------------ | ------------------------------------------------------------------------------ | -------- | ---------------------------- |
-| L1 | `quality-scan-architecture.md`       | Structural integrity, prose craft, cohesion (was: integrity + craft + cohesion)| Yes (P1, P2) | `architecture-analysis.md`   |
-| L2 | `quality-scan-determinism.md`        | Intelligence placement, parallelization, subagent delegation, script opportunities (was: execution-efficiency + script-opportunities) | Yes (P3) | `determinism-analysis.md`    |
-| L3 | `quality-scan-customization.md`      | customize.toml opportunities and abuse                                         | No       | `customization-analysis.md`  |
-| L4 | `quality-scan-enhancement.md`        | Edge cases, UX gaps, headless potential, facilitative patterns                 | No       | `enhancement-analysis.md`    |
+| #   | Scanner                         | Focus                                                                                                                                 | Pre-Pass     | Output File                 |
+| --- | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------ | --------------------------- |
+| L1  | `quality-scan-architecture.md`  | Structural integrity, prose craft, cohesion (was: integrity + craft + cohesion)                                                       | Yes (P1, P2) | `architecture-analysis.md`  |
+| L2  | `quality-scan-determinism.md`   | Intelligence placement, parallelization, subagent delegation, script opportunities (was: execution-efficiency + script-opportunities) | Yes (P3)     | `determinism-analysis.md`   |
+| L3  | `quality-scan-customization.md` | customize.toml opportunities and abuse                                                                                                | No           | `customization-analysis.md` |
+| L4  | `quality-scan-enhancement.md`   | Edge cases, UX gaps, headless potential, facilitative patterns                                                                        | No           | `enhancement-analysis.md`   |
 
 ## Execution
 
@@ -79,6 +79,7 @@ uv run scripts/prepass-execution-deps.py {skill-path} -o {quality-report-dir}/ex
 After scripts complete, spawn all four LLM scanners as parallel subagents.
 
 Each subagent receives:
+
 - Scanner file to load
 - Skill path: `{skill-path}`
 - Output directory: `{quality-report-dir}`
@@ -96,6 +97,7 @@ Agent(description="Synthesize quality report", subagent_type="report-creator", r
 ```
 
 The report creator:
+
 - Reads all 4 analysis files + prepass JSON
 - Identifies thematic clusters (root-cause synthesis)
 - Writes `report-data.json` with: broken, opportunities, strengths, recommendations, detailed_analysis

@@ -55,6 +55,7 @@ Normally, `greenfield-fullstack` starts with the Analyst persona interrogating a
 Load the Analyst persona by following the BMAD-generated instructions (typically: open `bmad/agents/analyst.md` or run a BMAD-provided command). When the Analyst is active, give it this instruction:
 
 > A complete project brief already exists at `docs/4neverCompany_OS_Brief.md`. Read it in full. Treat it as authoritative on vision, architecture, and scope. Your task is to:
+>
 > 1. Validate it against BMAD's expected brief format and structure.
 > 2. Surface any gaps that would block the PM stage (missing user personas, undefined success metrics, ambiguous scope boundaries).
 > 3. Produce the official BMAD-format brief artifact in the location BMAD expects, drawing all content from the existing brief and only adding what's needed to fill BMAD's required fields.
