@@ -24,12 +24,12 @@ methodology_note: |
 
 ## At a glance
 
-M0 is fully shipped. M1's first batch (1.10–1.14) shipped, plus 1.15 audit-trail and the entire **Story 1.16 (a/b/c/d) — Hermes TUI embedded as a fully bidirectional pane**. Stories 1.17 (NSIS installer), 1.18 (E2E ≤ 10 min), 1.19 (attribution surfaces) close M1.
+M0 is fully shipped. M1's first batch (1.10–1.14) shipped, plus 1.15 audit-trail, the entire **Story 1.16 (a/b/c/d) — Hermes TUI embedded as a fully bidirectional pane**, and **Story 1.17a — NSIS installer + multi-res icon.ico regen**. Story 1.17b (supervisor sidecar bundling) was attempted but hit a `cargo` workspace-lock deadlock in `build.rs` — discarded and **deferred** pending a `--target-dir` refactor. Stories 1.18 (E2E ≤ 10 min) and 1.19 (attribution surfaces) close M1.
 
 | Sprint                                      | State          | Notes                                                                                                                                                                                                                |
 | ------------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **M0 — Foundations**                        | ✅ Done        | Tauri spike + monorepo + CI + LICENSES + pinned-versions all shipped; CI baseline green twice across Win/Mac/Linux × JS+Rust before the GitHub Actions infrastructure incident on 2026-05-26.                        |
-| **M1 — Spawn pipeline + first-run**         | 🟡 In progress | First-batch (wizard auth flow, credential storage, vault-layout, Zellij adapter) shipped; spawn pipeline (1.12–1.14) shipped; restart survival (1.15) shipped; **Hermes embedding fully shipped (1.16a/b/c/d) — Story 1.16 closed**; NSIS installer (1.17), E2E (1.18), attribution (1.19) remain. |
+| **M1 — Spawn pipeline + first-run**         | 🟡 In progress | First-batch (wizard auth flow, credential storage, vault-layout, Zellij adapter) shipped; spawn pipeline (1.12–1.14) shipped; restart survival (1.15) shipped; **Hermes embedding (1.16a/b/c/d) fully shipped + NSIS installer (1.17a) producing `.exe`**; 1.17b (sidecar bundling) deferred to follow-up; 1.18 (E2E) and 1.19 (attribution) remain. |
 | M2 — Frontend Designer + BMad Builder       | ⏸ Not started  | Depends on M1 close-out.                                                                                                                                                                                             |
 | M3 — Sentinel + opt-in cross-project memory | ⏸ Not started  | —                                                                                                                                                                                                                    |
 | M4 — Polish + onboarding                    | ⏸ Not started  | —                                                                                                                                                                                                                    |
@@ -61,14 +61,37 @@ M0 is fully shipped. M1's first batch (1.10–1.14) shipped, plus 1.15 audit-tra
 | 1.15  | Dev persona survives desktop-app restart   | ✅ Done         | (this commit)                   | Audit-trail story; no behavior change. `#[ignore]` manual-verification test + `docs/restart-survival.md`. Code review PASS (HIGH=0).                                                                                                                                   |
 | 1.16  | Hermes TUI embedded as a pane              | ✅ Done         | 1.16a 823b5ff · 1.16b 24645b9 · 1.16c 1e8f043 · 1.16d (this commit) | **All four sub-stories done.** Backend (PTY supervisor + spawn) + display (xterm.js tail) + input (`.pty.in` watcher + `write_persona_pty_in` + `PtyTail.onData`). Story 1.16 is fully complete. 21 c4n-desktop tests pass + 7 supervisor tests + 1 ignored each. |
 | 1.16d | Hermes TUI — bidirectional input           | ✅ Done         | (this commit)                                                       | Supervisor `.pty.in` watcher task + `write_persona_pty_in` Tauri command + `PtyTail.onData` → invoke wiring. ~200 LOC. Code review PASS (HIGH=0, MED=0, LOW=1 pre-existing path-traversal note).                                                                                                                  |
-| 1.17  | Tauri build → Windows .exe with NSIS       | ⏸ Pending       | —                               | Includes the monogram .ico regen we flagged earlier                                                                                                                                                                                                                    |
-| 1.18  | End-to-end scenario test (≤ 10 min)        | ⏸ Pending       | —                               | Depends on 1.16 + 1.17                                                                                                                                                                                                                                                 |
+| 1.17a | NSIS installer + icon.ico regen            | ✅ Done         | 97f4b6f                         | `pnpm tauri build` → `4neverCompany OS_0.0.1_x64-setup.exe` (~2.2 MB). Per-user install, WebView2 auto-bootstrap, multi-res icon from the 4never monogram, `docs/installer.md` written. Verified end-to-end 3m26s on Win 11. |
+| 1.17b | Supervisor sidecar bundling                | ⏸ Deferred      | —                               | First attempt deadlocked: `build.rs` invoked `node` → `cargo build -p c4n-persona-supervisor`, competing for the workspace target-dir lock with the outer `cargo build`. Reset to 97f4b6f. Fix path documented for the redo. |
+| 1.18  | End-to-end scenario test (≤ 10 min)        | ⏸ Pending       | —                               | Depends on 1.16 (done) + 1.17a (done). Installed app still needs the supervisor on PATH until 1.17b lands; smoke test reflects that prerequisite. |
 | 1.19  | In-product attribution surfaces            | ⏸ Pending       | —                               | Settings → About + splash + wizard final + LICENSES.md (the file is already there; the UI surfaces aren't)                                                                                                                                                             |
 
 ## Open blockers
 
 - **GitHub Actions infrastructure incident (2026-05-26 10:57Z, status: investigating)** — silently drops workflow runs. Affects validation of commits 890ef85..b576307. Local validation gates green; CI verdict pending GitHub recovery. Not blocking development; blocking external CI signal.
 - **Tauri auto-regen schema files** (`apps/*/src-tauri/gen/schemas/*.json`) churn on every cargo build and show as modified. Covered by `.gitignore` (`src-tauri/gen/`) but tracked from before the ignore rule landed. `git restore` is the current workaround. Cleanup story: `git rm --cached` all four; one-line follow-up.
+
+## Deferred — Story 1.17b (supervisor sidecar bundling)
+
+**Attempted approach (discarded):** `build.rs` invoked `node scripts/prepare-supervisor-sidecar.mjs`, which ran `cargo build --release -p c4n-persona-supervisor` to produce the sidecar binary. Tauri's `externalBin` then bundled it into the NSIS installer.
+
+**Failure mode:** Cargo holds an exclusive lock on the workspace `target/` directory during a build. When `pnpm tauri build` ran:
+
+1. Outer `cargo build -p c4n-desktop --release` acquired the workspace lock
+2. `build.rs` invoked `node` invoked an INNER `cargo build -p c4n-persona-supervisor`
+3. Inner `cargo` blocked waiting for the lock to release
+4. Outer `cargo` blocked waiting for `build.rs` to return
+5. Deadlock — observed ~110 min idle with 0% CPU on both cargo PIDs
+
+`cargo check` / `clippy` / `test` happened to succeed because the supervisor binary was already built from an earlier run, so the inner cargo was a fast no-op that never contended for the lock.
+
+**Fix path for the redo (Story 1.17b v2):**
+
+- Inner `cargo` invocation in the prep script gets `--target-dir target/sidecar-build/` so it operates on a separate lock file with no contention against the outer workspace lock.
+- Trades ~30s of duplicate dependency compilation for deadlock-free builds — acceptable.
+- Alternative considered: move sidecar prep to Tauri's `beforeBuildCommand` (runs BEFORE cargo, no contention) and remove the build.rs hook entirely; downside is `cargo check / clippy / test` outside Tauri still need a manually-built sidecar. The `--target-dir` approach keeps everything one-command-clean.
+
+**Workaround until 1.17b v2 lands:** installer at 1.17a is functional with the supervisor on `PATH`. `docs/installer.md` documents `cargo install --path crates/persona-supervisor` as the one-time dev setup.
 
 ## Risks
 
