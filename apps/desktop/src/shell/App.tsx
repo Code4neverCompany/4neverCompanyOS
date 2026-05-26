@@ -74,7 +74,10 @@ function TopBar() {
         </span>
       </div>
 
-      {/* Center strip — BMAD PROTOCOL · ACTIVE + time. Per design decision 2026-05-26. */}
+      {/* Center strip — BMAD PROTOCOL status. STANDBY (cyan, not the success-green
+          variant) reflects that no BMAD workflow is actively running yet; the strip
+          becomes ACTIVE once a project is open and a persona spawn has happened.
+          Honest chrome rather than misleading "always active" status. */}
       <div
         style={{
           flex: 1,
@@ -84,7 +87,7 @@ function TopBar() {
           alignItems: "center",
         }}
       >
-        <StatusDot />
+        <StatusDot color="var(--fn-cyan)" />
         <span
           style={{
             fontFamily: "var(--font-mono)",
@@ -93,18 +96,17 @@ function TopBar() {
             letterSpacing: "0.08em",
           }}
         >
-          BMAD PROTOCOL · ACTIVE
+          BMAD PROTOCOL · STANDBY
         </span>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--fg-3)" }}>
           {now}
         </span>
       </div>
 
-      {/* Right meta: persona-status badge (we ship Dev + Designer in 4nCO). */}
+      {/* Right meta: pre-release indicator (the brief locks 2 fixed personas
+          but neither is spawned yet at this milestone). */}
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <Badge color="cyan" dot>
-          2 personas ready
-        </Badge>
+        <Badge color="muted">PRE-RELEASE</Badge>
       </div>
 
       {/* Gold accent line under the bar */}
@@ -186,7 +188,52 @@ function SideRail({
  * Until then, we render a clearly labeled placeholder so the visual
  * baseline looks like the design system while the actual host is plumbed.
  */
+/** Per-rail-item placeholder copy. Each section is a placeholder until the
+ *  story that wires it lands; this keeps drive-by visitors from assuming the
+ *  side rail is functional navigation today. */
+const SLOT_COPY: Record<
+  RailItem,
+  { eyebrow: string; titlePrefix: string; titleAccent: string; body: string; comingIn: string }
+> = {
+  projects: {
+    eyebrow: "Projects · 0 open",
+    titlePrefix: "The Orchestration ",
+    titleAccent: "Grid",
+    body: "Open or create a project; on open, the Dev persona spawns into a Zellij pane.",
+    comingIn: "Story 1.12 — Dev persona spawn on project open",
+  },
+  personas: {
+    eyebrow: "Personas · 2 fixed",
+    titlePrefix: "",
+    titleAccent: "Personas",
+    body: "The Dev persona (Claude Code) and Frontend Designer (Antigravity CLI) are the two ship-time personas. Every other persona is dynamic via the BMad Builder.",
+    comingIn: "Story 2.x — BMad Builder + dynamic persona panel",
+  },
+  vault: {
+    eyebrow: "Vault · ~/.4nevercompanyos",
+    titlePrefix: "",
+    titleAccent: "Vault",
+    body: "Persona definitions, BMAD artifacts, per-project logs, skills, and memory live in the vault directory configured in the first-run wizard.",
+    comingIn: "Story 1.x — Vault browser + reveal-in-Obsidian",
+  },
+  memory: {
+    eyebrow: "Memory",
+    titlePrefix: "",
+    titleAccent: "Memory",
+    body: "Vault-backed memory layer. The Hermes Agent (sibling tool) lives in its own vault; M5 will optionally bridge to Supermemory for cross-project semantic recall.",
+    comingIn: "Story 1.16 — Hermes TUI embedded as a pane",
+  },
+  settings: {
+    eyebrow: "Settings",
+    titlePrefix: "",
+    titleAccent: "Settings",
+    body: "Preferences, account credentials, attribution, license panel, and developer flags.",
+    comingIn: "Story 1.19 — attribution surfaces + Settings → About",
+  },
+};
+
 function MainSlot({ active }: { active: RailItem }) {
+  const copy = SLOT_COPY[active];
   return (
     <main
       style={{
@@ -208,17 +255,7 @@ function MainSlot({ active }: { active: RailItem }) {
         }}
       >
         <div>
-          <Eyebrow>
-            {active === "projects"
-              ? "Projects · 0 open"
-              : active === "personas"
-                ? "Personas · 2 fixed (Dev + Designer)"
-                : active === "vault"
-                  ? "Vault · ~/.4nevercompanyos"
-                  : active === "memory"
-                    ? "Memory · Hermes (sibling)"
-                    : "Settings"}
-          </Eyebrow>
+          <Eyebrow>{copy.eyebrow}</Eyebrow>
           <h1
             style={{
               fontFamily: "var(--font-display)",
@@ -229,19 +266,14 @@ function MainSlot({ active }: { active: RailItem }) {
               margin: "6px 0 0",
             }}
           >
-            {active === "projects" ? (
-              <>
-                The Orchestration <span style={{ color: "var(--fn-gold)" }}>Grid</span>
-              </>
-            ) : (
-              active.charAt(0).toUpperCase() + active.slice(1)
-            )}
+            {copy.titlePrefix}
+            <span style={{ color: "var(--fn-gold)" }}>{copy.titleAccent}</span>
           </h1>
-          <p style={{ color: "var(--fg-3)", fontSize: 13, margin: "4px 0 0" }}>
-            Story 1.12 will replace this placeholder with the Paperclip-host + workspace-injected
-            panels per Architecture D-13.
+          <p style={{ color: "var(--fg-3)", fontSize: 13, margin: "4px 0 0", maxWidth: 640 }}>
+            {copy.body}
           </p>
         </div>
+        <Badge color="warn">PLACEHOLDER</Badge>
       </div>
 
       <HUDFrame
@@ -256,7 +288,7 @@ function MainSlot({ active }: { active: RailItem }) {
       >
         <div className="scanline" />
         <div style={{ textAlign: "center", maxWidth: 560 }}>
-          <Eyebrow color="cyan">D-13 portal slot</Eyebrow>
+          <Eyebrow color="cyan">Not yet implemented</Eyebrow>
           <div
             style={{
               fontFamily: "var(--font-display)",
@@ -267,12 +299,17 @@ function MainSlot({ active }: { active: RailItem }) {
               margin: "8px 0",
             }}
           >
-            Paperclip host mounts here
+            Coming in {copy.comingIn.split(" — ")[0]}
           </div>
-          <p style={{ color: "var(--fg-3)", fontSize: 13, margin: 0 }}>
-            Once Story 1.12 lands, the Paperclip React UI boots inside this slot. Workspace panels
-            (BMad Builder · bus channel · approvals · multi-terminal) project into Paperclip&apos;s
-            named portal slots.
+          <p
+            style={{
+              color: "var(--fg-3)",
+              fontSize: 13,
+              margin: 0,
+              fontFamily: "var(--font-mono)",
+            }}
+          >
+            {copy.comingIn}
           </p>
         </div>
       </HUDFrame>

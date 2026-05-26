@@ -41,12 +41,15 @@ export function AnthropicStep({ state, onNext, onBack }: Props) {
     }
     setStatus("validating");
     try {
+      // 5s client-side timeout so a hung network / proxy doesn't leave the
+      // wizard sitting on "Validating…" forever (audit fix 2026-05-26).
       const resp = await fetch(ANTHROPIC_MODELS_URL, {
         method: "GET",
         headers: {
           "x-api-key": key.trim(),
           "anthropic-version": ANTHROPIC_API_VERSION,
         },
+        signal: AbortSignal.timeout(5000),
       });
       if (resp.status === 401) {
         setStatus("error");
@@ -64,7 +67,11 @@ export function AnthropicStep({ state, onNext, onBack }: Props) {
       onNext({ anthropicAuthenticated: true });
     } catch (e) {
       setStatus("error");
-      setError(`Validation failed: ${String(e)}`);
+      if (e instanceof DOMException && e.name === "TimeoutError") {
+        setError("Validation timed out after 5 seconds. Check your network and try again.");
+      } else {
+        setError(`Validation failed: ${String(e)}`);
+      }
     }
   }
 
@@ -90,47 +97,54 @@ export function AnthropicStep({ state, onNext, onBack }: Props) {
         below.
       </p>
 
-      <div className="row">
-        <Input
-          label="API key"
-          type={reveal ? "text" : "password"}
-          value={key}
-          onChange={(e) => setKey(e.currentTarget.value)}
-          placeholder="sk-ant-…"
-          disabled={status === "validating"}
-          autoComplete="off"
-          spellCheck={false}
-          style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}
-        />
-        <Btn
-          variant="ghost"
-          onClick={() => setReveal((r) => !r)}
-          disabled={status === "validating"}
-        >
-          {reveal ? "Hide" : "Show"}
-        </Btn>
-      </div>
-
-      {status === "valid" && (
-        <div className="alert success">
-          ✓ Key validated against Anthropic and saved to your keychain.
-        </div>
-      )}
-      {status === "error" && error && <div className="alert error">{error}</div>}
-
-      <div className="actions">
-        <Btn variant="ghost" onClick={onBack} disabled={status === "validating"}>
-          ← Back
-        </Btn>
-        {state.anthropicAuthenticated && !key && (
-          <Btn variant="secondary" onClick={continueWithStored}>
-            Use already-saved key →
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void validateAndStore();
+        }}
+      >
+        <div className="row">
+          <Input
+            label="API key"
+            type={reveal ? "text" : "password"}
+            value={key}
+            onChange={(e) => setKey(e.currentTarget.value)}
+            placeholder="sk-ant-…"
+            disabled={status === "validating"}
+            autoComplete="off"
+            spellCheck={false}
+            style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}
+          />
+          <Btn
+            variant="ghost"
+            onClick={() => setReveal((r) => !r)}
+            disabled={status === "validating"}
+          >
+            {reveal ? "Hide" : "Show"}
           </Btn>
+        </div>
+
+        {status === "valid" && (
+          <div className="alert success">
+            ✓ Key validated against Anthropic and saved to your keychain.
+          </div>
         )}
-        <Btn variant="primary" onClick={validateAndStore} disabled={status === "validating"}>
-          {status === "validating" ? "Validating…" : "Validate and save →"}
-        </Btn>
-      </div>
+        {status === "error" && error && <div className="alert error">{error}</div>}
+
+        <div className="actions">
+          <Btn variant="ghost" onClick={onBack} disabled={status === "validating"}>
+            ← Back
+          </Btn>
+          {state.anthropicAuthenticated && !key && (
+            <Btn variant="secondary" onClick={continueWithStored}>
+              Use already-saved key →
+            </Btn>
+          )}
+          <Btn variant="primary" type="submit" disabled={status === "validating"}>
+            {status === "validating" ? "Validating…" : "Validate and save →"}
+          </Btn>
+        </div>
+      </form>
     </HUDFrame>
   );
 }

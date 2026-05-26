@@ -166,6 +166,18 @@ textarea {
   box-shadow: var(--glow-cyan);
 }
 
+/* Respect the user's OS-level reduced-motion preference.
+   The continuous scanline/pulse/flicker animations are decorative HUD chrome —
+   anyone with vestibular sensitivity or motion sickness sensitivity has the
+   right to opt out via system settings. (Audit fix 2026-05-26.) */
+@media (prefers-reduced-motion: reduce) {
+  .scanline::after,
+  .pulse-dot,
+  .flicker {
+    animation: none !important;
+  }
+}
+
 /* Hex-grid backdrop used on the wizard welcome step + LoginScreen-style auth screens. */
 .hex-backdrop {
   position: absolute;

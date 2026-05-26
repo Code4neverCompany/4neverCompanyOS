@@ -74,31 +74,38 @@ export function VaultStep({ state, onNext, onBack }: Props) {
         <span className="chip-code">~/.4nevercompanyos/config.toml</span>.
       </p>
 
-      <div className="row">
-        <Input
-          label="Vault path"
-          type="text"
-          value={path}
-          onChange={(e) => setPath(e.currentTarget.value)}
-          placeholder="C:\Users\you\4nco-vault"
-          disabled={scaffolding}
-          style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}
-        />
-        <Btn variant="secondary" onClick={browse} disabled={scaffolding}>
-          Browse…
-        </Btn>
-      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void confirm();
+        }}
+      >
+        <div className="row">
+          <Input
+            label="Vault path"
+            type="text"
+            value={path}
+            onChange={(e) => setPath(e.currentTarget.value)}
+            placeholder="C:\Users\you\4nco-vault"
+            disabled={scaffolding}
+            style={{ fontFamily: "var(--font-mono)", fontSize: 13 }}
+          />
+          <Btn variant="secondary" onClick={browse} disabled={scaffolding}>
+            Browse…
+          </Btn>
+        </div>
 
-      {error && <div className="alert error">{error}</div>}
+        {error && <div className="alert error">{error}</div>}
 
-      <div className="actions">
-        <Btn variant="ghost" onClick={onBack} disabled={scaffolding}>
-          ← Back
-        </Btn>
-        <Btn variant="primary" onClick={confirm} disabled={scaffolding}>
-          {scaffolding ? "Creating vault…" : "Use this location →"}
-        </Btn>
-      </div>
+        <div className="actions">
+          <Btn variant="ghost" onClick={onBack} disabled={scaffolding}>
+            ← Back
+          </Btn>
+          <Btn variant="primary" type="submit" disabled={scaffolding}>
+            {scaffolding ? "Creating vault…" : "Use this location →"}
+          </Btn>
+        </div>
+      </form>
     </HUDFrame>
   );
 }
