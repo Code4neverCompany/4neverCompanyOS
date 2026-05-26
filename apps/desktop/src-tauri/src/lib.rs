@@ -8,6 +8,9 @@
 //! Story 1.12 adds the project-open + Dev persona spawn pipeline.
 //! Story 1.13 adds claude.md projection from the bundled Dev persona.
 //! Story 1.16b adds Hermes spawn alongside Dev (second Zellij session).
+//! Story 1.16c adds the `tail_persona_pty` Channel command + the
+//! `PtyTailRegistry` shared state so the embedded xterm.js views can
+//! stream the supervisor's PTY tap file.
 
 mod commands;
 mod ipc;
@@ -19,6 +22,11 @@ pub fn run() {
         // Story 1.12: the Projects view uses the dialog plugin to pick a
         // project directory from the frontend (`@tauri-apps/plugin-dialog`).
         .plugin(tauri_plugin_dialog::init())
+        // Story 1.16c: shared per-persona stop flags for `tail_persona_pty`.
+        // One registry for the whole app; `tail_persona_pty` dedupes
+        // per persona_id so React's StrictMode double-mounts don't leak
+        // tasks.
+        .manage(commands::PtyTailRegistry::default())
         .invoke_handler(tauri::generate_handler![
             commands::ping,
             commands::open_project,
@@ -37,6 +45,11 @@ pub fn run() {
             commands::spawn_hermes,
             commands::hermes_status,
             commands::kill_hermes,
+            // Story 1.16c: tap-file tail streaming for the embedded
+            // xterm.js views (Dev terminal in ProjectsView, Hermes
+            // terminal in MemoryView).
+            commands::tail_persona_pty,
+            commands::stop_persona_pty_tail,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

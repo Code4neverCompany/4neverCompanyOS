@@ -12,6 +12,9 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "@c4n/ui-tokens/styles";
+// Story 1.16c: xterm.js stylesheet is loaded once at app entry so all
+// PtyTail instances in the shell share the same .xterm class rules.
+import "@xterm/xterm/css/xterm.css";
 import "./styles.css";
 import { App } from "./shell/App";
 

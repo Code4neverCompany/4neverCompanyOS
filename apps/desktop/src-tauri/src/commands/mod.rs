@@ -8,7 +8,11 @@ use c4n_zellij_adapter::{self as zellij, SpawnPaneConfig};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex as StdMutex};
 use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::ipc::Channel;
+use tauri::State;
 
 /// Bundled Dev-persona markdown, sourced from `@c4n/persona-sync` so the
 /// single canonical definition lives in the workspace package. Embedded
@@ -627,9 +631,293 @@ pub fn kill_hermes(project_id: String) -> Result<(), String> {
     handle.kill().map_err(|e| format!("kill hermes: {e}"))
 }
 
+// ────────────────────────────────────────────────────────────────────
+// Story 1.16c — Tail `.pty.raw` for the xterm.js consumer in the webview
+// ────────────────────────────────────────────────────────────────────
+//
+// Architecture:
+//
+//   supervisor (in Zellij session) → writes <vault>/personas/<id>/log/<date>.pty.raw
+//                                    (append-only; raw PTY bytes incl. ANSI escapes)
+//                                                  │
+//                                                  ▼
+//   tail_persona_pty (this command) reads the file from `position` forward,
+//   sends new bytes via a Tauri Channel<Vec<u8>>, sleeps 80ms, repeats.
+//                                                  │
+//                                                  ▼
+//   PtyTail.ts (frontend) feeds bytes into xterm.js — full-fidelity TUI display
+//
+// The polling cadence (80ms) is the perceived-latency vs CPU trade-off:
+// 80ms ≈ 12 reads/sec — fast enough that TUI cursor movement still feels
+// snappy, slow enough that idle taps cost nothing measurable. Note from
+// `notify` would be lower-latency but adds a watcher per persona; polling
+// scales linearly with active personas (~2 — Dev + Hermes) so the simpler
+// approach wins for M1.
+//
+// Cross-day rotation: the supervisor opens the per-day tap file ONCE at
+// `supervise()` start and keeps writing to it across midnight (its file
+// handle is bound to the original date). `find_latest_pty_raw` picks the
+// most-recently-modified `*.pty.raw` in the persona's log dir so we always
+// follow the file the supervisor is actually appending to, regardless of
+// what today's date is now vs at supervisor start.
+//
+// Read-only: 1.16c ships display only. Input forwarding (`.pty.in` write
+// path + supervisor watcher) is split to 1.16d so a regression in the
+// input plumbing doesn't poison the display layer.
+
+/// Maps `persona_id → stop flag` so we can cancel a running tail task
+/// from a separate command (`stop_persona_pty_tail`) on view unmount.
+/// Registered as Tauri State in `lib.rs` so all commands share one
+/// registry across the app's lifetime.
+#[derive(Default)]
+pub struct PtyTailRegistry {
+    handles: StdMutex<HashMap<String, Arc<AtomicBool>>>,
+}
+
+/// How often the tail task polls the tap file for new bytes. Picked to
+/// balance perceived latency (a TUI cursor blink at ~500ms feels jerky
+/// at >150ms poll; 80ms feels live) against idle CPU.
+const PTY_TAIL_POLL_MS: u64 = 80;
+
+/// Cap the first-read on attach so we don't load a multi-hour
+/// `.pty.raw` (could be 100MB+) into memory + Channel transit. xterm.js
+/// only renders ~10k scrollback lines anyway, so anything older is
+/// noise from the UI's perspective. Subsequent polls deliver real-time
+/// bytes incrementally so this cap never bites in steady state.
+///
+/// Sanity-window: ~80 cols × 10k lines × ~2 bytes/char (ANSI inflates
+/// the byte count) ≈ 1.6MB. 256KB sacrifices a few screens of scrollback
+/// on first attach for a tighter memory bound; everything older is on
+/// disk in the tap file if a future story wants to mine it.
+const PTY_TAIL_INITIAL_CAP_BYTES: u64 = 256 * 1024;
+
+// Compile-time guardrail against bumping the cap past sanity bounds.
+// Runtime asserts on consts trip clippy's `assertions_on_constants` lint,
+// so use a `const _` block — evaluated at compile time, no test needed.
+const _PTY_TAIL_CAP_LOWER_BOUND: () = {
+    assert!(
+        PTY_TAIL_INITIAL_CAP_BYTES >= 64 * 1024,
+        "initial cap too small — TUIs need at least ~one screen of context"
+    );
+};
+const _PTY_TAIL_CAP_UPPER_BOUND: () = {
+    assert!(
+        PTY_TAIL_INITIAL_CAP_BYTES <= 8 * 1024 * 1024,
+        "initial cap too large — defeats the OOM-guard purpose"
+    );
+};
+
+/// Vault-relative path that the supervisor (Story 1.16a) appends to.
+///
+/// We can't call `c4n_persona_supervisor::pty_raw_file_path` directly
+/// here because that helper bakes in TODAY's date — but the supervisor
+/// uses the date at its OWN start. Across midnight those disagree.
+/// `find_latest_pty_raw` resolves the actual file by mtime.
+fn find_latest_pty_raw(vault: &Path, persona_id: &str) -> std::io::Result<Option<PathBuf>> {
+    let dir = vault.join("personas").join(persona_id).join("log");
+    if !dir.exists() {
+        return Ok(None);
+    }
+    let mut newest: Option<(std::time::SystemTime, PathBuf)> = None;
+    for entry in std::fs::read_dir(&dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        // Match files whose name ends in `.pty.raw` (not just `.raw`).
+        let is_pty_raw = path
+            .file_name()
+            .and_then(|s| s.to_str())
+            .is_some_and(|n| n.ends_with(".pty.raw"));
+        if !is_pty_raw {
+            continue;
+        }
+        let modified = entry.metadata()?.modified()?;
+        if newest.as_ref().is_none_or(|(t, _)| modified > *t) {
+            newest = Some((modified, path));
+        }
+    }
+    Ok(newest.map(|(_, p)| p))
+}
+
+/// Start tailing the supervisor's `.pty.raw` file for the given persona.
+/// New bytes flow into the provided `on_chunk` Tauri Channel. Returns
+/// immediately; the actual tail runs on a background tokio task.
+///
+/// Calling this with a `persona_id` that already has an active tail
+/// cancels the old one first (defensive against React's StrictMode +
+/// hot-reload double-mount, which would otherwise leak tail tasks).
+///
+/// The task exits when:
+///   - `stop_persona_pty_tail(persona_id)` is called
+///   - A subsequent `tail_persona_pty(persona_id, ...)` replaces it
+///   - The Channel send fails (frontend dropped it)
+///   - The process exits
+#[tauri::command]
+pub async fn tail_persona_pty(
+    persona_id: String,
+    on_chunk: Channel<Vec<u8>>,
+    registry: State<'_, PtyTailRegistry>,
+) -> Result<(), String> {
+    // Cancel any existing tail for this persona FIRST so we don't
+    // double-stream while two tasks race on the same channel.
+    {
+        let mut handles = registry
+            .handles
+            .lock()
+            .map_err(|e| format!("registry lock poisoned: {e}"))?;
+        if let Some(flag) = handles.remove(&persona_id) {
+            flag.store(true, Ordering::SeqCst);
+        }
+    }
+
+    let workspace = read_workspace_config()?;
+    let vault = PathBuf::from(workspace.vault_path);
+
+    let stop_flag = Arc::new(AtomicBool::new(false));
+    {
+        let mut handles = registry
+            .handles
+            .lock()
+            .map_err(|e| format!("registry lock poisoned: {e}"))?;
+        handles.insert(persona_id.clone(), stop_flag.clone());
+    }
+
+    let persona_id_task = persona_id.clone();
+    tokio::spawn(async move {
+        let mut position: u64 = 0;
+        let mut current_file_path: Option<PathBuf> = None;
+        let mut first_read_for_file = true;
+        let poll = std::time::Duration::from_millis(PTY_TAIL_POLL_MS);
+
+        loop {
+            if stop_flag.load(Ordering::SeqCst) {
+                tracing::debug!(
+                    "tail_persona_pty: stop flag set for {}, exiting",
+                    persona_id_task
+                );
+                break;
+            }
+
+            match find_latest_pty_raw(&vault, &persona_id_task) {
+                Ok(Some(path)) => {
+                    // Reset position when the supervisor rotates to a new
+                    // day's file (cross-midnight) or when we first attach.
+                    if current_file_path.as_ref() != Some(&path) {
+                        position = 0;
+                        current_file_path = Some(path.clone());
+                        first_read_for_file = true;
+                    }
+
+                    if let Ok(meta) = std::fs::metadata(&path) {
+                        let size = meta.len();
+                        if size > position {
+                            // First read for this file: cap the catch-up
+                            // chunk so an hours-long .pty.raw doesn't
+                            // allocate hundreds of MB + JSON-encode them
+                            // through the Channel. Skip past everything
+                            // older than the cap; xterm.js only renders
+                            // ~10k scrollback lines anyway so older bytes
+                            // would just be dropped on render side.
+                            let take_start = if first_read_for_file
+                                && size - position > PTY_TAIL_INITIAL_CAP_BYTES
+                            {
+                                let skipped = size - position - PTY_TAIL_INITIAL_CAP_BYTES;
+                                position += skipped;
+                                tracing::debug!(
+                                    "tail_persona_pty: skipping {} stale bytes for {}",
+                                    skipped,
+                                    persona_id_task
+                                );
+                                position
+                            } else {
+                                position
+                            };
+                            first_read_for_file = false;
+
+                            let take = size - take_start;
+                            // Seek + bounded read so we never block on
+                            // partially-written data past EOF.
+                            use std::io::{Read, Seek, SeekFrom};
+                            match std::fs::File::open(&path) {
+                                Ok(mut f) => {
+                                    if f.seek(SeekFrom::Start(take_start)).is_ok() {
+                                        let mut buf = Vec::with_capacity(take as usize);
+                                        let read_res = f.take(take).read_to_end(&mut buf);
+                                        if read_res.is_ok() && !buf.is_empty() {
+                                            position += buf.len() as u64;
+                                            if on_chunk.send(buf).is_err() {
+                                                tracing::debug!(
+                                                    "tail_persona_pty: channel closed for {}",
+                                                    persona_id_task
+                                                );
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "tail_persona_pty: open failed for {}: {e}",
+                                        path.display()
+                                    );
+                                }
+                            }
+                        } else if size < position {
+                            // File was truncated under our feet (rare —
+                            // shouldn't happen with append-only writes,
+                            // but be defensive against external rm + recreate).
+                            position = 0;
+                            first_read_for_file = true;
+                        }
+                    }
+                }
+                Ok(None) => {
+                    // Tap file not yet created — supervisor may not have
+                    // produced output yet. Quiet wait.
+                }
+                Err(e) => {
+                    tracing::warn!("tail_persona_pty: dir scan error for {persona_id_task}: {e}");
+                }
+            }
+
+            tokio::time::sleep(poll).await;
+        }
+    });
+
+    Ok(())
+}
+
+/// Cancel a running `tail_persona_pty` for the given persona. Safe to
+/// call when no tail is active (it's a no-op).
+#[tauri::command]
+pub fn stop_persona_pty_tail(
+    persona_id: String,
+    registry: State<'_, PtyTailRegistry>,
+) -> Result<(), String> {
+    let mut handles = registry
+        .handles
+        .lock()
+        .map_err(|e| format!("registry lock poisoned: {e}"))?;
+    if let Some(flag) = handles.remove(&persona_id) {
+        flag.store(true, Ordering::SeqCst);
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Serializes tests that mutate process-global env vars. Rust 1.86+
+    /// marks `env::set_var` unsafe because it's not thread-safe — when
+    /// two tests touch the same var in parallel, one's set can overwrite
+    /// the other's read window and the assertion-pair race becomes
+    /// observable (intermittent CI failures like the one Story 1.16c's
+    /// review caught). Acquiring this mutex first makes those tests
+    /// effectively serial while leaving the rest of the suite parallel.
+    ///
+    /// Mutex (vs RwLock) because every env-touching test both writes and
+    /// reads — there's no read-mostly path to optimize for.
+    static ENV_VAR_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     #[test]
     fn project_id_is_deterministic() {
@@ -729,15 +1017,13 @@ mod tests {
 
     #[test]
     fn find_supervisor_binary_uses_env_override_when_set() {
-        // Note: env var manipulation in tests is process-global and not
-        // hygienic across parallel tests — guard with a unique value so
-        // any concurrent test that reads the var sees a deterministic
-        // result regardless of order.
+        // Serialize against other env-touching tests — see ENV_VAR_TEST_LOCK
+        // doc for why this is needed (Rust 1.86+ unsafe set_var + parallel
+        // harness = observable races).
+        let _guard = ENV_VAR_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let key = SUPERVISOR_BIN_ENV;
         let original = std::env::var(key).ok();
-        // Safety: env reads happen on background threads (e.g., test
-        // harness). For a single test that immediately reads, set/unset
-        // pair is well-defined.
+        // Safety: lock-held + set/restore pair; no other thread races.
         unsafe {
             std::env::set_var(key, "/custom/path/c4n-persona-supervisor");
         }
@@ -755,6 +1041,7 @@ mod tests {
 
     #[test]
     fn find_supervisor_binary_falls_back_to_default_name() {
+        let _guard = ENV_VAR_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let key = SUPERVISOR_BIN_ENV;
         let original = std::env::var(key).ok();
         unsafe {
@@ -887,6 +1174,7 @@ mod tests {
 
     #[test]
     fn find_hermes_binary_uses_env_override_when_set() {
+        let _guard = ENV_VAR_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let key = HERMES_BIN_ENV;
         let original = std::env::var(key).ok();
         unsafe {
@@ -903,6 +1191,7 @@ mod tests {
 
     #[test]
     fn find_hermes_binary_falls_back_to_default_name() {
+        let _guard = ENV_VAR_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let key = HERMES_BIN_ENV;
         let original = std::env::var(key).ok();
         unsafe {
@@ -914,5 +1203,105 @@ mod tests {
                 std::env::set_var(key, v);
             }
         }
+    }
+
+    // ── Story 1.16c — pty.raw tail discovery + registry ─────────────
+
+    #[test]
+    fn find_latest_pty_raw_returns_none_when_dir_missing() {
+        // If the persona has never produced output, the log dir doesn't
+        // exist yet. The tail task must NOT error — it should keep
+        // polling so it can attach when the supervisor first writes.
+        let tmp = std::env::temp_dir().join(format!("c4n-tail-none-{}", std::process::id()));
+        // Don't create the dir.
+        let result = find_latest_pty_raw(&tmp, "ghost-persona").unwrap();
+        assert!(result.is_none(), "expected None for missing dir");
+    }
+
+    #[test]
+    fn find_latest_pty_raw_picks_newest_when_multiple_files() {
+        // Cross-day rotation: the supervisor that started yesterday
+        // appends to yesterday's file; today the user mounts the
+        // MemoryView and we should follow the file that's CURRENTLY
+        // being written (= most recently modified), not whatever
+        // today's date suggests.
+        let tmp = std::env::temp_dir().join(format!("c4n-tail-pick-{}", std::process::id()));
+        let log_dir = tmp.join("personas").join("dev").join("log");
+        std::fs::create_dir_all(&log_dir).unwrap();
+
+        let older = log_dir.join("2026-05-25.pty.raw");
+        let newer = log_dir.join("2026-05-26.pty.raw");
+        let unrelated = log_dir.join("2026-05-26.jsonl");
+
+        std::fs::write(&older, b"old").unwrap();
+        // Ensure mtime ordering even on filesystems with low timestamp
+        // granularity by sleeping briefly between writes.
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        std::fs::write(&newer, b"new").unwrap();
+        std::fs::write(&unrelated, b"unrelated").unwrap();
+
+        let picked = find_latest_pty_raw(&tmp, "dev").unwrap().unwrap();
+        assert_eq!(
+            picked, newer,
+            ".jsonl must be ignored; newest .pty.raw must win"
+        );
+
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn find_latest_pty_raw_ignores_non_pty_raw_extensions() {
+        // We MUST match `*.pty.raw` not just `*.raw`. If a future story
+        // adds e.g. `.snapshot.raw` files in the log dir, those must
+        // not be picked up as candidates.
+        let tmp = std::env::temp_dir().join(format!("c4n-tail-ext-{}", std::process::id()));
+        let log_dir = tmp.join("personas").join("hermes").join("log");
+        std::fs::create_dir_all(&log_dir).unwrap();
+
+        let decoy = log_dir.join("2026-05-26.snapshot.raw");
+        std::fs::write(&decoy, b"decoy").unwrap();
+        // No .pty.raw — must return None despite the .raw file.
+
+        let picked = find_latest_pty_raw(&tmp, "hermes").unwrap();
+        assert!(picked.is_none(), "non-pty.raw .raw files must be ignored");
+
+        std::fs::remove_dir_all(&tmp).ok();
+    }
+
+    #[test]
+    fn pty_tail_registry_dedupes_per_persona() {
+        // Inserting a fresh handle for the same persona must replace
+        // the prior one (and the prior task's stop flag should be set
+        // so it exits). We don't run the actual tail task here — just
+        // verify the registry behavior directly.
+        let reg = PtyTailRegistry::default();
+        let first = Arc::new(AtomicBool::new(false));
+        let second = Arc::new(AtomicBool::new(false));
+
+        // Insert first.
+        {
+            let mut h = reg.handles.lock().unwrap();
+            h.insert("dev".to_string(), first.clone());
+        }
+        assert!(!first.load(Ordering::SeqCst));
+
+        // Simulate what tail_persona_pty does at the top: cancel any
+        // existing tail before installing the new one.
+        {
+            let mut h = reg.handles.lock().unwrap();
+            if let Some(flag) = h.remove("dev") {
+                flag.store(true, Ordering::SeqCst);
+            }
+            h.insert("dev".to_string(), second.clone());
+        }
+
+        assert!(
+            first.load(Ordering::SeqCst),
+            "first stop flag should be set after dedupe"
+        );
+        assert!(
+            !second.load(Ordering::SeqCst),
+            "second stop flag should still be clear"
+        );
     }
 }

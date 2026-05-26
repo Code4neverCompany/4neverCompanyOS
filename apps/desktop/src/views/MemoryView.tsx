@@ -1,29 +1,26 @@
-// Projects view — Story 1.12 acceptance criteria:
-//   "When I open or create a project in the desktop shell, within 5
-//    seconds a Claude Code process is running inside a Zellij pane …"
+// Memory view — Story 1.16 acceptance criteria:
+//   "Hermes' TUI is visible alongside the Dev pane in the desktop UI"
 //
-// This component is the desktop shell's project-open surface. It maps the
-// Rust command surface (open_project / current_project / close_active_project
-// / spawn_dev_persona / dev_persona_status / zellij_available) to a UI that
-// walks the user through:
+// This is the Hermes-side counterpart to ProjectsView. Layout mirrors
+// the ProjectsView Dev panel for visual consistency:
 //
-//   1. No project open — primary "Open project" CTA that triggers the
-//      Tauri dialog plugin's directory picker.
-//   2. Project open, Dev not yet spawned — show project info card + a
-//      primary "Spawn Dev persona" CTA.
+//   1. No project open — gentle empty state pointing the user back to
+//      Projects (Hermes is per-project, so it needs a project context).
+//   2. Project open, Hermes not yet spawned — status panel + "Spawn
+//      Hermes" CTA. Mirror of the DevPersonaPanel "not-running" state.
 //   3. Spawning — disabled CTA with progress label.
-//   4. Running — green-dot status + session name + a hint that the actual
-//      Zellij pane is in its own native terminal window (Story 1.12a
-//      scope; embedded-terminal in webview comes in 1.14/1.16).
-//   5. Zellij missing — install instructions + retry button.
+//   4. Running — green-dot status badge + embedded xterm.js terminal
+//      that tails `<vault>/personas/hermes/log/<date>.pty.raw`. (1.16c
+//      ships display-only; input via `zellij attach` until 1.16d adds
+//      bidirectional `.pty.in` plumbing.)
+//   5. Zellij missing — same install hint as ProjectsView.
 //
-// Status polls every 3s while a project is open so external `zellij kill`
-// or session-crash is reflected without requiring user action. The polling
-// is best-effort; transient errors don't surface as toast spam (we only
-// show the latest error).
+// The terminal lives in a HUDFrame so it integrates visually with the
+// rest of the 4never shell. A PtyTail instance is created when the
+// running state mounts and disposed on unmount; React's StrictMode
+// double-mount is handled by the Rust-side dedupe in `tail_persona_pty`.
 
 import { invoke } from "@tauri-apps/api/core";
-import { open as openDialog } from "@tauri-apps/plugin-dialog";
 import { useEffect, useRef, useState } from "react";
 import { Badge, Btn, Eyebrow, HUDFrame, StatusDot } from "@c4n/ui-tokens";
 import { PtyTail } from "../lib/PtyTail";
@@ -35,21 +32,21 @@ interface ProjectInfo {
   opened_at: number;
 }
 
-type DevPersonaStatus =
+type HermesStatusValue =
   | { state: "zellij-missing" }
   | { state: "not-running"; session_name: string }
   | { state: "running"; session_name: string };
 
 const STATUS_POLL_MS = 3000;
 
-export function ProjectsView() {
+export function MemoryView() {
   const [project, setProject] = useState<ProjectInfo | null>(null);
-  const [status, setStatus] = useState<DevPersonaStatus | null>(null);
-  const [busy, setBusy] = useState<null | "opening" | "spawning" | "closing">(null);
+  const [status, setStatus] = useState<HermesStatusValue | null>(null);
+  const [busy, setBusy] = useState<null | "spawning" | "killing">(null);
   const [error, setError] = useState<string | null>(null);
   const [bootstrapped, setBootstrapped] = useState(false);
 
-  // Load the active project on mount.
+  // Load active project on mount.
   useEffect(() => {
     invoke<ProjectInfo | null>("current_project")
       .then(setProject)
@@ -57,7 +54,7 @@ export function ProjectsView() {
       .finally(() => setBootstrapped(true));
   }, []);
 
-  // Poll Dev persona status whenever a project is open.
+  // Poll Hermes status while a project is open.
   useEffect(() => {
     if (!project) {
       setStatus(null);
@@ -65,9 +62,9 @@ export function ProjectsView() {
     }
     let alive = true;
     const refresh = () => {
-      invoke<DevPersonaStatus>("dev_persona_status", { projectId: project.id })
+      invoke<HermesStatusValue>("hermes_status", { projectId: project.id })
         .then((s) => alive && setStatus(s))
-        .catch((e) => alive && setError(`Status poll failed: ${String(e)}`));
+        .catch((e) => alive && setError(`Hermes status poll failed: ${String(e)}`));
     };
     refresh();
     const interval = window.setInterval(refresh, STATUS_POLL_MS);
@@ -77,32 +74,12 @@ export function ProjectsView() {
     };
   }, [project]);
 
-  async function pickAndOpen() {
-    setError(null);
-    setBusy("opening");
-    try {
-      const picked = await openDialog({
-        directory: true,
-        multiple: false,
-        title: "Open project folder",
-      });
-      if (typeof picked === "string") {
-        const info = await invoke<ProjectInfo>("open_project", { path: picked });
-        setProject(info);
-      }
-    } catch (e) {
-      setError(String(e));
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function spawnDev() {
+  async function spawnHermes() {
     if (!project) return;
     setError(null);
     setBusy("spawning");
     try {
-      const result = await invoke<DevPersonaStatus>("spawn_dev_persona", {
+      const result = await invoke<HermesStatusValue>("spawn_hermes", {
         projectId: project.id,
       });
       setStatus(result);
@@ -113,13 +90,17 @@ export function ProjectsView() {
     }
   }
 
-  async function closeProject() {
+  async function killHermes() {
+    if (!project) return;
     setError(null);
-    setBusy("closing");
+    setBusy("killing");
     try {
-      await invoke<void>("close_active_project");
-      setProject(null);
-      setStatus(null);
+      await invoke<void>("kill_hermes", { projectId: project.id });
+      // Optimistically flip to not-running; the next poll will confirm.
+      setStatus({
+        state: "not-running",
+        session_name: status?.state !== "zellij-missing" ? status?.session_name ?? "" : "",
+      });
     } catch (e) {
       setError(String(e));
     } finally {
@@ -127,9 +108,16 @@ export function ProjectsView() {
     }
   }
 
+  function refreshStatus() {
+    if (!project) return;
+    invoke<HermesStatusValue>("hermes_status", { projectId: project.id })
+      .then(setStatus)
+      .catch((e) => setError(`Hermes status poll failed: ${String(e)}`));
+  }
+
   if (!bootstrapped) {
     return (
-      <ViewShell eyebrow="Projects" title="The Orchestration" titleAccent="Grid">
+      <ViewShell eyebrow="Memory" title="The Hermes" titleAccent="Cortex">
         <HUDFrame style={{ padding: 32, display: "grid", placeItems: "center" }}>
           <Eyebrow color="muted">Reading workspace state…</Eyebrow>
         </HUDFrame>
@@ -137,33 +125,27 @@ export function ProjectsView() {
     );
   }
 
-  const eyebrowText = project ? `Projects · ${project.name}` : "Projects · 0 open";
+  const eyebrowText = project ? `Memory · ${project.name}` : "Memory · no project";
 
   return (
-    <ViewShell eyebrow={eyebrowText} title="The Orchestration" titleAccent="Grid">
+    <ViewShell eyebrow={eyebrowText} title="The Hermes" titleAccent="Cortex">
       {error && <ErrorAlert text={error} onDismiss={() => setError(null)} />}
 
-      {!project && <EmptyState onOpen={pickAndOpen} opening={busy === "opening"} />}
+      {!project && <NoProjectState />}
 
       {project && (
         <>
-          <ProjectCard project={project} onClose={closeProject} closing={busy === "closing"} />
-          <DevPersonaPanel
+          <HermesPanel
+            project={project}
             status={status}
-            spawning={busy === "spawning"}
-            onSpawn={spawnDev}
-            onRefresh={() => {
-              if (!project) return;
-              invoke<DevPersonaStatus>("dev_persona_status", { projectId: project.id })
-                .then(setStatus)
-                .catch((e) => setError(`Status poll failed: ${String(e)}`));
-            }}
+            busy={busy}
+            onSpawn={spawnHermes}
+            onKill={killHermes}
+            onRefresh={refreshStatus}
           />
-          {/* Story 1.16c: embedded xterm.js terminal that tails the
-              supervisor's PTY tap file for the Dev persona. Mounts only
-              when Dev is running; `key={project.id}` forces a remount
-              on project switch so stale state doesn't leak. */}
-          {status?.state === "running" && <DevTerminalEmbed key={project.id} />}
+          {status?.state === "running" && (
+            <HermesTerminalEmbed key={project.id} />
+          )}
         </>
       )}
     </ViewShell>
@@ -171,9 +153,9 @@ export function ProjectsView() {
 }
 
 // ────────────────────────────────────────────────────────────────────
-// View shell — matches the header pattern App.tsx's MainSlot uses for
-// the other rail items so swapping in/out of this view feels seamless.
-
+// View shell — same shape as ProjectsView so swapping rail items feels
+// seamless. (A future refactor may extract this into a shared `views/
+// ViewShell` once a third view materializes — Vault in Story 1.x.)
 function ViewShell({
   eyebrow,
   title,
@@ -195,6 +177,7 @@ function ViewShell({
         display: "flex",
         flexDirection: "column",
         gap: 18,
+        minHeight: 0,
       }}
     >
       <div>
@@ -219,7 +202,7 @@ function ViewShell({
 
 // ────────────────────────────────────────────────────────────────────
 
-function EmptyState({ onOpen, opening }: { onOpen: () => void; opening: boolean }) {
+function NoProjectState() {
   return (
     <HUDFrame
       style={{
@@ -244,22 +227,12 @@ function EmptyState({ onOpen, opening }: { onOpen: () => void; opening: boolean 
             margin: "8px 0 14px",
           }}
         >
-          Open a folder to start
+          Hermes runs per project
         </div>
-        <p
-          style={{
-            color: "var(--fg-3)",
-            fontSize: 13,
-            lineHeight: 1.5,
-            margin: "0 0 22px",
-          }}
-        >
-          Pick any directory — your code, a new working folder, a checked-out repo. The Dev persona
-          (Claude Code) spawns into a Zellij pane scoped to that folder.
+        <p style={{ color: "var(--fg-3)", fontSize: 13, lineHeight: 1.5, margin: 0 }}>
+          Open a project from the Projects rail first. Hermes spawns into its own Zellij session
+          scoped to the active project so its memory + decisions stay local to your work context.
         </p>
-        <Btn variant="primary" onClick={onOpen} disabled={opening}>
-          {opening ? "Picking…" : "Open project →"}
-        </Btn>
       </div>
     </HUDFrame>
   );
@@ -267,90 +240,19 @@ function EmptyState({ onOpen, opening }: { onOpen: () => void; opening: boolean 
 
 // ────────────────────────────────────────────────────────────────────
 
-function ProjectCard({
+function HermesPanel({
   project,
-  onClose,
-  closing,
-}: {
-  project: ProjectInfo;
-  onClose: () => void;
-  closing: boolean;
-}) {
-  const openedAt = new Date(project.opened_at * 1000);
-  return (
-    <HUDFrame style={{ padding: 22 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
-          gap: 16,
-        }}
-      >
-        <div style={{ minWidth: 0 }}>
-          <Eyebrow>Active project</Eyebrow>
-          <div
-            style={{
-              fontFamily: "var(--font-display)",
-              fontWeight: 800,
-              fontSize: 24,
-              color: "var(--fn-white)",
-              letterSpacing: "-0.01em",
-              margin: "6px 0 4px",
-            }}
-          >
-            {project.name}
-          </div>
-          <div
-            style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 12,
-              color: "var(--fn-cyan)",
-              wordBreak: "break-all",
-            }}
-          >
-            {project.path}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              gap: 14,
-              marginTop: 10,
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
-              color: "var(--fg-3)",
-            }}
-          >
-            <span>
-              ID <span style={{ color: "var(--fn-cyan)" }}>{project.id}</span>
-            </span>
-            <span>
-              Opened{" "}
-              <span style={{ color: "var(--fn-cyan)" }}>
-                {openedAt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            </span>
-          </div>
-        </div>
-        <Btn variant="ghost" onClick={onClose} disabled={closing}>
-          {closing ? "Closing…" : "Close project"}
-        </Btn>
-      </div>
-    </HUDFrame>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────
-
-function DevPersonaPanel({
   status,
-  spawning,
+  busy,
   onSpawn,
+  onKill,
   onRefresh,
 }: {
-  status: DevPersonaStatus | null;
-  spawning: boolean;
+  project: ProjectInfo;
+  status: HermesStatusValue | null;
+  busy: null | "spawning" | "killing";
   onSpawn: () => void;
+  onKill: () => void;
   onRefresh: () => void;
 }) {
   return (
@@ -364,7 +266,7 @@ function DevPersonaPanel({
         }}
       >
         <div>
-          <Eyebrow color="cyan">Dev persona · Claude Code</Eyebrow>
+          <Eyebrow color="cyan">Hermes · {project.name}</Eyebrow>
           <div
             style={{
               fontFamily: "var(--font-display)",
@@ -382,22 +284,17 @@ function DevPersonaPanel({
           </div>
           <StatusBody status={status} />
         </div>
-        <DevPersonaActions
-          status={status}
-          spawning={spawning}
-          onSpawn={onSpawn}
-          onRefresh={onRefresh}
-        />
+        <HermesActions status={status} busy={busy} onSpawn={onSpawn} onKill={onKill} onRefresh={onRefresh} />
       </div>
     </HUDFrame>
   );
 }
 
-function StatusBody({ status }: { status: DevPersonaStatus | null }) {
+function StatusBody({ status }: { status: HermesStatusValue | null }) {
   if (status === null) {
     return (
       <p style={{ color: "var(--fg-3)", fontSize: 13, margin: 0, maxWidth: 540 }}>
-        Polling Zellij for the dev session…
+        Polling Zellij for the Hermes session…
       </p>
     );
   }
@@ -405,21 +302,13 @@ function StatusBody({ status }: { status: DevPersonaStatus | null }) {
     return (
       <div>
         <p style={{ color: "var(--fg-2)", fontSize: 13, margin: "0 0 8px", maxWidth: 560 }}>
-          Zellij isn&apos;t on your PATH. The Dev persona runs inside a Zellij pane so we can
-          re-attach across desktop-app restarts.
+          Zellij isn&apos;t on your PATH. Hermes spawns through a Zellij session so its memory state
+          survives desktop-app restarts (same restart-survival path as the Dev persona).
         </p>
         <p
           style={{ color: "var(--fg-3)", fontSize: 12, margin: 0, fontFamily: "var(--font-mono)" }}
         >
-          Install:&nbsp;
-          <code style={{ color: "var(--fn-cyan)" }}>winget install zellij-org.zellij</code> · or
-          v0.44.3+ from{" "}
-          <a
-            href="https://github.com/zellij-org/zellij/releases"
-            style={{ color: "var(--fn-cyan)" }}
-          >
-            github.com/zellij-org/zellij
-          </a>
+          Install:&nbsp;<code style={{ color: "var(--fn-cyan)" }}>winget install zellij-org.zellij</code>
         </p>
       </div>
     );
@@ -427,11 +316,12 @@ function StatusBody({ status }: { status: DevPersonaStatus | null }) {
   if (status.state === "not-running") {
     return (
       <p style={{ color: "var(--fg-3)", fontSize: 13, margin: 0, maxWidth: 540 }}>
-        Spawn to start Claude Code in a new pane scoped to the active project. Session name will be{" "}
+        Spawn to start Hermes in a Zellij pane named{" "}
         <code style={{ color: "var(--fn-cyan)", fontFamily: "var(--font-mono)" }}>
           {status.session_name}
         </code>
-        .
+        . Hermes lives alongside Dev as an independent session — killing one doesn&apos;t affect
+        the other.
       </p>
     );
   }
@@ -452,8 +342,8 @@ function StatusBody({ status }: { status: DevPersonaStatus | null }) {
         </span>
       </div>
       <p style={{ color: "var(--fg-3)", fontSize: 12, margin: 0, maxWidth: 560 }}>
-        Claude Code is running in a Zellij session. The embedded display below tails its PTY tap.
-        Bidirectional input lands in Story 1.16d; until then attach in your own terminal with{" "}
+        Embedded display below tails the supervisor&apos;s PTY tap file. Bidirectional input lands
+        in Story 1.16d; until then attach in your own terminal with{" "}
         <code style={{ color: "var(--fn-cyan)", fontFamily: "var(--font-mono)" }}>
           zellij attach {status.session_name}
         </code>
@@ -463,20 +353,20 @@ function StatusBody({ status }: { status: DevPersonaStatus | null }) {
   );
 }
 
-function DevPersonaActions({
+function HermesActions({
   status,
-  spawning,
+  busy,
   onSpawn,
+  onKill,
   onRefresh,
 }: {
-  status: DevPersonaStatus | null;
-  spawning: boolean;
+  status: HermesStatusValue | null;
+  busy: null | "spawning" | "killing";
   onSpawn: () => void;
+  onKill: () => void;
   onRefresh: () => void;
 }) {
-  if (status === null) {
-    return null;
-  }
+  if (status === null) return null;
   if (status.state === "zellij-missing") {
     return (
       <Btn variant="secondary" onClick={onRefresh}>
@@ -486,34 +376,37 @@ function DevPersonaActions({
   }
   if (status.state === "not-running") {
     return (
-      <Btn variant="primary" onClick={onSpawn} disabled={spawning}>
-        {spawning ? "Spawning…" : "Spawn Dev persona →"}
+      <Btn variant="primary" onClick={onSpawn} disabled={busy === "spawning"}>
+        {busy === "spawning" ? "Spawning…" : "Spawn Hermes →"}
       </Btn>
     );
   }
   // running
   return (
-    <Btn variant="ghost" onClick={onRefresh}>
-      Refresh
-    </Btn>
+    <div style={{ display: "flex", gap: 8 }}>
+      <Btn variant="ghost" onClick={onRefresh}>
+        Refresh
+      </Btn>
+      <Btn variant="secondary" onClick={onKill} disabled={busy === "killing"}>
+        {busy === "killing" ? "Stopping…" : "Stop Hermes"}
+      </Btn>
+    </div>
   );
 }
 
 // ────────────────────────────────────────────────────────────────────
+// Embedded xterm.js terminal — created once when the running state
+// mounts; disposed on unmount. The `key={project.id}` at the call site
+// forces a remount on project switch so stale state from a previous
+// project doesn't leak into the new project's view.
 
-// ────────────────────────────────────────────────────────────────────
-// Story 1.16c — embedded xterm.js terminal that tails the supervisor's
-// `.pty.raw` for the Dev persona. Mounted by the parent when Dev's
-// status is "running"; the PtyTail instance is created in mount-effect
-// and disposed on unmount.
-
-function DevTerminalEmbed() {
+function HermesTerminalEmbed() {
   const containerRef = useRef<HTMLDivElement>(null);
   const tailRef = useRef<PtyTail | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
-    const tail = new PtyTail({ personaId: "dev" });
+    const tail = new PtyTail({ personaId: "hermes" });
     tailRef.current = tail;
     void tail.mount(containerRef.current);
     return () => {
@@ -548,7 +441,7 @@ function DevTerminalEmbed() {
         }}
       >
         <StatusDot color="#6BFF8C" />
-        Dev · live tap
+        Hermes · live tap
       </div>
       <div ref={containerRef} className="pty-terminal-host" />
     </HUDFrame>

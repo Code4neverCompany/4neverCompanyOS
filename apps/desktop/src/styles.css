@@ -47,3 +47,24 @@ body {
   font-size: 7px;
   letter-spacing: 0.1em;
 }
+
+/* Story 1.16c — embedded xterm.js terminal container.
+   Sits inside a HUDFrame; the .xterm element itself fills 100% so
+   FitAddon.fit() picks up the real available cols/rows. */
+.pty-terminal-host {
+  position: relative;
+  flex: 1;
+  min-height: 240px;
+  background: #0a0b14;
+  padding: 8px 10px;
+  overflow: hidden;
+}
+.pty-terminal-host .xterm,
+.pty-terminal-host .xterm-viewport,
+.pty-terminal-host .xterm-screen {
+  height: 100% !important;
+  width: 100% !important;
+}
+.pty-terminal-host .xterm-viewport {
+  background-color: transparent !important;
+}
