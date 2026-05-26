@@ -110,3 +110,4 @@ This sprint: ✅ **Story 1.16 fully closed** (a/b/c/d all done). Next is **Story
 | 2026-05-26 | bmad-sprint-planning (manual) | Story 1.15 marked done; code-review PASS verdict captured; next-up updated to Story 1.16 (a/b). |
 | 2026-05-26 | bmad-sprint-planning (manual) | Story 1.16c done (display layer + xterm.js); Story 1.16d split for bidirectional input.         |
 | 2026-05-26 | bmad-sprint-planning (manual) | Story 1.16d done (bidirectional input). Story 1.16 fully complete. Next-up: Story 1.17.         |
+| 2026-05-26 | bmad-sprint-planning (manual) | Story 1.17a done (NSIS + icon regen). 1.17b attempted, deadlocked, reset to 97f4b6f, deferred.  |
