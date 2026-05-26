@@ -1,0 +1,17 @@
+[package]
+name = "c4n-platform-fs"
+version = "0.0.1"
+edition = "2021"
+description = "Rust-side file-watching. Replaces chokidar (which is weaker on Windows). Backs progress-signal artifact.changed and code.changed subscribers."
+authors = ["4neverCompany"]
+
+[lib]
+name = "c4n_platform_fs"
+crate-type = ["rlib"]
+
+[dependencies]
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+notify = { workspace = true }

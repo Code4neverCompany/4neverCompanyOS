@@ -1,0 +1,16 @@
+[package]
+name = "c4n-zellij-adapter"
+version = "0.0.1"
+edition = "2021"
+description = "Spawn / supervise Zellij sessions. Owns all pane creation; persona-supervisor and the Tauri shell call into this crate."
+authors = ["4neverCompany"]
+
+[lib]
+name = "c4n_zellij_adapter"
+crate-type = ["rlib"]
+
+[dependencies]
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }

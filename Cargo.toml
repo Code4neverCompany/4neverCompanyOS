@@ -1,0 +1,37 @@
+# Root Cargo workspace.
+# Each entry under `members` corresponds to a Rust crate under crates/
+# or the Tauri sidecars under apps/*/src-tauri.
+# See architecture.md §6 for the crate-to-decision mapping.
+
+[workspace]
+resolver = "2"
+members = [
+  "apps/desktop/src-tauri",
+  "apps/wizard/src-tauri",
+  "crates/zellij-adapter",
+  "crates/bus-relay",
+  "crates/persona-supervisor",
+  "crates/platform-fs",
+  "crates/vault-scoping",
+]
+
+# Workspace-wide dependency pinning.
+# Tags reflect docs/pinned-versions.md at M0 start.
+[workspace.dependencies]
+tauri = { version = "2", features = [] }
+tauri-build = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+anyhow = "1"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+notify = "8"
+
+[profile.release]
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = true

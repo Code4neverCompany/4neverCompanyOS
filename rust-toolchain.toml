@@ -1,0 +1,7 @@
+# Pinned per docs/pinned-versions.md (OQ-J quarterly rebase cadence).
+# Re-evaluate at the next pinned-versions quarterly window.
+[toolchain]
+channel = "1.90.0"
+profile = "default"
+components = ["rustfmt", "clippy"]
+targets = ["x86_64-pc-windows-msvc"]

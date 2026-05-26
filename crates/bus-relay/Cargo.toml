@@ -1,0 +1,18 @@
+[package]
+name = "c4n-bus-relay"
+version = "0.0.1"
+edition = "2021"
+description = "Bus relay sidecar. Subscribes to Paperclip's event system, normalizes messages into the bus envelope, broadcasts to IPC subscribers + the desktop UI WebSocket."
+authors = ["4neverCompany"]
+
+[lib]
+name = "c4n_bus_relay"
+crate-type = ["rlib"]
+
+[dependencies]
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

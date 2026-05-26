@@ -1,0 +1,23 @@
+{
+  "name": "@c4n/workflow-engine",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "BMAD YAML workflow executor (D-12). Reads workflows from _bmad/, runs phases sequentially with user-approval gates, dispatches dynamic personas.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@c4n/core": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "vitest": "^2.1.8"
+  }
+}

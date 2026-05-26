@@ -1,0 +1,13 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# pnpm 11+ build-approval gate (Story 1.1 finding).
+# Each entry maps an npm package name → true/false for whether its
+# install scripts may run. The `onlyBuiltDependencies` list is
+# additive guard belt-and-suspenders.
+allowBuilds:
+  esbuild: true
+
+onlyBuiltDependencies:
+  - esbuild

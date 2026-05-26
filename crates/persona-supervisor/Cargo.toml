@@ -1,0 +1,18 @@
+[package]
+name = "c4n-persona-supervisor"
+version = "0.0.1"
+edition = "2021"
+description = "Wraps each persona process; captures stdout/stderr per line; pipes capture to the per-persona vault log file and to telemetry. Also exposes pause / dismiss control."
+authors = ["4neverCompany"]
+
+[lib]
+name = "c4n_persona_supervisor"
+crate-type = ["rlib"]
+
+[dependencies]
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }

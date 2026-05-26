@@ -1,0 +1,12 @@
+# Python linter config — only applies to Hermes wrappers / sidecar scripts.
+# Most of the monorepo is TS + Rust; Python is a narrow surface.
+
+target-version = "py311"
+line-length = 100
+
+[lint]
+select = ["E", "F", "W", "B", "UP", "I", "RUF"]
+ignore = []
+
+[lint.per-file-ignores]
+"__init__.py" = ["F401"]
