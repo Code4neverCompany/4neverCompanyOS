@@ -66,7 +66,7 @@ M0 is fully shipped. M1's first batch (1.10–1.14) shipped, plus 1.15 audit-tra
 | 1.17a | NSIS installer + icon.ico regen            | ✅ Done         | 97f4b6f                         | `pnpm tauri build` → `4neverCompany OS_0.0.1_x64-setup.exe` (~2.2 MB). Per-user install, WebView2 auto-bootstrap, multi-res icon from the 4never monogram, `docs/installer.md` written. Verified end-to-end 3m26s on Win 11. |
 | 1.17b | Supervisor sidecar bundling                | ⏸ Deferred      | —                               | First attempt deadlocked: `build.rs` invoked `node` → `cargo build -p c4n-persona-supervisor`, competing for the workspace target-dir lock with the outer `cargo build`. Reset to 97f4b6f. Fix path documented for the redo. |
 | 1.18  | End-to-end scenario test (≤ 10 min)        | ✅ Done         | (this commit)                   | Protocol at `docs/e2e-smoke-test.md` (12-phase budget, per-step verification + failure modes, sign-off block); `e2e_scenario_manual_verification` `#[ignore]`d test surfaces it via `cargo test -- --ignored`; `tests/manual/` scaffolded with README naming the AC-mandated capture filenames. Code review PASS (HIGH/MED/LOW/DEFERRED all 0). Real-hardware run is a follow-up. **First story shipped via the formal BMAD method end-to-end** (create-story → approval → dev-story → 3-pass review). |
-| 1.19  | In-product attribution surfaces            | ⏸ Pending       | —                               | Settings → About + splash + wizard final + LICENSES.md (the file is already there; the UI surfaces aren't)                                                                                                                                                             |
+| 1.19  | In-product attribution surfaces            | ✅ Done         | (this commit)                   | Three surfaces, all rendering from `@c4n/core` (`attribution.ts` + new `versions.ts`): wizard DoneStep compact credit, app-launch HTML splash, Settings → About full table (name/license/version/source) + LICENSES.md reference. 13 vitest guardrails. Code review PASS (HIGH/MED 0, LOW 2 by-design, DEFERRED 1 clickable-open). Second story shipped via formal BMAD method end-to-end. |
 
 ## Open blockers
 
@@ -102,7 +102,13 @@ M0 is fully shipped. M1's first batch (1.10–1.14) shipped, plus 1.15 audit-tra
 
 ## What's next
 
-This sprint: ✅ **Stories 1.16, 1.17a, and 1.18 all shipped.** Next is **Story 1.19** — in-product attribution surfaces (Settings → About + splash + wizard final + LICENSES.md surfaces). That closes M1's hard backlog. Story 1.17b (supervisor sidecar bundling with `--target-dir` fix) is a discretionary follow-up that improves the install UX but isn't gating M1 close-out — `docs/installer.md` documents the one-time `cargo install` workaround.
+This sprint: ✅ **Story 1.19 shipped — all 19 Epic-1 stories are now done.** M1's hard backlog is complete. Remaining loose ends are discretionary, not blocking:
+
+- **Epic-1 close decision (Maurice's call):** flip `epic-1 → done` in `sprint-status.yaml` + optionally run `bmad-retrospective`. Left `in-progress` pending your judgment.
+- **Story 1.17b** — supervisor sidecar bundling (`--target-dir` fix for the cargo-lock deadlock). Install works today via the documented one-time `cargo install`.
+- **Story 1.18 recording capture** — the E2E protocol exists; the real-hardware run + `.mp4`/notes capture is a procedural follow-up.
+- **LICENSES.md** — still DRAFT pending your M0 review; `pinned-versions.md` DRAFTs likewise.
+- **Clickable LICENSES.md open** in Settings → About — deferred (needs `@tauri-apps/plugin-opener` JS; shown as selectable URL for now).
 
 ## Change log
 
@@ -115,6 +121,7 @@ This sprint: ✅ **Stories 1.16, 1.17a, and 1.18 all shipped.** Next is **Story 
 | 2026-05-26 | bmad-sprint-planning (manual) | Story 1.17a done (NSIS + icon regen). 1.17b attempted, deadlocked, reset to 97f4b6f, deferred.  |
 | 2026-05-26 | bmad-dev-story                | Story 1.18 done (E2E protocol + scaffolding). First story shipped via formal BMAD method end-to-end. Next: Story 1.19. |
 | 2026-05-28 | bmad-sprint-planning          | **Generated `sprint-status.yaml`** — repaired the missing machine-state file the skills depend on. This `.md` becomes the narrative companion. See postmortem below. |
+| 2026-05-28 | bmad-dev-story                | Story 1.19 done (3 attribution surfaces from `@c4n/core`). 19/19 Epic-1 stories complete; M1 hard backlog closed. epic-1 left in-progress pending Maurice's close + retrospective decision. |
 
 ## BMAD method repair (2026-05-28)
 

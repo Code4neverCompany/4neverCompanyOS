@@ -57,7 +57,7 @@ development_status:
   1-16-hermes-tui-embedded: done
   1-17-m1-tauri-build-windows-exe-with-nsis-bundler: done # 1.17a shipped the .exe; 1.17b (sidecar) deferred — see .md
   1-18-e2e-scenario-test: done
-  1-19-attribution-surfaces: ready-for-dev # spec approved; dev next
+  1-19-attribution-surfaces: done # 1.19 shipped; code_review_a PASS
   epic-1-retrospective: optional
 
   # ── Epic 2: Second Agent + Live Bus + Stall Detection (M2) ───────
