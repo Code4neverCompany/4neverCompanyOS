@@ -22,6 +22,8 @@ methodology_note: |
 
 # Sprint status — M1
 
+> **Machine-state lives in [`sprint-status.yaml`](./sprint-status.yaml)** as of 2026-05-28 — that's the file the BMAD skills (`bmad-create-story`, `bmad-dev-story`, `bmad-code-review`, `bmad-sprint-status`) actually read and write. THIS markdown file is the human-readable narrative companion: deferral postmortems, code-review verdicts, risk notes. See § "BMAD method repair (2026-05-28)" at the bottom for why the YAML was missing and what changed.
+
 ## At a glance
 
 M0 is fully shipped. M1's first batch (1.10–1.14) shipped, plus 1.15 audit-trail, the entire **Story 1.16 (a/b/c/d) — Hermes TUI embedded as a fully bidirectional pane**, **Story 1.17a — NSIS installer + multi-res icon.ico regen**, and **Story 1.18 — E2E smoke-test protocol + scaffolding** (first story shipped via the formal BMAD method end-to-end: bmad-create-story → user-approved spec → bmad-dev-story → 3-pass review). Story 1.17b (supervisor sidecar bundling) remains deferred pending a `--target-dir` refactor. Only Story 1.19 (attribution surfaces) remains to close M1.
@@ -112,3 +114,22 @@ This sprint: ✅ **Stories 1.16, 1.17a, and 1.18 all shipped.** Next is **Story 
 | 2026-05-26 | bmad-sprint-planning (manual) | Story 1.16d done (bidirectional input). Story 1.16 fully complete. Next-up: Story 1.17.         |
 | 2026-05-26 | bmad-sprint-planning (manual) | Story 1.17a done (NSIS + icon regen). 1.17b attempted, deadlocked, reset to 97f4b6f, deferred.  |
 | 2026-05-26 | bmad-dev-story                | Story 1.18 done (E2E protocol + scaffolding). First story shipped via formal BMAD method end-to-end. Next: Story 1.19. |
+| 2026-05-28 | bmad-sprint-planning          | **Generated `sprint-status.yaml`** — repaired the missing machine-state file the skills depend on. This `.md` becomes the narrative companion. See postmortem below. |
+
+## BMAD method repair (2026-05-28)
+
+**Symptom Maurice flagged:** "the BMAD method isn't getting triggered properly."
+
+**Root cause:** The BMAD skills (`bmad-create-story`, `bmad-dev-story`, `bmad-code-review`, `bmad-sprint-status`) are built around `_bmad-output/implementation-artifacts/sprint-status.yaml` — a structured `development_status:` map keyed by `epic-story-slug`. **That file never existed.** Earlier in the project (when the skills appeared as catalog-only entries, before they registered as runnable `Skill()` tools) I created a hand-written `sprint-status.md` via "manual emulation." When the skills later became invocable, every run hit their degraded *"no sprint file"* branch:
+
+- `bmad-create-story` step 1 checks for `sprint-status.yaml` → not found → skips auto-discovery of the next backlog story (worked only because I passed the story ID explicitly each time)
+- `bmad-dev-story` steps 1/4/9 (the `ready-for-dev → in-progress → review` transitions) → no-op'd against the missing YAML; I hand-edited the `.md` instead
+- `bmad-sprint-status` → had nothing structured to read
+
+So the skills *loaded and executed* (they "triggered"), but their **sprint-tracking state machine was disconnected** — the method ran in a degraded mode where I emulated the bookkeeping the skill is supposed to own. That's the friction.
+
+**Fix:** Ran `bmad-sprint-planning` to generate the canonical `sprint-status.yaml` from `epics.md`, reflecting true current state (Epic 1 in-progress with 1.1–1.18 done + 1.19 ready-for-dev; Epics 2–5 backlog). The skills now read/write that file natively.
+
+**Secondary mismatch noted (not blocking):** the 4 existing story files use a concise `1.NN-shortslug.md` name; the skills' default is the verbose `epic-story-titlekebab.md`. The YAML keys for those 4 stories match the concise file names so key↔file resolution works. Documented in the YAML header. A future cleanup could rename to the verbose convention, but it's not gating.
+
+**Forward discipline:** every story now flows create-story → (approval) → dev-story → code-review with the YAML as the live state. No more manual status emulation.
