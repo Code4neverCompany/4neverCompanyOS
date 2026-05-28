@@ -5,9 +5,11 @@
 //   - App-launch splash screen (M1 splash)
 //   - LICENSES.md at repo root (already exists)
 //
-// Pinned versions are not embedded here at build time; the UI panels
-// pull the live version from docs/pinned-versions.md or the runtime
-// `--version` output of each tool to avoid drift.
+// Pinned versions live in ./versions.ts (mirror of docs/pinned-versions.md),
+// joined into the structured render via renderAttributionMarkdown() so the
+// Settings → About panel can show a version per bundled component (Story 1.19).
+
+import { VERSIONS } from "./versions";
 
 export type AttributionEntry = {
   /** Display name. */
@@ -18,6 +20,15 @@ export type AttributionEntry = {
   source: string;
   /** Optional copyright holder if required by the license. */
   copyright?: string;
+};
+
+/** A bundled entry joined with its pinned version (Story 1.19). */
+export type AttributionBundledRow = AttributionEntry & { version: string };
+
+/** Structured attribution for React surfaces (Settings → About panel). */
+export type AttributionMarkdown = {
+  bundled: AttributionBundledRow[];
+  integrated: AttributionEntry[];
 };
 
 /** Tier 1 — bundled with our installer. Permissive licenses. */
@@ -89,4 +100,31 @@ export function renderAttributionText(): string {
     "",
     "Full license texts in LICENSES.md at the project root.",
   ].join("\n");
+}
+
+/**
+ * Single-line "Powered by A · B · C …" credit for the app-launch splash
+ * and the wizard's compact DoneStep line (Story 1.19). Lists the first
+ * `limit` bundled upstreams; appends "· …" when more exist. Never
+ * contains a newline.
+ */
+export function renderAttributionShort(limit = 6): string {
+  const names = BUNDLED.map((e) => e.name);
+  const shown = names.slice(0, limit);
+  const suffix = names.length > limit ? " · …" : "";
+  return `Powered by ${shown.join(" · ")}${suffix}`;
+}
+
+/**
+ * Structured attribution for React surfaces (Settings → About, Story 1.19).
+ * Bundled rows are joined with their pinned version from ./versions.ts;
+ * integrated rows carry no pinned version (user-installed, varies per
+ * machine). `"—"` is a defensive fallback — attribution.test.ts guarantees
+ * VERSIONS covers every bundled entry, so it shouldn't surface in practice.
+ */
+export function renderAttributionMarkdown(): AttributionMarkdown {
+  return {
+    bundled: BUNDLED.map((e) => ({ ...e, version: VERSIONS[e.name] ?? "—" })),
+    integrated: INTEGRATED.map((e) => ({ ...e })),
+  };
 }

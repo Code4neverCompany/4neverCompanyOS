@@ -11,6 +11,7 @@ import { Badge, Eyebrow, HUDFrame, StatusDot } from "@c4n/ui-tokens";
 import monogramUrl from "@c4n/ui-tokens/assets/logo/monogram.png";
 import { ProjectsView } from "../views/ProjectsView";
 import { MemoryView } from "../views/MemoryView";
+import { SettingsView } from "../views/SettingsView";
 
 type RailItem = "projects" | "personas" | "vault" | "memory" | "settings";
 
@@ -192,9 +193,9 @@ function SideRail({
  */
 /** Per-rail-item placeholder copy for the rail items that aren't wired up
  *  to a real view yet. `projects` has its own implementation in
- *  views/ProjectsView (Story 1.12). `memory` lands in Story 1.16c. The
- *  rest will land on their own stories. */
-type PlaceholderRailItem = Exclude<RailItem, "projects" | "memory">;
+ *  views/ProjectsView (Story 1.12). `memory` lands in Story 1.16c.
+ *  `settings` lands in Story 1.19. The rest will land on their own stories. */
+type PlaceholderRailItem = Exclude<RailItem, "projects" | "memory" | "settings">;
 
 const SLOT_COPY: Record<
   PlaceholderRailItem,
@@ -214,13 +215,6 @@ const SLOT_COPY: Record<
     body: "Persona definitions, BMAD artifacts, per-project logs, skills, and memory live in the vault directory configured in the first-run wizard.",
     comingIn: "Story 1.x — Vault browser + reveal-in-Obsidian",
   },
-  settings: {
-    eyebrow: "Settings",
-    titlePrefix: "",
-    titleAccent: "Settings",
-    body: "Preferences, account credentials, attribution, license panel, and developer flags.",
-    comingIn: "Story 1.19 — attribution surfaces + Settings → About",
-  },
 };
 
 function MainSlot({ active }: { active: RailItem }) {
@@ -230,6 +224,10 @@ function MainSlot({ active }: { active: RailItem }) {
   // Story 1.16c: Memory rail item now renders the live Hermes view.
   if (active === "memory") {
     return <MemoryView />;
+  }
+  // Story 1.19: Settings rail item now renders the Settings → About view.
+  if (active === "settings") {
+    return <SettingsView />;
   }
   const copy = SLOT_COPY[active];
   return (

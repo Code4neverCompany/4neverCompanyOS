@@ -3,4 +3,5 @@
 // Do NOT add Paperclip/Hermes/BMAD-specific code here — core is upstream-agnostic.
 
 export * from "./attribution";
+export * from "./versions";
 export * from "./glossary";

@@ -4,9 +4,66 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>4neverCompany OS</title>
+    <!-- Story 1.19: app-launch splash. Inlined in <head> so the browser
+         paints it on the first frame (no stylesheet GET, no JS). React's
+         createRoot() replaces #root on mount (~sub-second cold), so the
+         splash is visible well under the AC's 2-second cap and vanishes
+         naturally — no timer-based hide logic.
+
+         The "Powered by" credit is a STATIC mirror of @c4n/core's
+         renderAttributionShort(). It can't import TS here, so it's
+         hand-kept; the headline names (Paperclip · Hermes Agent · BMAD
+         Method) change rarely. Settings → About is the dynamic,
+         canonical surface. -->
+    <style>
+      .boot-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        background: #0a0b14;
+        color: #e8eaef;
+        font-family: "Sora", "Segoe UI", system-ui, sans-serif;
+        z-index: 9999;
+      }
+      .boot-splash__mark {
+        font-size: 64px;
+        line-height: 1;
+        color: #ffc400;
+        text-shadow: 0 0 24px rgba(255, 196, 0, 0.45);
+      }
+      .boot-splash__name {
+        font-weight: 800;
+        font-size: 22px;
+        letter-spacing: -0.02em;
+      }
+      .boot-splash__name span {
+        color: #ffc400;
+      }
+      .boot-splash__credit {
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        color: #6b6f80;
+        max-width: 520px;
+        text-align: center;
+        padding: 0 24px;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="boot-splash">
+        <div class="boot-splash__mark">◈</div>
+        <div class="boot-splash__name">4neverCompany <span>OS</span></div>
+        <div class="boot-splash__credit">
+          Powered by Paperclip · Hermes Agent · BMAD Method · Tauri · Zellij · Claude Code
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

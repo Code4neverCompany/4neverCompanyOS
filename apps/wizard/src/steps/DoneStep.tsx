@@ -1,6 +1,7 @@
 // Wizard final step — confirmation. The desktop shell launches from here in
 // the real flow; for now we just show the success state.
 
+import { renderAttributionShort } from "@c4n/core";
 import { Eyebrow, HUDFrame } from "@c4n/ui-tokens";
 import type { WizardState } from "../state";
 
@@ -31,9 +32,13 @@ export function DoneStep({ state }: { state: WizardState }) {
         app to start your first project.
       </p>
 
+      {/* Story 1.19: compact attribution credit sourced from the canonical
+          @c4n/core attribution module (renderAttributionShort). The FULL
+          "Powered by…" block — every bundled + integrated component with
+          license + version — lives in Settings → About in the main app. */}
       <p className="help-copy" style={{ textAlign: "center" }}>
-        Powered by Paperclip · Hermes Agent · BMAD Method · Tauri · Zellij · Claude Code. Full
-        credits in Settings → About once the main app launches.
+        {renderAttributionShort(3)} See full credits in Settings → About once the main app
+        launches.
       </p>
     </HUDFrame>
   );

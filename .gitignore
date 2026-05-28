@@ -24,5 +24,9 @@ src-tauri/gen/
 apps/*/src-tauri/icons/android/
 apps/*/src-tauri/icons/ios/
 
+# Pre-built sidecar binaries (e.g. the persona-supervisor). Build artifacts
+# regenerated on demand; never committed. (Story 1.17 sidecar work.)
+apps/*/src-tauri/binaries/
+
 # TypeScript incremental build cache
 *.tsbuildinfo
