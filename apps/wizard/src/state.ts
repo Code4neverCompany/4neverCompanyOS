@@ -11,4 +11,7 @@ export interface WizardState {
 
   /** Story 1.9 — set once Claude Code is verifiably authenticated. */
   claudeCodeAuthenticated?: boolean;
+
+  /** Story 2.1 — set once `agy auth status` reports authenticated. */
+  antigravityAuthenticated?: boolean;
 }

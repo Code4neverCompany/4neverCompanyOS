@@ -25,6 +25,7 @@ export function SummaryStep({ state, onNext, onBack }: Props) {
           vault_path: state.vaultPath,
           anthropic_authenticated: state.anthropicAuthenticated ?? false,
           claude_code_authenticated: state.claudeCodeAuthenticated ?? false,
+          antigravity_authenticated: state.antigravityAuthenticated ?? false,
         },
       });
       console.info(`config written to: ${written}`);
@@ -39,7 +40,7 @@ export function SummaryStep({ state, onNext, onBack }: Props) {
   return (
     <HUDFrame className="wizard-card">
       <div className="title-block">
-        <Eyebrow>Step 4 · Review</Eyebrow>
+        <Eyebrow>Step 5 · Review</Eyebrow>
         <h2>Review your setup</h2>
       </div>
 
@@ -62,6 +63,15 @@ export function SummaryStep({ state, onNext, onBack }: Props) {
             <span className="ok">✓ Installed and reachable</span>
           ) : (
             <span className="miss">✗ Not verified</span>
+          )}
+        </dd>
+
+        <dt>Antigravity</dt>
+        <dd>
+          {state.antigravityAuthenticated ? (
+            <span className="ok">✓ Authenticated</span>
+          ) : (
+            <span className="miss">✗ Not connected (can add later)</span>
           )}
         </dd>
       </dl>

@@ -137,6 +137,13 @@ body {
   border: 1px solid rgba(255, 196, 0, 0.4);
   color: var(--fn-gold-highlight);
 }
+/* Security gate block — orange/amber, distinct from a plain error. */
+.alert.blocked {
+  background: rgba(255, 140, 0, 0.08);
+  border: 1px solid rgba(255, 140, 0, 0.5);
+  color: #ffb454;
+  font-weight: 600;
+}
 .alert code {
   color: var(--fn-cyan);
   background: transparent;

@@ -14,11 +14,12 @@ import { WelcomeStep } from "./steps/WelcomeStep";
 import { VaultStep } from "./steps/VaultStep";
 import { AnthropicStep } from "./steps/AnthropicStep";
 import { ClaudeCodeStep } from "./steps/ClaudeCodeStep";
+import { AntigravityStep } from "./steps/AntigravityStep";
 import { SummaryStep } from "./steps/SummaryStep";
 import { DoneStep } from "./steps/DoneStep";
 import type { WizardState } from "./state";
 
-const STEPS = ["welcome", "vault", "anthropic", "claude", "summary", "done"] as const;
+const STEPS = ["welcome", "vault", "anthropic", "claude", "antigravity", "summary", "done"] as const;
 type StepName = (typeof STEPS)[number];
 
 export function Wizard() {
@@ -96,6 +97,9 @@ export function Wizard() {
         {step === "vault" && <VaultStep state={state} onNext={goNext} onBack={goBack} />}
         {step === "anthropic" && <AnthropicStep state={state} onNext={goNext} onBack={goBack} />}
         {step === "claude" && <ClaudeCodeStep state={state} onNext={goNext} onBack={goBack} />}
+        {step === "antigravity" && (
+          <AntigravityStep state={state} onNext={goNext} onBack={goBack} />
+        )}
         {step === "summary" && <SummaryStep state={state} onNext={goNext} onBack={goBack} />}
         {step === "done" && <DoneStep state={state} />}
       </div>

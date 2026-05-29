@@ -45,6 +45,25 @@ The "Confidence" levels translate to rebase priority: `high` = skip next revisit
 | **Embedded Postgres**                                                 | matches Paperclip's preferred version (Paperclip ships its own embedded build)                                                                    | tracks Paperclip                         | medium                             | TBD                                                                                                                      | Defer the explicit Postgres pin to Paperclip's choice — keeps integration surface single-source.                                                                                                       |
 | **Antigravity CLI (`agy`)**                                           | **public-preview state as of 2026-05-26** — no public-release tag scheme (closed-source). Captured by URL of Google's installer + first-run date. | rolling preview                          | **LOW — needs M2 re-verification** | TBD; explicitly re-check before Frontend Designer ships (Story 2.1)                                                      | Source brief §9 + LICENSES.md note: **RCE issue reported May 2026** must be confirmed fixed at M2 start before Frontend Designer launches into production wizard flows.                                |
 
+### Antigravity (`agy`) security gate — machine-readable
+
+The Story 2.1 wizard step parses the block below at compile time (`include_str!`)
+to decide whether the Antigravity OAuth flow may run. This is the single source
+of truth for the gate: flip `status` to `cleared` only once the RCE is confirmed
+fixed on the pinned build and the smoke-test column above turns ✓.
+
+- `status`: `cleared` lets the wizard run the OAuth flow; any other value
+  (`vulnerable`, `unknown`) makes the wizard surface a `[BLOCKED]` message and
+  refuse to launch `agy auth login`.
+- `upgrade-url`: shown in the `[BLOCKED]` message as the upgrade link.
+
+<!-- agy-security-status
+status: vulnerable
+rce-fixed: false
+reason: RCE reported May 2026 is not yet confirmed fixed on the pinned public-preview build (smoke-test TBD, confidence LOW). Per source brief §9 the Frontend Designer must not launch OAuth against a known-vulnerable agy.
+upgrade-url: https://github.com/Code4neverCompany/4neverCompanyOS/blob/main/docs/pinned-versions.md
+-->
+
 ---
 
 ## Tier 2 — Integrated tools (no pin we control; we lock at install-time only)

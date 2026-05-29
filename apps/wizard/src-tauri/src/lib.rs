@@ -21,6 +21,9 @@ pub fn run() {
             commands::get_credential,
             commands::delete_credential,
             commands::check_claude_code_present,
+            commands::check_antigravity_security,
+            commands::launch_antigravity_auth,
+            commands::check_antigravity_auth_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
