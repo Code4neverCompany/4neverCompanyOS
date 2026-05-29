@@ -109,6 +109,17 @@ impl Relay {
         self.tx.receiver_count()
     }
 
+    /// Publish an envelope directly onto the IPC fan-out, bypassing the SSE
+    /// pump. Used by local producers that aren't Paperclip's event stream —
+    /// the desktop's synthetic-event seam (Story 2.9) and integration tests.
+    /// As with [`pump`], a send with zero subscribers is not an error: the
+    /// envelope is dropped and the relay keeps running.
+    pub fn publish(&self, envelope: BusEnvelope) {
+        if self.tx.send(envelope).is_err() {
+            debug!("bus-relay: publish dropped — no IPC subscribers");
+        }
+    }
+
     /// Drive one connected stream to EOF, broadcasting each frame as an
     /// envelope. Returns the number of frames relayed. `Ok` means the stream
     /// ended cleanly (the peer disconnected); callers reconnect via [`run`].
@@ -234,6 +245,40 @@ mod tests {
 
         assert_eq!(rx1.recv().await.unwrap().payload, "x");
         assert_eq!(rx2.recv().await.unwrap().payload, "x");
+    }
+
+    // AC (Story 2.9): local producers can publish straight onto the IPC
+    // fan-out without going through the SSE pump.
+    #[tokio::test]
+    async fn publish_reaches_subscriber() {
+        let relay = Relay::new();
+        let mut rx = relay.subscribe();
+
+        let env = BusEnvelope {
+            v: crate::ENVELOPE_VERSION,
+            event_type: "agent.message".into(),
+            from: "paperclip".into(),
+            ts: "2026-05-29T12:00:00Z".into(),
+            id: "id-1".into(),
+            payload: serde_json::json!({ "text": "hi" }),
+        };
+        relay.publish(env.clone());
+
+        assert_eq!(rx.recv().await.unwrap(), env);
+    }
+
+    // publish with no subscribers must not panic or error.
+    #[tokio::test]
+    async fn publish_without_subscribers_is_ok() {
+        let relay = Relay::new();
+        relay.publish(BusEnvelope {
+            v: crate::ENVELOPE_VERSION,
+            event_type: "ping".into(),
+            from: "paperclip".into(),
+            ts: "2026-05-29T12:00:00Z".into(),
+            id: "id-2".into(),
+            payload: serde_json::Value::Null,
+        });
     }
 
     // No subscribers must not be an error.
