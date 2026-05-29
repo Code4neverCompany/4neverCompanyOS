@@ -963,6 +963,205 @@ fn chrono_date_string() -> String {
 }
 
 // ────────────────────────────────────────────────────────────────────
+// Story 3.1 — BMad Builder: dynamic persona spawn
+// ────────────────────────────────────────────────────────────────────
+//
+// The BMad Builder "Add Agent" panel lets the user spawn a dynamic persona
+// by name + backing CLI + lifecycle. Each dynamic persona gets:
+//   - A unique Zellij session: `dyn-<slug>-<project-id>`
+//   - A persona dir in the vault: `vault/personas/<slug>/`
+//   - A minimal persona file projected into `<project-root>/`
+//
+// Lifecycle variants:
+//   - "persistent": close_on_exit = false (session survives app restarts)
+//   - "ephemeral": close_on_exit = true (pane auto-closes when CLI exits)
+//
+// Backing CLI variants: "claude" | "agy" | "hermes" | custom binary name.
+// The supervisor wraps the CLI to capture stdout/stderr (same as fixed
+// personas). Persona file written: `claude.md` (for Claude), `agy.md`
+// (for agy), `agent.md` (for others).
+
+/// Status of a dynamic persona pane.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DynamicPersonaInfo {
+    /// Human-readable name the user gave at spawn time.
+    pub name: String,
+    /// Slugified name used in session/dir names.
+    pub slug: String,
+    /// Backing CLI binary name (e.g. "claude", "agy").
+    pub backing_cli: String,
+    /// Lifecycle: "persistent" or "ephemeral".
+    pub lifecycle: String,
+    /// Zellij session name.
+    pub session_name: String,
+    /// Whether the Zellij session is currently running.
+    pub running: bool,
+}
+
+/// Slugify a name for use in session and directory names.
+/// "My Custom Architect" → "my-custom-architect"
+fn slugify_name(name: &str) -> String {
+    let mut slug: String = name
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
+    // Collapse consecutive dashes and trim.
+    let mut result = String::with_capacity(slug.len());
+    let mut prev_dash = false;
+    for c in slug.chars() {
+        if c == '-' {
+            if !prev_dash { result.push(c); }
+            prev_dash = true;
+        } else {
+            result.push(c);
+            prev_dash = false;
+        }
+    }
+    slug = result.trim_matches('-').to_string();
+    if slug.is_empty() { "agent".to_string() } else { slug }
+}
+
+/// Generate the session name for a dynamic persona.
+fn dynamic_session_name(slug: &str, project_id: &str) -> String {
+    format!("dyn-{slug}-{project_id}")
+}
+
+/// Determine the persona file name to write for a given backing CLI.
+fn persona_filename_for_cli(backing_cli: &str) -> &'static str {
+    match backing_cli {
+        "claude" => "claude.md",
+        "agy" => "agy.md",
+        _ => "agent.md",
+    }
+}
+
+/// Build the minimal persona file content for a dynamic agent.
+fn build_dynamic_persona_content(name: &str, backing_cli: &str, project_name: &str) -> String {
+    format!(
+        "# {filename} — {name}\n\n\
+You are **{name}**, a dynamic persona spawned by 4neverCompany OS for the **{project_name}** project.\n\n\
+## Identity\n\n\
+You are a specialized agent running on **{backing_cli}**. Your scope is defined by the task you've been assigned. \
+Coordinate with other personas via the pub/sub bus; Hermes Agent intervenes only when chatter has no forward motion.\n\n\
+## Working style\n\n\
+- Execute, don't speculate. Start with the task context available to you.\n\
+- Run validation gates before claiming done.\n\
+- Brief, accurate commits or outputs.\n\n\
+---\n",
+        filename = persona_filename_for_cli(backing_cli),
+        name = name,
+        project_name = project_name,
+        backing_cli = backing_cli,
+    )
+}
+
+/// Spawn a dynamic persona via the BMad Builder. Creates a Zellij session,
+/// writes a minimal persona file, and returns the persona info.
+#[tauri::command]
+pub fn spawn_dynamic_persona(
+    name: String,
+    backing_cli: String,
+    lifecycle: String,
+) -> Result<DynamicPersonaInfo, String> {
+    if name.trim().is_empty() {
+        return Err("name must not be empty".to_string());
+    }
+    let allowed_lifecycles = ["persistent", "ephemeral"];
+    if !allowed_lifecycles.contains(&lifecycle.as_str()) {
+        return Err(format!("lifecycle must be one of: {}", allowed_lifecycles.join(", ")));
+    }
+    // Resolve project context.
+    let project = read_active_project()?
+        .ok_or_else(|| "no active project — open a project first".to_string())?;
+
+    if !zellij::is_available() {
+        return Err("Zellij is not installed or not on PATH — install it first".to_string());
+    }
+
+    let slug = slugify_name(&name);
+    let session_name = dynamic_session_name(&slug, &project.id);
+
+    // Check if already running; if so, just return running state.
+    let sessions = zellij::list_sessions().map_err(|e| format!("list sessions: {e}"))?;
+    if sessions.iter().any(|l| l.split_whitespace().next() == Some(session_name.as_str())) {
+        return Ok(DynamicPersonaInfo {
+            name,
+            slug,
+            backing_cli,
+            lifecycle,
+            session_name,
+            running: true,
+        });
+    }
+
+    let project_root = PathBuf::from(&project.path);
+
+    // Write the persona file into the project root.
+    let persona_content = build_dynamic_persona_content(&name, &backing_cli, &project.name);
+    let persona_file = project_root.join(persona_filename_for_cli(&backing_cli));
+    std::fs::write(&persona_file, &persona_content)
+        .map_err(|e| format!("write persona file: {e}"))?;
+
+    // Create the vault persona directory.
+    let workspace_config = read_workspace_config()?;
+    let persona_vault_dir = PathBuf::from(&workspace_config.vault_path)
+        .join("personas")
+        .join(&slug);
+    std::fs::create_dir_all(&persona_vault_dir)
+        .map_err(|e| format!("create persona vault dir: {e}"))?;
+
+    // Determine the CLI binary to spawn.
+    let cli_bin = if backing_cli == "claude" {
+        std::env::var("C4N_CLAUDE_BIN").unwrap_or_else(|_| "claude".to_string())
+    } else if backing_cli == "agy" {
+        std::env::var(AGY_BIN_ENV).unwrap_or_else(|_| AGY_BIN_DEFAULT.to_string())
+    } else {
+        backing_cli.clone()
+    };
+
+    let close_on_exit = lifecycle == "ephemeral";
+    let supervisor_bin = find_supervisor_binary();
+
+    let pane_name = format!("{} · {}", name, project.name);
+    let config = SpawnPaneConfig {
+        session_name: session_name.clone(),
+        command: supervisor_bin,
+        args: vec![
+            slug.clone(),
+            workspace_config.vault_path.clone(),
+            "--".to_string(),
+            cli_bin,
+        ],
+        env: HashMap::new(),
+        cwd: Some(project_root),
+        pane_name: Some(pane_name),
+        close_on_exit,
+    };
+
+    zellij::spawn_pane(config).map_err(|e| format!("spawn dynamic pane: {e}"))?;
+
+    Ok(DynamicPersonaInfo {
+        name,
+        slug,
+        backing_cli,
+        lifecycle,
+        session_name,
+        running: true,
+    })
+}
+
+/// Kill a running dynamic persona by its session name.
+#[tauri::command]
+pub fn kill_dynamic_persona(session_name: String) -> Result<(), String> {
+    if !zellij::is_available() {
+        return Err("Zellij not available".to_string());
+    }
+    let handle = c4n_zellij_adapter::PaneHandle { session_name: session_name.clone(), pane_name: None };
+    handle.kill().map_err(|e| format!("kill dynamic persona {session_name}: {e}"))
+}
+
+// ────────────────────────────────────────────────────────────────────
 // Story 1.16c — Tail `.pty.raw` for the xterm.js consumer in the webview
 // ────────────────────────────────────────────────────────────────────
 //

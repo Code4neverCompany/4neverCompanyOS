@@ -65,6 +65,11 @@ pub fn run() {
             // bytes into the supervisor's `.pty.in` file via this
             // command; the supervisor drains them into the child's stdin.
             commands::write_persona_pty_in,
+            // Story 3.1 (BMad Builder): dynamic persona spawn/kill.
+            // The Add Agent panel uses these to create ephemeral or
+            // persistent personas beyond the two fixed ones.
+            commands::spawn_dynamic_persona,
+            commands::kill_dynamic_persona,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -16,6 +16,10 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { Badge, Btn, Eyebrow, HUDFrame, StatusDot } from "@c4n/ui-tokens";
+import {
+  BmbAddAgentPanel,
+  type DynamicPersonaInfo,
+} from "../panels/bmb-add-agent/BmbAddAgentPanel";
 
 interface ProjectInfo {
   id: string;
@@ -44,6 +48,7 @@ export function PersonasView() {
   const [vaultSummary, setVaultSummary] = useState<VaultContextSummary | null>(null);
   const [busyDev, setBusyDev] = useState(false);
   const [busyDesigner, setBusyDesigner] = useState<null | "spawning" | "killing">(null);
+  const [dynamicPersonas, setDynamicPersonas] = useState<DynamicPersonaInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [bootstrapped, setBootstrapped] = useState(false);
   const [writeNoteOpen, setWriteNoteOpen] = useState(false);
@@ -121,9 +126,7 @@ export function PersonasView() {
       setDesignerStatus({
         state: "not-running",
         session_name:
-          designerStatus?.state !== "zellij-missing"
-            ? (designerStatus?.session_name ?? "")
-            : "",
+          designerStatus?.state !== "zellij-missing" ? (designerStatus?.session_name ?? "") : "",
       });
     } catch (e) {
       setError(String(e));
@@ -178,7 +181,12 @@ export function PersonasView() {
       {project && (
         <>
           {/* Dev persona — read-only mirror of ProjectsView status */}
-          <DevStatusPanel status={devStatus} busy={busyDev} setBusy={setBusyDev} project={project} />
+          <DevStatusPanel
+            status={devStatus}
+            busy={busyDev}
+            setBusy={setBusyDev}
+            project={project}
+          />
 
           {/* Frontend Designer persona */}
           <DesignerPanel
@@ -207,6 +215,19 @@ export function PersonasView() {
             writing={noteWriting}
             confirm={noteConfirm}
           />
+
+          {/* BMad Builder — Add Agent panel (Story 3.1) */}
+          <BmbAddAgentPanel onSpawned={(p) => setDynamicPersonas((prev) => [p, ...prev])} />
+
+          {/* Dynamic persona list */}
+          {dynamicPersonas.length > 0 && (
+            <DynamicPersonaList
+              personas={dynamicPersonas}
+              onKill={(sessionName) =>
+                setDynamicPersonas((prev) => prev.filter((p) => p.session_name !== sessionName))
+              }
+            />
+          )}
         </>
       )}
     </ViewShell>
@@ -371,7 +392,12 @@ function DevStatusPanel({
   return (
     <HUDFrame style={{ padding: 22 }}>
       <div
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 16,
+        }}
       >
         <div>
           <Eyebrow>Dev persona · Claude Code</Eyebrow>
@@ -394,13 +420,17 @@ function DevStatusPanel({
             {status?.state === "running" ? (
               <>
                 <StatusDot color="#6BFF8C" />{" "}
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--fn-cyan)" }}>
+                <span
+                  style={{ fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--fn-cyan)" }}
+                >
                   {status.session_name}
                 </span>
                 {" — use the Projects rail to manage the Dev persona."}
               </>
             ) : (
-              <>Manage from the <strong>Projects</strong> rail.</>
+              <>
+                Manage from the <strong>Projects</strong> rail.
+              </>
             )}
           </p>
         </div>
@@ -432,7 +462,12 @@ function DesignerPanel({
   return (
     <HUDFrame style={{ padding: 22 }}>
       <div
-        style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 16,
+        }}
       >
         <div style={{ flex: 1 }}>
           <Eyebrow color="cyan">Frontend Designer · Antigravity CLI</Eyebrow>
@@ -482,7 +517,9 @@ function DesignerStatusBody({
           Zellij isn&apos;t on your PATH. The Frontend Designer runs inside a Zellij pane so its
           session survives desktop-app restarts.
         </p>
-        <p style={{ color: "var(--fg-3)", fontSize: 12, margin: 0, fontFamily: "var(--font-mono)" }}>
+        <p
+          style={{ color: "var(--fg-3)", fontSize: 12, margin: 0, fontFamily: "var(--font-mono)" }}
+        >
           Install: <code style={{ color: "var(--fn-cyan)" }}>winget install zellij-org.zellij</code>
         </p>
       </div>
@@ -495,7 +532,8 @@ function DesignerStatusBody({
         <code style={{ color: "var(--fn-cyan)", fontFamily: "var(--font-mono)" }}>
           {status.session_name}
         </code>
-        . Vault context is injected into <code style={{ fontFamily: "var(--font-mono)" }}>agy.md</code> at spawn.
+        . Vault context is injected into{" "}
+        <code style={{ fontFamily: "var(--font-mono)" }}>agy.md</code> at spawn.
       </p>
     );
   }
@@ -696,6 +734,105 @@ function ErrorAlert({ text, onDismiss }: { text: string; onDismiss: () => void }
       >
         DISMISS ✕
       </button>
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Dynamic persona list (Story 3.1)
+
+function DynamicPersonaList({
+  personas,
+  onKill,
+}: {
+  personas: DynamicPersonaInfo[];
+  onKill: (sessionName: string) => void;
+}) {
+  return (
+    <HUDFrame style={{ padding: 22 }}>
+      <Eyebrow>Dynamic agents · {personas.length} active</Eyebrow>
+      <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+        {personas.map((p) => (
+          <DynamicPersonaRow key={p.session_name} persona={p} onKill={onKill} />
+        ))}
+      </div>
+    </HUDFrame>
+  );
+}
+
+function DynamicPersonaRow({
+  persona,
+  onKill,
+}: {
+  persona: DynamicPersonaInfo;
+  onKill: (sessionName: string) => void;
+}) {
+  const [killing, setKilling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleKill() {
+    setKilling(true);
+    setError(null);
+    try {
+      await invoke("kill_dynamic_persona", { sessionName: persona.session_name });
+      onKill(persona.session_name);
+    } catch (e) {
+      setError(String(e));
+      setKilling(false);
+    }
+  }
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
+        gap: 12,
+        padding: "8px 12px",
+        background: "rgba(255,255,255,0.02)",
+        border: "1px solid var(--border-neutral)",
+        borderRadius: 2,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+        <StatusDot color={persona.running ? "#6BFF8C" : "var(--fg-3)"} />
+        <div>
+          <div
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 700,
+              fontSize: 14,
+              color: "var(--fn-white)",
+            }}
+          >
+            {persona.name}
+          </div>
+          <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--fg-3)" }}>
+            {persona.session_name} · {persona.backing_cli}
+          </div>
+          {error && (
+            <div
+              style={{
+                fontSize: 10,
+                color: "#FF8FA3",
+                fontFamily: "var(--font-mono)",
+                marginTop: 2,
+              }}
+            >
+              {error}
+            </div>
+          )}
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Badge color={persona.lifecycle === "persistent" ? "muted" : "warn"}>
+          {persona.lifecycle}
+        </Badge>
+        <Btn variant="ghost" onClick={handleKill} disabled={killing}>
+          {killing ? "Stopping…" : "Stop"}
+        </Btn>
+      </div>
     </div>
   );
 }

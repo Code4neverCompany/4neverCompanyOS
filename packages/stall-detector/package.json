@@ -14,7 +14,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@c4n/core": "workspace:*"
+    "@c4n/core": "workspace:*",
+    "@c4n/progress-signal": "workspace:*"
   },
   "devDependencies": {
     "typescript": "5.8.3",

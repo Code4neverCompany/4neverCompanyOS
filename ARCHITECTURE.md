@@ -25,3 +25,13 @@ JavaScript tests use **vitest** (per-package, run from the workspace root with `
 ## Packaging
 
 Release builds are produced by `tauri build`, which invokes the **NSIS bundler** on Windows to generate a single-file `.exe` installer. The icon chain starts at `apps/desktop/icons/icon.ico` (multi-resolution, generated from the monogram SVG). The NSIS installer is the primary Windows distribution artifact (Story 1.17a); a portable `.zip` fallback may be added in M5 alongside macOS (`.dmg`) and Linux (`.AppImage`) targets.
+
+## Persona system (M2, Story 2.3+)
+
+The desktop exposes a **three-tier persona surface**. Two fixed personas are always available: the **Dev** persona (Claude Code, Zellij session `dev-<project-id>`) and the **Frontend Designer** (Antigravity CLI `agy`, session `designer-<project-id>`). A third tier of **dynamic personas** (Story 3.1) is spawned via the BMad Builder "Add Agent" panel: session naming is `dyn-<slug>-<project-id>`, lifecycle is either `persistent` (pane survives exit) or `ephemeral` (pane closes on CLI exit). All three tiers route through the `c4n-persona-supervisor` PTY wrapper so stdout/stderr land in `vault/personas/<id>/log/`.
+
+Before spawning the Frontend Designer, the Rust backend reads the most-recently-modified `.md` files from the user's Obsidian vault (capped at 8 entries × 16 KB each via `c4n_platform_fs::recent_vault_entries`) and appends them as a context section to `agy.md`. This gives the designer persona working memory at session start without requiring a separate sync step. Vault write-back from the UI (Personas panel "Write note →") calls `write_vault_note`, which appends Markdown to `vault/inbox/<date>-<slug>.md`. Direct file I/O is used for M2; the pub/sub bus write path (Stories 2.7–2.10) layers on top in M3.
+
+## Progress signal / stall detection (M2, Stories 2.12–2.17)
+
+`@c4n/progress-signal` is a module-level singleton (`ProgressBus`) that forwards file-system events from the Rust platform-fs layer to TypeScript subscribers. Three signal kinds are supported: `artifact.changed` (vault file written), `code.changed` (project code file written), and `story.state` (BMAD story transition, M4). `@c4n/stall-detector` subscribes to `ProgressBus` via a rolling-window algorithm: if the window (default 5 min) elapses with zero signals, a `stall-detected` event fires for Hermes Agent to consume. Tests use `vi.useFakeTimers()` and call `ProgressBus.emitArtifact()` directly to inject synthetic signals without a Tauri runtime.
