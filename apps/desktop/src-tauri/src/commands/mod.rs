@@ -939,17 +939,11 @@ pub fn write_vault_note(title: String, body: String) -> Result<String, String> {
     Ok(path.to_string_lossy().to_string())
 }
 
-/// Returns the current date as `YYYY-MM-DD`. Used for vault note filenames.
-fn chrono_date_string() -> String {
-    // Use SystemTime rather than pulling in chrono to keep deps lean.
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let secs = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs())
-        .unwrap_or(0);
-    // Compute YYYY-MM-DD from Unix seconds without calendar crates.
-    // Reference: https://howardhinnant.github.io/date_algorithms.html
-    let z = (secs / 86400) as i64 + 719_468;
+/// Convert Unix days-since-epoch to a civil `(year, month, day)` without
+/// pulling in a calendar crate (dep-lean policy).
+/// Reference: https://howardhinnant.github.io/date_algorithms.html
+fn civil_from_unix_days(days: u64) -> (i64, u64, u64) {
+    let z = days as i64 + 719_468;
     let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
     let doe = (z - era * 146_097) as u64;
     let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
@@ -959,7 +953,30 @@ fn chrono_date_string() -> String {
     let d = doy - (153 * mp + 2) / 5 + 1;
     let m = if mp < 10 { mp + 3 } else { mp - 9 };
     let y = if m <= 2 { y + 1 } else { y };
+    (y, m, d)
+}
+
+/// Returns the current date as `YYYY-MM-DD`. Used for vault note filenames.
+fn chrono_date_string() -> String {
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let (y, m, d) = civil_from_unix_days(secs / 86400);
     format!("{y:04}-{m:02}-{d:02}")
+}
+
+/// Returns the current UTC time as an ISO 8601 string
+/// (`YYYY-MM-DDTHH:MM:SSZ`), per the vault-layout timestamp convention.
+fn iso8601_utc_now() -> String {
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let (y, mo, d) = civil_from_unix_days(secs / 86400);
+    let rem = secs % 86400;
+    let (h, mi, s) = (rem / 3600, (rem % 3600) / 60, rem % 60);
+    format!("{y:04}-{mo:02}-{d:02}T{h:02}:{mi:02}:{s:02}Z")
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -996,6 +1013,155 @@ pub struct DynamicPersonaInfo {
     pub session_name: String,
     /// Whether the Zellij session is currently running.
     pub running: bool,
+    /// Stable bus identity `agent:<slug>:<uuid>` (Story 3.3). The persona
+    /// posts/subscribes under this identity; the bus relay (Story 2.7+)
+    /// reads the same value from `.persona-meta.json`.
+    pub bus_identity: String,
+    /// Absolute path to the persona's vault directory
+    /// (`<vault>/personas/<slug>/`), scaffolded per docs/vault-layout.md.
+    pub vault_dir: String,
+}
+
+// ── Story 3.3 — persistent dynamic agent: vault dir + bus identity ─────
+//
+// A persistent dynamic persona is a first-class team member: it gets its
+// own Zellij pane (Story 3.1), its own vault directory laid out per
+// docs/vault-layout.md (Story 1.6), and a stable bus identity so it can
+// post/subscribe on the message bus. The bus identity is persisted in
+// `.persona-meta.json` so it survives re-spawns and so the bus relay
+// (Story 2.7+) can register the same identity.
+
+/// Vault-layout version this code scaffolds (docs/vault-layout.md v1.0).
+const VAULT_DIR_VERSION: &str = "1.0";
+
+/// Env var carrying a persona's bus identity into its supervised process.
+/// The persona reads it to know who it is on the bus; the bus relay uses
+/// the same value (from `.persona-meta.json`) when it lands in Story 2.7+.
+const BUS_IDENTITY_ENV: &str = "C4N_BUS_IDENTITY";
+
+/// Runtime metadata persisted at `personas/<slug>/.persona-meta.json`
+/// (docs/vault-layout.md → `.persona-meta.json` schema v1.0). `bus_identity`
+/// is the Story 3.3 addition.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct PersonaMeta {
+    #[serde(rename = "$schema")]
+    schema: String,
+    persona_id: String,
+    /// "fixed" | "dynamic".
+    persona_type: String,
+    /// "persistent" | "ephemeral".
+    lifecycle: String,
+    backing_cli: String,
+    /// ISO 8601 UTC timestamp of first spawn.
+    spawned_at: String,
+    vault_dir_version: String,
+    /// Stable `agent:<slug>:<uuid>` identity (Story 3.3).
+    bus_identity: String,
+}
+
+/// Generate a non-cryptographic UUID-v4-shaped string (8-4-4-4-12 hex).
+///
+/// We avoid the `uuid`/`rand` crates (same dep-lean rationale as the FNV
+/// `project_id_from_path` hash): a local bus identity needs uniqueness,
+/// not cryptographic unpredictability. Entropy sources mixed through two
+/// FNV-1a passes: high-resolution clock, pid, a process-lifetime atomic
+/// counter, and a heap address (ASLR).
+fn generate_uuid_v4() -> String {
+    use std::sync::atomic::AtomicU64;
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+    fn fnv1a(seed: u64, bytes: &[u8]) -> u64 {
+        let mut h = seed;
+        for &b in bytes {
+            h ^= b as u64;
+            h = h.wrapping_mul(0x100000001b3);
+        }
+        h
+    }
+
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos() as u64)
+        .unwrap_or(0);
+    let count = COUNTER.fetch_add(1, Ordering::Relaxed);
+    let pid = std::process::id() as u64;
+    let boxed = Box::new(0u8);
+    let addr = (&*boxed as *const u8) as u64;
+
+    let mut buf = Vec::with_capacity(32);
+    buf.extend_from_slice(&nanos.to_le_bytes());
+    buf.extend_from_slice(&count.to_le_bytes());
+    buf.extend_from_slice(&pid.to_le_bytes());
+    buf.extend_from_slice(&addr.to_le_bytes());
+
+    let hi = fnv1a(0xcbf29ce484222325, &buf);
+    let lo = fnv1a(hi ^ 0x9e3779b97f4a7c15, &buf);
+
+    let mut bytes = [0u8; 16];
+    bytes[..8].copy_from_slice(&hi.to_be_bytes());
+    bytes[8..].copy_from_slice(&lo.to_be_bytes());
+    bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+    bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10xx
+
+    let h = |b: &[u8]| b.iter().map(|x| format!("{x:02x}")).collect::<String>();
+    format!(
+        "{}-{}-{}-{}-{}",
+        h(&bytes[0..4]),
+        h(&bytes[4..6]),
+        h(&bytes[6..8]),
+        h(&bytes[8..10]),
+        h(&bytes[10..16]),
+    )
+}
+
+/// Build a persona bus identity: `agent:<slug>:<uuid>` (Story 3.3).
+fn build_bus_identity(slug: &str) -> String {
+    format!("agent:{slug}:{}", generate_uuid_v4())
+}
+
+/// Scaffold a persona's vault directory per docs/vault-layout.md (Story
+/// 1.6 layout): `log/`, `skills/`, `memory/` subdirs + `.persona-meta.json`.
+///
+/// Idempotent and stable across re-spawns: if `.persona-meta.json` already
+/// exists and parses, its identity + spawn time are preserved and returned;
+/// only on first spawn (or a corrupt meta) is a fresh bus identity minted.
+fn ensure_persona_vault_dir(
+    vault_path: &Path,
+    slug: &str,
+    persona_type: &str,
+    lifecycle: &str,
+    backing_cli: &str,
+) -> Result<PersonaMeta, String> {
+    let persona_dir = vault_path.join("personas").join(slug);
+    for sub in ["log", "skills", "memory"] {
+        std::fs::create_dir_all(persona_dir.join(sub))
+            .map_err(|e| format!("create persona {sub} dir: {e}"))?;
+    }
+
+    let meta_path = persona_dir.join(".persona-meta.json");
+    if meta_path.exists() {
+        let raw =
+            std::fs::read_to_string(&meta_path).map_err(|e| format!("read persona meta: {e}"))?;
+        if let Ok(existing) = serde_json::from_str::<PersonaMeta>(&raw) {
+            return Ok(existing);
+        }
+        // Corrupt/old meta — fall through and rewrite with a fresh identity.
+    }
+
+    let meta = PersonaMeta {
+        schema: VAULT_DIR_VERSION.to_string(),
+        persona_id: slug.to_string(),
+        persona_type: persona_type.to_string(),
+        lifecycle: lifecycle.to_string(),
+        backing_cli: backing_cli.to_string(),
+        spawned_at: iso8601_utc_now(),
+        vault_dir_version: VAULT_DIR_VERSION.to_string(),
+        bus_identity: build_bus_identity(slug),
+    };
+    let body =
+        serde_json::to_string_pretty(&meta).map_err(|e| format!("serialize persona meta: {e}"))?;
+    std::fs::write(&meta_path, body).map_err(|e| format!("write persona meta: {e}"))?;
+    Ok(meta)
 }
 
 /// Slugify a name for use in session and directory names.
@@ -1082,6 +1248,15 @@ pub fn spawn_dynamic_persona(
     let slug = slugify_name(&name);
     let session_name = dynamic_session_name(&slug, &project.id);
 
+    // Story 3.3: scaffold the persona's vault dir (log/skills/memory +
+    // .persona-meta.json) and load-or-mint its stable bus identity. Done
+    // before the already-running check so a re-spawn returns the SAME
+    // identity rather than minting a fresh one.
+    let workspace_config = read_workspace_config()?;
+    let vault_path = PathBuf::from(&workspace_config.vault_path);
+    let meta = ensure_persona_vault_dir(&vault_path, &slug, "dynamic", &lifecycle, &backing_cli)?;
+    let persona_vault_dir = vault_path.join("personas").join(&slug);
+
     // Check if already running; if so, just return running state.
     let sessions = zellij::list_sessions().map_err(|e| format!("list sessions: {e}"))?;
     if sessions.iter().any(|l| l.split_whitespace().next() == Some(session_name.as_str())) {
@@ -1092,6 +1267,8 @@ pub fn spawn_dynamic_persona(
             lifecycle,
             session_name,
             running: true,
+            bus_identity: meta.bus_identity,
+            vault_dir: persona_vault_dir.to_string_lossy().to_string(),
         });
     }
 
@@ -1102,14 +1279,6 @@ pub fn spawn_dynamic_persona(
     let persona_file = project_root.join(persona_filename_for_cli(&backing_cli));
     std::fs::write(&persona_file, &persona_content)
         .map_err(|e| format!("write persona file: {e}"))?;
-
-    // Create the vault persona directory.
-    let workspace_config = read_workspace_config()?;
-    let persona_vault_dir = PathBuf::from(&workspace_config.vault_path)
-        .join("personas")
-        .join(&slug);
-    std::fs::create_dir_all(&persona_vault_dir)
-        .map_err(|e| format!("create persona vault dir: {e}"))?;
 
     // Determine the CLI binary to spawn.
     let cli_bin = if backing_cli == "claude" {
@@ -1123,6 +1292,11 @@ pub fn spawn_dynamic_persona(
     let close_on_exit = lifecycle == "ephemeral";
     let supervisor_bin = find_supervisor_binary();
 
+    // Story 3.3: hand the persona its bus identity via the environment so
+    // it (and the supervisor) post/subscribe under one stable identity.
+    let mut env = HashMap::new();
+    env.insert(BUS_IDENTITY_ENV.to_string(), meta.bus_identity.clone());
+
     let pane_name = format!("{} · {}", name, project.name);
     let config = SpawnPaneConfig {
         session_name: session_name.clone(),
@@ -1133,7 +1307,7 @@ pub fn spawn_dynamic_persona(
             "--".to_string(),
             cli_bin,
         ],
-        env: HashMap::new(),
+        env,
         cwd: Some(project_root),
         pane_name: Some(pane_name),
         close_on_exit,
@@ -1148,6 +1322,8 @@ pub fn spawn_dynamic_persona(
         lifecycle,
         session_name,
         running: true,
+        bus_identity: meta.bus_identity,
+        vault_dir: persona_vault_dir.to_string_lossy().to_string(),
     })
 }
 
@@ -1982,6 +2158,164 @@ mod tests {
         assert!(
             !second.load(Ordering::SeqCst),
             "second stop flag should still be clear"
+        );
+    }
+
+    // ── Story 3.3 — persistent dynamic agent: vault dir + bus identity ──
+
+    #[test]
+    fn iso8601_utc_now_is_well_formed() {
+        let ts = iso8601_utc_now();
+        // YYYY-MM-DDTHH:MM:SSZ — 20 chars, ends in Z, has the T separator.
+        assert_eq!(ts.len(), 20, "got: {ts}");
+        assert!(ts.ends_with('Z'), "got: {ts}");
+        assert_eq!(&ts[10..11], "T", "got: {ts}");
+        assert!(ts.starts_with("20"), "got: {ts}");
+    }
+
+    #[test]
+    fn generate_uuid_v4_is_well_shaped_and_unique() {
+        let a = generate_uuid_v4();
+        let b = generate_uuid_v4();
+        assert_ne!(a, b, "two UUIDs must differ");
+        for u in [&a, &b] {
+            assert_eq!(u.len(), 36, "got: {u}");
+            let parts: Vec<&str> = u.split('-').collect();
+            assert_eq!(parts.len(), 5, "got: {u}");
+            assert_eq!(
+                parts.iter().map(|p| p.len()).collect::<Vec<_>>(),
+                vec![8, 4, 4, 4, 12],
+                "got: {u}"
+            );
+            // Version 4 nibble.
+            assert_eq!(&parts[2][0..1], "4", "version nibble must be 4: {u}");
+            // Variant nibble is one of 8/9/a/b.
+            let variant = &parts[3][0..1];
+            assert!(
+                matches!(variant, "8" | "9" | "a" | "b"),
+                "variant nibble must be 8..b: {u}"
+            );
+            assert!(
+                u.chars().all(|c| c.is_ascii_hexdigit() || c == '-'),
+                "must be hex+dashes: {u}"
+            );
+        }
+    }
+
+    #[test]
+    fn bus_identity_has_agent_slug_uuid_shape() {
+        // AC: "the persona has a unique bus identity (agent:architect:<uuid>)".
+        let id = build_bus_identity("architect");
+        assert!(id.starts_with("agent:architect:"), "got: {id}");
+        let uuid = id.strip_prefix("agent:architect:").unwrap();
+        assert_eq!(uuid.len(), 36, "uuid part wrong length: {id}");
+        // Distinct personas (and re-mints) get distinct identities.
+        assert_ne!(build_bus_identity("architect"), id);
+    }
+
+    #[test]
+    fn ensure_persona_vault_dir_creates_layout_and_identity() {
+        // AC: "vault/personas/architect/ exists with the per-persona log +
+        // skills subdirs" AND "a unique bus identity (agent:architect:<uuid>)".
+        let vault = std::env::temp_dir().join(format!(
+            "c4n-vaultdir-{}-{}",
+            std::process::id(),
+            generate_uuid_v4()
+        ));
+        std::fs::create_dir_all(&vault).unwrap();
+
+        let meta =
+            ensure_persona_vault_dir(&vault, "architect", "dynamic", "persistent", "claude")
+                .unwrap();
+
+        let persona_dir = vault.join("personas").join("architect");
+        assert!(persona_dir.join("log").is_dir(), "log/ subdir missing");
+        assert!(persona_dir.join("skills").is_dir(), "skills/ subdir missing");
+        assert!(persona_dir.join("memory").is_dir(), "memory/ subdir missing");
+        assert!(
+            persona_dir.join(".persona-meta.json").is_file(),
+            ".persona-meta.json missing"
+        );
+
+        assert!(
+            meta.bus_identity.starts_with("agent:architect:"),
+            "got: {}",
+            meta.bus_identity
+        );
+        assert_eq!(meta.persona_type, "dynamic");
+        assert_eq!(meta.lifecycle, "persistent");
+        assert_eq!(meta.backing_cli, "claude");
+        assert_eq!(meta.vault_dir_version, VAULT_DIR_VERSION);
+
+        // The persisted file round-trips to the same identity.
+        let raw =
+            std::fs::read_to_string(persona_dir.join(".persona-meta.json")).unwrap();
+        let on_disk: PersonaMeta = serde_json::from_str(&raw).unwrap();
+        assert_eq!(on_disk.bus_identity, meta.bus_identity);
+
+        std::fs::remove_dir_all(&vault).ok();
+    }
+
+    #[test]
+    fn ensure_persona_vault_dir_is_idempotent_and_stable() {
+        // Re-spawning the same persona must NOT mint a new bus identity —
+        // a persistent agent keeps one identity across app restarts.
+        let vault = std::env::temp_dir().join(format!(
+            "c4n-vaultstable-{}-{}",
+            std::process::id(),
+            generate_uuid_v4()
+        ));
+        std::fs::create_dir_all(&vault).unwrap();
+
+        let first =
+            ensure_persona_vault_dir(&vault, "architect", "dynamic", "persistent", "claude")
+                .unwrap();
+        let second =
+            ensure_persona_vault_dir(&vault, "architect", "dynamic", "persistent", "claude")
+                .unwrap();
+
+        assert_eq!(
+            first.bus_identity, second.bus_identity,
+            "bus identity must be stable across re-spawns"
+        );
+        assert_eq!(first.spawned_at, second.spawned_at);
+
+        std::fs::remove_dir_all(&vault).ok();
+    }
+
+    // Full spawn (pane + vault dir + bus identity together) needs a real
+    // Zellij install, a supervisor on PATH, and an active project — same
+    // constraints as the Dev/Hermes spawn paths. The vault-dir + identity
+    // halves are covered by the automated tests above; the pane half plus
+    // end-to-end wiring is verified by this manual protocol. Mirrors the
+    // `#[ignore]` pattern used by restart_survival_manual_verification.
+    #[test]
+    #[ignore = "manual verification — requires Zellij ≥ 0.44.3, c4n-persona-supervisor on PATH, and an open project"]
+    fn persistent_architect_spawn_manual_verification() {
+        eprintln!(
+            "\n\
+             Story 3.3 — persistent dynamic agent (Architect) manual verification\n\
+             ────────────────────────────────────────────────────────────────────\n\
+             \n\
+             Preconditions:\n\
+               1. Zellij ≥ 0.44.3 on PATH; c4n-persona-supervisor on PATH.\n\
+               2. First-run wizard done (~/.4nevercompanyos/config.toml has vault_path).\n\
+               3. A project is open (open_project called).\n\
+             \n\
+             Protocol:\n\
+               1. Personas rail → BMad Builder \"Add Agent\".\n\
+               2. Name \"Architect\", backing CLI Claude, lifecycle Persistent → Spawn.\n\
+               3. PANE: multi-terminal view shows a new pane labeled \"Architect · <project>\".\n\
+                  `zellij list-sessions` shows `dyn-architect-<project-id>`.\n\
+               4. VAULT DIR: `<vault>/personas/architect/` exists with `log/`,\n\
+                  `skills/`, `memory/` subdirs + `.persona-meta.json`.\n\
+               5. BUS IDENTITY: `.persona-meta.json` `bus_identity` reads\n\
+                  `agent:architect:<uuid>`; the spawned process sees the same\n\
+                  value in its `C4N_BUS_IDENTITY` env var.\n\
+               6. Re-spawn Architect → `bus_identity` is UNCHANGED (stable).\n\
+             \n\
+             Pass condition: steps 3, 4, 5, and 6 all hold.\n\
+             "
         );
     }
 }

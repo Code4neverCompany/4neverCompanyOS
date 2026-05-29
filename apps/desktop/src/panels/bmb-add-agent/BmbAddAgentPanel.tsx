@@ -21,6 +21,10 @@ export interface DynamicPersonaInfo {
   lifecycle: string;
   session_name: string;
   running: boolean;
+  /** Stable `agent:<slug>:<uuid>` bus identity (Story 3.3). */
+  bus_identity: string;
+  /** Absolute path to `<vault>/personas/<slug>/` (Story 3.3). */
+  vault_dir: string;
 }
 
 type BackingCli = "claude" | "agy" | "hermes" | "custom";
@@ -266,6 +270,18 @@ function SpawnedConfirmation({
           >
             {persona.session_name}
           </div>
+          {persona.bus_identity && (
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 10,
+                color: "var(--fn-dim, #8a8f98)",
+              }}
+              title="Bus identity — how this persona posts/subscribes on the message bus"
+            >
+              {persona.bus_identity}
+            </div>
+          )}
         </div>
         <Badge color={persona.lifecycle === "persistent" ? "online" : "warn"}>
           {persona.lifecycle.toUpperCase()}

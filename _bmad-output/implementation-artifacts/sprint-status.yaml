@@ -86,7 +86,7 @@ development_status:
   epic-3: in-progress
   3-1-m3-bmad-builder-add-agent-panel: done # b63ca20 — BmbAddAgentPanel + spawn_dynamic_persona + kill_dynamic_persona; integrated in PersonasView
   3-2-m3-lifecycle-selection-persistent-vs-ephemeral-spawn: done # b63ca20 — persistent/ephemeral lifecycle selection in BmbAddAgentPanel + Rust close_on_exit flag
-  3-3-m3-persistent-dynamic-agent-terminal-pane-vault-dir-bus-identity: backlog
+  3-3-m3-persistent-dynamic-agent-terminal-pane-vault-dir-bus-identity: done # NEVAAA-23 — spawn_dynamic_persona now scaffolds full vault dir (log/skills/memory + .persona-meta.json) + mints stable agent:<slug>:<uuid> bus identity (env + meta); idempotent across re-spawns
   3-4-m3-persona-sync-fr21-backflow-drift-detection: backlog
   3-5-m3-per-persona-vault-scoping-best-effort-write-log: backlog
   3-6-m3-ephemeral-persona-lifecycle-spawn-task-exit-cleanly: backlog
