@@ -61,10 +61,10 @@ development_status:
   epic-1-retrospective: optional
 
   # ── Epic 2: Second Agent + Live Bus + Stall Detection (M2) ───────
-  epic-2: backlog
+  epic-2: in-progress
   2-1-m2-antigravity-oauth-flow-in-wizard: backlog
-  2-2-m2-frontend-designer-persona-spawn-on-project-open: backlog
-  2-3-m2-agy-md-projection-from-bmad-frontend-designer-persona-file: backlog
+  2-2-m2-frontend-designer-persona-spawn-on-project-open: done # f39d0b9 — spawn_designer_persona + status + kill + PersonasView
+  2-3-m2-agy-md-projection-from-bmad-frontend-designer-persona-file: done # f39d0b9 — agy.md + vault context inject at spawn time
   2-4-m2-zellij-adapter-multi-pane-orchestration: backlog
   2-5-m2-both-fixed-personas-survive-desktop-app-restart: backlog
   2-6-m2-bus-protocol-schema-doc: backlog
@@ -73,19 +73,19 @@ development_status:
   2-9-m2-websocket-relay-for-desktop-ui: backlog
   2-10-m2-ui-channel-view-panel-showing-live-bus-traffic: backlog
   2-11-m2-bus-state-survives-paperclip-restart: backlog
-  2-12-m2-progress-signal-vault-artifact-changed: backlog
-  2-13-m2-progress-signal-project-code-changed: backlog
-  2-14-m2-stall-detector-rolling-window-algorithm: backlog
+  2-12-m2-progress-signal-vault-artifact-changed: done # b63ca20 — ProgressBus singleton (emit/subscribe/emitArtifact)
+  2-13-m2-progress-signal-project-code-changed: done # b63ca20 — ProgressBus.emitCode() implemented
+  2-14-m2-stall-detector-rolling-window-algorithm: done # b63ca20 — StallDetector class; 8 vitest tests green
   2-15-m2-hermes-intervention-ui-prompt: backlog
   2-16-m2-telemetry-tap-token-count-parser-per-cli: backlog
-  2-17-m2-stall-detection-10-scenario-validation-corpus: backlog
+  2-17-m2-stall-detection-10-scenario-validation-corpus: backlog # 2 smoke tests in index.test.ts; corpus at 2/10
   2-18-m2-progress-signal-taxonomy-doc-initial-pause-redirect-action: backlog
   epic-2-retrospective: optional
 
   # ── Epic 3: Dynamic Persona Spawning + BMad Builder (M3) ─────────
-  epic-3: backlog
-  3-1-m3-bmad-builder-add-agent-panel: backlog
-  3-2-m3-lifecycle-selection-persistent-vs-ephemeral-spawn: backlog
+  epic-3: in-progress
+  3-1-m3-bmad-builder-add-agent-panel: done # b63ca20 — BmbAddAgentPanel + spawn_dynamic_persona + kill_dynamic_persona; integrated in PersonasView
+  3-2-m3-lifecycle-selection-persistent-vs-ephemeral-spawn: done # b63ca20 — persistent/ephemeral lifecycle selection in BmbAddAgentPanel + Rust close_on_exit flag
   3-3-m3-persistent-dynamic-agent-terminal-pane-vault-dir-bus-identity: backlog
   3-4-m3-persona-sync-fr21-backflow-drift-detection: backlog
   3-5-m3-per-persona-vault-scoping-best-effort-write-log: backlog
