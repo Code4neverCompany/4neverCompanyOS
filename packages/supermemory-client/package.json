@@ -1,7 +1,7 @@
 {
   "name": "@c4n/supermemory-client",
   "private": true,
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "description": "Opt-in Supermemory wrapper for cross-project semantic memory. Per-category toggles drive what crosses the local-to-cloud boundary.",
   "main": "./src/index.ts",
@@ -11,10 +11,11 @@
   },
   "scripts": {
     "typecheck": "tsc -b --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "dependencies": {
-    "@c4n/core": "workspace:*"
+    "@c4n/core": "workspace:*",
+    "@c4n/vault-layout": "workspace:*"
   },
   "devDependencies": {
     "typescript": "5.8.3",

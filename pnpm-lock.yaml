@@ -213,6 +213,9 @@ importers:
       "@c4n/core":
         specifier: workspace:*
         version: link:../core
+      "@c4n/progress-signal":
+        specifier: workspace:*
+        version: link:../progress-signal
     devDependencies:
       typescript:
         specifier: 5.8.3
@@ -226,6 +229,9 @@ importers:
       "@c4n/core":
         specifier: workspace:*
         version: link:../core
+      "@c4n/vault-layout":
+        specifier: workspace:*
+        version: link:../vault-layout
     devDependencies:
       typescript:
         specifier: 5.8.3
