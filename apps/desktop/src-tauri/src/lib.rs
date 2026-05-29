@@ -45,6 +45,17 @@ pub fn run() {
             commands::spawn_hermes,
             commands::hermes_status,
             commands::kill_hermes,
+            // Story 2.3: Frontend Designer (Antigravity CLI) spawn / status / kill.
+            // Same shape as Dev and Hermes; PersonasView (App.tsx "personas" rail)
+            // uses these to manage the designer persona lifecycle.
+            commands::spawn_designer_persona,
+            commands::designer_persona_status,
+            commands::kill_designer_persona,
+            commands::project_agy_md,
+            // Story 2.3 (vault bridge): read vault context summary and write notes
+            // back to the Obsidian vault from the Personas panel.
+            commands::vault_context_summary,
+            commands::write_vault_note,
             // Story 1.16c: tap-file tail streaming for the embedded
             // xterm.js views (Dev terminal in ProjectsView, Hermes
             // terminal in MemoryView).

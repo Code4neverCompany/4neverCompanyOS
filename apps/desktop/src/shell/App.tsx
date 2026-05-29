@@ -11,6 +11,7 @@ import { Badge, Eyebrow, HUDFrame, StatusDot } from "@c4n/ui-tokens";
 import monogramUrl from "@c4n/ui-tokens/assets/logo/monogram.png";
 import { ProjectsView } from "../views/ProjectsView";
 import { MemoryView } from "../views/MemoryView";
+import { PersonasView } from "../views/PersonasView";
 import { SettingsView } from "../views/SettingsView";
 
 type RailItem = "projects" | "personas" | "vault" | "memory" | "settings";
@@ -194,20 +195,13 @@ function SideRail({
 /** Per-rail-item placeholder copy for the rail items that aren't wired up
  *  to a real view yet. `projects` has its own implementation in
  *  views/ProjectsView (Story 1.12). `memory` lands in Story 1.16c.
- *  `settings` lands in Story 1.19. The rest will land on their own stories. */
-type PlaceholderRailItem = Exclude<RailItem, "projects" | "memory" | "settings">;
+ *  `personas` lands in Story 2.3 (PersonasView). `settings` in Story 1.19. */
+type PlaceholderRailItem = Exclude<RailItem, "projects" | "memory" | "personas" | "settings">;
 
 const SLOT_COPY: Record<
   PlaceholderRailItem,
   { eyebrow: string; titlePrefix: string; titleAccent: string; body: string; comingIn: string }
 > = {
-  personas: {
-    eyebrow: "Personas · 2 fixed",
-    titlePrefix: "",
-    titleAccent: "Personas",
-    body: "The Dev persona (Claude Code) and Frontend Designer (Antigravity CLI) are the two ship-time personas. Every other persona is dynamic via the BMad Builder.",
-    comingIn: "Story 2.x — BMad Builder + dynamic persona panel",
-  },
   vault: {
     eyebrow: "Vault · ~/.4nevercompanyos",
     titlePrefix: "",
@@ -224,6 +218,10 @@ function MainSlot({ active }: { active: RailItem }) {
   // Story 1.16c: Memory rail item now renders the live Hermes view.
   if (active === "memory") {
     return <MemoryView />;
+  }
+  // Story 2.3: Personas rail item renders the Frontend Designer spawn panel.
+  if (active === "personas") {
+    return <PersonasView />;
   }
   // Story 1.19: Settings rail item now renders the Settings → About view.
   if (active === "settings") {

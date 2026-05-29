@@ -4,6 +4,7 @@
 //! from the front-end via `invoke('name', args)`. Long-lived streams
 //! live in `crate::ipc` instead.
 
+use c4n_platform_fs as platform_fs;
 use c4n_zellij_adapter::{self as zellij, SpawnPaneConfig};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -20,6 +21,11 @@ use tauri::State;
 /// (Story 1.13.)
 const BUNDLED_DEV_PERSONA_MD: &str =
     include_str!("../../../../../packages/persona-sync/src/personas/dev.md");
+
+/// Bundled Frontend Designer persona markdown. Same single-source pattern
+/// as the Dev persona. (Story 2.3.)
+const BUNDLED_DESIGNER_PERSONA_MD: &str =
+    include_str!("../../../../../packages/persona-sync/src/personas/designer.md");
 
 /// BMAD customize-chain override path. If a user-project contains this
 /// file, we project its contents instead of the bundled default.
@@ -629,6 +635,331 @@ pub fn kill_hermes(project_id: String) -> Result<(), String> {
         pane_name: None,
     };
     handle.kill().map_err(|e| format!("kill hermes: {e}"))
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Story 2.3 — Frontend Designer (Antigravity CLI) persona spawn
+// ────────────────────────────────────────────────────────────────────
+//
+// Mirrors the Dev and Hermes spawn patterns. The Frontend Designer runs
+// Antigravity CLI (`agy`) in its own Zellij session (`designer-<project-id>`)
+// through the persona-supervisor. Before spawning, we:
+//   1. Project `agy.md` into the project root (analogous to `claude.md`).
+//   2. Read recent vault entries and append them as context so the
+//      designer persona starts with up-to-date working memory. (Epic 3.)
+//
+// agy.md projection file: `agy.md` at `<project-root>/` — Antigravity
+// CLI reads this file automatically, just like Claude Code reads `claude.md`.
+// The canonical persona source is `packages/persona-sync/src/personas/designer.md`.
+
+/// BMAD customize-chain override path for the Frontend Designer persona.
+/// Mirrors PROJECT_DEV_OVERRIDE_RELPATH.
+const PROJECT_DESIGNER_OVERRIDE_RELPATH: &str = "_bmad/custom/agents/designer.md";
+
+/// Filename written to the project root when the designer persona spawns.
+const AGY_MD_FILENAME: &str = "agy.md";
+
+/// Default binary name for Antigravity CLI.
+const AGY_BIN_DEFAULT: &str = "agy";
+
+/// Env var that overrides the Antigravity CLI binary path.
+const AGY_BIN_ENV: &str = "C4N_AGY_BIN";
+
+/// Number of recent vault entries to inject into agy.md at spawn time.
+const VAULT_CONTEXT_ENTRY_LIMIT: usize = 8;
+
+/// Status of the Frontend Designer persona for a given project.
+/// Shape mirrors `DevPersonaStatus` and `HermesStatus`.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "state", rename_all = "kebab-case")]
+pub enum DesignerPersonaStatus {
+    ZellijMissing,
+    NotRunning { session_name: String },
+    Running { session_name: String },
+}
+
+fn designer_session_name(project_id: &str) -> String {
+    format!("designer-{project_id}")
+}
+
+fn find_agy_binary() -> String {
+    std::env::var(AGY_BIN_ENV).unwrap_or_else(|_| AGY_BIN_DEFAULT.to_string())
+}
+
+/// Resolve the Frontend Designer persona content. BMAD customize-chain:
+/// a project-level override wins over the bundled default.
+fn resolve_designer_persona_content(
+    project_root: &Path,
+) -> Result<(String, PersonaSource), String> {
+    let override_path = project_root.join(PROJECT_DESIGNER_OVERRIDE_RELPATH);
+    if override_path.exists() {
+        let content = std::fs::read_to_string(&override_path)
+            .map_err(|e| format!("read {}: {e}", override_path.display()))?;
+        return Ok((content, PersonaSource::ProjectOverride));
+    }
+    Ok((BUNDLED_DESIGNER_PERSONA_MD.to_string(), PersonaSource::Bundled))
+}
+
+/// Build the agy.md content: persona text + optional vault context section.
+/// The vault context is appended after the persona file's trailing `---`
+/// delimiter so it appears as "working memory" that the designer can
+/// consult at session start.
+fn build_agy_md_with_vault_context(
+    persona_content: &str,
+    vault_path: &Path,
+) -> String {
+    let entries = platform_fs::recent_vault_entries(vault_path, VAULT_CONTEXT_ENTRY_LIMIT)
+        .unwrap_or_default();
+    let context_section = platform_fs::format_vault_context(&entries);
+
+    // Persona file ends with `---`. Append the vault section after it.
+    format!("{persona_content}{context_section}")
+}
+
+/// Internal: resolve persona + inject vault context, then write agy.md.
+fn project_agy_md_inner(
+    project_root: &Path,
+    vault_path: &Path,
+) -> Result<ClaudeMdProjection, String> {
+    let (persona_content, source) = resolve_designer_persona_content(project_root)?;
+    let full_content = build_agy_md_with_vault_context(&persona_content, vault_path);
+    let target = project_root.join(AGY_MD_FILENAME);
+    std::fs::write(&target, &full_content)
+        .map_err(|e| format!("write {}: {e}", target.display()))?;
+    Ok(ClaudeMdProjection {
+        source,
+        written_to: target.to_string_lossy().to_string(),
+        bytes_written: full_content.len(),
+    })
+}
+
+/// Query whether the Frontend Designer persona for the given project is
+/// currently running in a Zellij pane.
+#[tauri::command]
+pub fn designer_persona_status(project_id: String) -> Result<DesignerPersonaStatus, String> {
+    if !zellij::is_available() {
+        return Ok(DesignerPersonaStatus::ZellijMissing);
+    }
+    let session_name = designer_session_name(&project_id);
+    let sessions = zellij::list_sessions().map_err(|e| format!("list sessions: {e}"))?;
+    let running = sessions
+        .iter()
+        .any(|line| line.split_whitespace().next() == Some(session_name.as_str()));
+    Ok(if running {
+        DesignerPersonaStatus::Running { session_name }
+    } else {
+        DesignerPersonaStatus::NotRunning { session_name }
+    })
+}
+
+/// Spawn the Frontend Designer persona (Antigravity CLI) into a Zellij
+/// pane named `designer-<project-id>`. Projects agy.md (with vault
+/// context appended) before spawning. Reuses the session if it exists.
+#[tauri::command]
+pub fn spawn_designer_persona(project_id: String) -> Result<DesignerPersonaStatus, String> {
+    if !zellij::is_available() {
+        return Ok(DesignerPersonaStatus::ZellijMissing);
+    }
+
+    let project = read_active_project()?
+        .ok_or_else(|| "no active project — call open_project first".to_string())?;
+    if project.id != project_id {
+        return Err(format!(
+            "project_id {project_id} doesn't match active project {}",
+            project.id
+        ));
+    }
+
+    let workspace_config = read_workspace_config()?;
+    let vault_path = PathBuf::from(&workspace_config.vault_path);
+
+    // Project agy.md with vault context before spawning.
+    project_agy_md_inner(Path::new(&project.path), &vault_path)?;
+
+    let session_name = designer_session_name(&project.id);
+
+    let sessions = zellij::list_sessions().map_err(|e| format!("list sessions: {e}"))?;
+    let already_running = sessions
+        .iter()
+        .any(|line| line.split_whitespace().next() == Some(session_name.as_str()));
+    if already_running {
+        return Ok(DesignerPersonaStatus::Running { session_name });
+    }
+
+    let supervisor_bin = find_supervisor_binary();
+    let agy_bin = find_agy_binary();
+
+    let cwd = PathBuf::from(&project.path);
+    let config = SpawnPaneConfig {
+        session_name: session_name.clone(),
+        command: supervisor_bin,
+        args: vec![
+            "frontend-designer".to_string(),
+            workspace_config.vault_path,
+            "--".to_string(),
+            agy_bin,
+        ],
+        env: HashMap::new(),
+        cwd: Some(cwd),
+        pane_name: Some(format!("Designer · {}", project.name)),
+        close_on_exit: false,
+    };
+
+    zellij::spawn_pane(config).map_err(|e| format!("spawn pane: {e}"))?;
+
+    Ok(DesignerPersonaStatus::Running { session_name })
+}
+
+/// Kill the Frontend Designer session for a given project.
+#[tauri::command]
+pub fn kill_designer_persona(project_id: String) -> Result<(), String> {
+    let session_name = designer_session_name(&project_id);
+    let handle = c4n_zellij_adapter::PaneHandle {
+        session_name,
+        pane_name: None,
+    };
+    handle.kill().map_err(|e| format!("kill designer: {e}"))
+}
+
+/// Re-project agy.md without spawning. Useful for "refresh persona context"
+/// flows after editing the override or after new vault entries land.
+#[tauri::command]
+pub fn project_agy_md(project_path: String) -> Result<ClaudeMdProjection, String> {
+    let p = PathBuf::from(&project_path);
+    if !p.exists() {
+        return Err(format!("path does not exist: {project_path}"));
+    }
+    if !p.is_dir() {
+        return Err(format!("not a directory: {project_path}"));
+    }
+    let workspace_config = read_workspace_config()?;
+    let vault_path = PathBuf::from(&workspace_config.vault_path);
+    project_agy_md_inner(&p, &vault_path)
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Story 2.3 — Obsidian vault bridge commands
+// ────────────────────────────────────────────────────────────────────
+//
+// These commands expose the vault read/write surface to the frontend so
+// the Personas panel can show "N vault entries loaded" at spawn time and
+// offer a "Write vault note" action.
+//
+// Write-back via the bus (Stories 2.7-2.10) layers on top later; for M2
+// we write directly to vault files. The bus write-back path is deferred
+// pending bus-client implementation.
+
+/// Summary of recent vault entries, returned to the frontend to show
+/// context state in the Personas panel.
+#[derive(Debug, Clone, Serialize)]
+pub struct VaultContextSummary {
+    /// Number of vault entries that would be injected at spawn time.
+    pub entry_count: usize,
+    /// Titles (filenames without extension) of the loaded entries.
+    pub titles: Vec<String>,
+    /// Total character count across all entry content.
+    pub total_chars: usize,
+}
+
+/// Return a summary of recent vault entries without writing them to disk.
+/// The frontend uses this to render "8 vault entries loaded" in the
+/// Personas panel status line.
+#[tauri::command]
+pub fn vault_context_summary() -> Result<VaultContextSummary, String> {
+    let workspace_config = read_workspace_config()?;
+    let vault_path = PathBuf::from(&workspace_config.vault_path);
+    let entries =
+        platform_fs::recent_vault_entries(&vault_path, VAULT_CONTEXT_ENTRY_LIMIT)
+            .map_err(|e| format!("read vault: {e}"))?;
+    let total_chars = entries.iter().map(|e| e.content.len()).sum();
+    let titles = entries
+        .iter()
+        .map(|e| {
+            e.path
+                .file_stem()
+                .and_then(|s| s.to_str())
+                .unwrap_or("note")
+                .to_string()
+        })
+        .collect();
+    Ok(VaultContextSummary {
+        entry_count: entries.len(),
+        titles,
+        total_chars,
+    })
+}
+
+/// Write a new Markdown note into the vault inbox directory. Used for
+/// agent write-back: the Personas panel can invoke this to let the designer
+/// persona log decisions or notes back to the Obsidian vault.
+///
+/// File path: `<vault>/inbox/<YYYY-MM-DD>-<slug>.md`
+/// If a file with that slug already exists for the day, content is appended.
+#[tauri::command]
+pub fn write_vault_note(title: String, body: String) -> Result<String, String> {
+    if title.is_empty() {
+        return Err("title must not be empty".to_string());
+    }
+    let workspace_config = read_workspace_config()?;
+    let vault_path = PathBuf::from(&workspace_config.vault_path);
+    let inbox = vault_path.join("inbox");
+    std::fs::create_dir_all(&inbox).map_err(|e| format!("create inbox dir: {e}"))?;
+
+    let now = chrono_date_string();
+    let slug: String = title
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '-' })
+        .collect::<String>()
+        .split('-')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-");
+    let filename = format!("{now}-{slug}.md");
+    let path = inbox.join(&filename);
+
+    let content = if path.exists() {
+        // Append to existing note with a timestamp separator.
+        let separator = format!("\n\n---\n_Appended {now}_\n\n{body}\n");
+        separator
+    } else {
+        format!("# {title}\n\n_Created {now}_\n\n{body}\n")
+    };
+
+    use std::io::Write;
+    let mut file = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&path)
+        .map_err(|e| format!("open vault note: {e}"))?;
+    file.write_all(content.as_bytes())
+        .map_err(|e| format!("write vault note: {e}"))?;
+    file.flush().map_err(|e| format!("flush vault note: {e}"))?;
+
+    Ok(path.to_string_lossy().to_string())
+}
+
+/// Returns the current date as `YYYY-MM-DD`. Used for vault note filenames.
+fn chrono_date_string() -> String {
+    // Use SystemTime rather than pulling in chrono to keep deps lean.
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    // Compute YYYY-MM-DD from Unix seconds without calendar crates.
+    // Reference: https://howardhinnant.github.io/date_algorithms.html
+    let z = (secs / 86400) as i64 + 719_468;
+    let era = if z >= 0 { z } else { z - 146_096 } / 146_097;
+    let doe = (z - era * 146_097) as u64;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146_096) / 365;
+    let y = yoe as i64 + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    format!("{y:04}-{m:02}-{d:02}")
 }
 
 // ────────────────────────────────────────────────────────────────────

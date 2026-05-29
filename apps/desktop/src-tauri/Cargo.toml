@@ -34,5 +34,7 @@ tracing-subscriber = { workspace = true }
 
 # Story 1.12: project-open + Dev persona spawn pipeline.
 c4n-zellij-adapter = { path = "../../../crates/zellij-adapter" }
+# Story 2.3: vault reader for Obsidian context injection at persona spawn.
+c4n-platform-fs = { path = "../../../crates/platform-fs" }
 toml = "0.8"
 dirs = "5"

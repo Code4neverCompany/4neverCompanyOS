@@ -48,3 +48,25 @@ export const DEV_PERSONA_PROJECT_OVERRIDE_PATH = "_bmad/custom/agents/dev.md" as
  * Claude Code reads `claude.md` automatically on launch.
  */
 export const DEV_PROJECTION_FILENAME = "claude.md" as const;
+
+// ── Story 2.3 — Frontend Designer (Antigravity CLI) persona ─────────
+
+/**
+ * Repo-root-relative path to the canonical Frontend Designer persona markdown.
+ * The desktop Rust side embeds it at compile time via `include_str!`.
+ */
+export const DESIGNER_PERSONA_PATH =
+  "packages/persona-sync/src/personas/designer.md" as const;
+
+/**
+ * Relative path inside a user-project where a BMAD customize-chain override
+ * for the Frontend Designer persona would live.
+ */
+export const DESIGNER_PERSONA_PROJECT_OVERRIDE_PATH =
+  "_bmad/custom/agents/designer.md" as const;
+
+/**
+ * Filename written into `<project-root>/` when the Frontend Designer persona spawns.
+ * Antigravity CLI reads `agy.md` automatically on launch.
+ */
+export const DESIGNER_PROJECTION_FILENAME = "agy.md" as const;

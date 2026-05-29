@@ -369,6 +369,7 @@ name = "c4n-desktop"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "c4n-platform-fs",
  "c4n-zellij-adapter",
  "dirs 5.0.1",
  "serde",
