@@ -47,6 +47,11 @@ use std::process::Command;
 use thiserror::Error;
 use tracing::{debug, warn};
 
+mod multi_pane;
+pub use multi_pane::{
+    MultiPaneSession, Pane, PersonaPaneSpec, SessionSnapshot, MAX_PANES_PER_SESSION,
+};
+
 /// Errors the adapter can produce. Serializable so they cross the Tauri IPC
 /// boundary cleanly if callers want to surface them in the UI.
 #[derive(Debug, Error, Serialize)]
@@ -68,6 +73,22 @@ pub enum ZellijError {
     /// std::process I/O error (couldn't even invoke zellij).
     #[error("io: {0}")]
     Io(String),
+
+    /// Multi-pane (Story 2.4): adding another pane would exceed the
+    /// session's configured cap.
+    #[error("session '{session}' is at its pane cap ({max}); cannot add more")]
+    TooManyPanes { session: String, max: usize },
+
+    /// Multi-pane (Story 2.4): a pane is already tracked for this persona
+    /// in the session. Persona IDs are the per-pane routing label and must
+    /// be unique within a session.
+    #[error("session '{session}' already has a pane for persona '{persona_id}'")]
+    DuplicatePersona { session: String, persona_id: String },
+
+    /// Multi-pane (Story 2.4): tried to reattach to a session that no
+    /// longer exists (the Zellij server for it is gone).
+    #[error("zellij session '{session}' not found (cannot reattach)")]
+    SessionNotFound { session: String },
 }
 
 impl From<std::io::Error> for ZellijError {
@@ -265,7 +286,7 @@ pub fn package_name() -> &'static str {
 /// `zellij list-sessions` output format varies slightly across versions and
 /// includes ANSI color codes plus "[Created N ago]" suffix. This helper just
 /// checks whether the line contains the bare session name as a token.
-fn session_name_matches(line: &str, name: &str) -> bool {
+pub(crate) fn session_name_matches(line: &str, name: &str) -> bool {
     // Strip ANSI escapes naively, then look for the name as the first token.
     let stripped: String = line
         .chars()
