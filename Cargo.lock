@@ -348,11 +348,13 @@ name = "c4n-bus-relay"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "chrono",
  "serde",
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
+ "uuid",
 ]
 
 [[package]]

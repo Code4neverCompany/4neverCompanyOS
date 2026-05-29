@@ -16,3 +16,13 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+# Story 2.7: ISO-8601 (RFC-3339) timestamps for the bus envelope `ts` field
+# when a Paperclip event arrives without one. default-features off keeps the
+# build slim — mirrors the c4n-persona-supervisor pin.
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+
+# Story 2.7: UUID v4 for the envelope `id` field when a relayed Paperclip
+# event carries no SSE `id:` we can reuse (used for de-dup / trace per the
+# bus envelope spec in architecture.md §5).
+uuid = { version = "1", features = ["v4"] }
