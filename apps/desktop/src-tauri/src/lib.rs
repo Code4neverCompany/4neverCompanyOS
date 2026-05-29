@@ -70,6 +70,9 @@ pub fn run() {
             // persistent personas beyond the two fixed ones.
             commands::spawn_dynamic_persona,
             commands::kill_dynamic_persona,
+            // Story 3.5 (vault scoping): read the best-effort out-of-scope
+            // write log so the Personas panel can surface a violation badge.
+            commands::persona_scope_violations,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -390,6 +390,7 @@ name = "c4n-persona-supervisor"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "c4n-vault-scoping",
  "chrono",
  "portable-pty",
  "serde",
@@ -416,8 +417,11 @@ name = "c4n-vault-scoping"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "chrono",
+ "notify",
  "serde",
  "serde_json",
+ "tempfile",
  "thiserror 2.0.18",
  "tokio",
  "tracing",
@@ -445,6 +449,7 @@ version = "0.0.1"
 dependencies = [
  "anyhow",
  "serde",
+ "serde_json",
  "thiserror 2.0.18",
  "tokio",
  "tracing",

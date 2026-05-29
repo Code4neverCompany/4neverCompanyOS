@@ -26,6 +26,11 @@ serde_json = { workspace = true }
 # `time` and other transitives we don't need beyond UTC date formatting).
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 
+# Story 3.5: best-effort per-persona vault scope monitor (D-7, FR-29).
+# The supervisor is the persona's process boundary and already knows
+# persona_id + vault_path, so it's the natural place to start the watcher.
+c4n-vault-scoping = { path = "../vault-scoping" }
+
 # Story 1.16a: cross-platform PTY for TUI-fidelity supervision.
 # Replaces the raw Stdio::piped() pattern from 1.14a so interactive
 # tools (claude, hermes, etc.) get a real TTY and behave as if running

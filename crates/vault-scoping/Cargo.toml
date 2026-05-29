@@ -16,3 +16,16 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+# Story 3.5: notify-based filesystem watcher (D-4 / D-7). Shares the same
+# `notify` major version pinned at the workspace level so platform-fs and
+# vault-scoping never diverge on the watcher backend.
+notify = { workspace = true }
+
+# Story 3.5: ISO-8601 UTC timestamps for out-of-scope-writes.log entries,
+# matching docs/vault-layout.md. Default-features off keeps the build slim;
+# `clock` + `std` are all we need for `Utc::now().to_rfc3339()`.
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+
+[dev-dependencies]
+tempfile = "3"

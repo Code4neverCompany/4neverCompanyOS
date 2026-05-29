@@ -57,6 +57,12 @@
 //! prefixes or known error patterns). That's a parser layer on top of
 //! the merged stream — not the supervisor's job.
 
+mod ephemeral;
+pub use ephemeral::{
+    ephemeral_artifact_path, run_ephemeral, EphemeralConfig, EphemeralNotifier, EphemeralOutcome,
+    NullNotifier,
+};
+
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use serde::Serialize;
 use std::io::{Read, Write};
@@ -111,6 +117,11 @@ pub struct SupervisorConfig {
     /// Optional working directory the child runs in. None ⇒ inherit
     /// from the supervisor's cwd.
     pub cwd: Option<PathBuf>,
+    /// Story 3.5: project IDs whose shared vault area (`projects/<id>/`)
+    /// this persona may legitimately write to, in addition to its own
+    /// `personas/<persona_id>/` dir. Used to start the best-effort vault
+    /// scope monitor. Empty ⇒ own-persona-dir-only scope.
+    pub project_ids: Vec<String>,
 }
 
 /// One JSONL log entry. `level` is always `"info"` since PTY merges
@@ -190,6 +201,30 @@ pub async fn supervise(config: SupervisorConfig) -> Result<i32, SupervisorError>
     if let Some(parent) = pty_raw_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
+
+    // Story 3.5: start the best-effort vault scope monitor for this
+    // persona. It watches the vault and logs writes outside the persona's
+    // scope to `personas/<id>/out-of-scope-writes.log` (D-7, FR-29 —
+    // observability only, never blocks). Held for the lifetime of
+    // supervision; dropped (stopping the watcher) when `supervise` returns.
+    //
+    // Non-fatal by design: if the watcher can't attach (e.g. unsupported
+    // FS, permission), we warn and continue — scope logging is an
+    // observability nicety, not a precondition for running the persona.
+    let _scope_monitor = {
+        let guard = c4n_vault_scoping::ScopeGuard::new(
+            config.vault_path.clone(),
+            config.persona_id.clone(),
+            config.project_ids.clone(),
+        );
+        match c4n_vault_scoping::ScopeMonitor::start(guard) {
+            Ok(monitor) => Some(monitor),
+            Err(e) => {
+                warn!("vault scope monitor failed to start (continuing): {e}");
+                None
+            }
+        }
+    };
 
     let pty_raw_writer = std::fs::OpenOptions::new()
         .create(true)
@@ -638,6 +673,7 @@ mod tests {
             command: "cargo".to_string(),
             args: vec!["--version".to_string()],
             cwd: None,
+            project_ids: vec![],
         })
         .await
         .unwrap();

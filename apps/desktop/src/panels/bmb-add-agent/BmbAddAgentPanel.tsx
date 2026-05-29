@@ -64,6 +64,7 @@ export function BmbAddAgentPanel({ onSpawned }: BmbAddAgentPanelProps) {
   const [cli, setCli] = useState<BackingCli>("claude");
   const [customBin, setCustomBin] = useState("");
   const [lifecycle, setLifecycle] = useState<Lifecycle>("persistent");
+  const [taskPrompt, setTaskPrompt] = useState("");
   const [spawning, setSpawning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSpawned, setLastSpawned] = useState<DynamicPersonaInfo | null>(null);
@@ -79,6 +80,10 @@ export function BmbAddAgentPanel({ onSpawned }: BmbAddAgentPanelProps) {
       setError("Enter a custom binary name.");
       return;
     }
+    if (lifecycle === "ephemeral" && !taskPrompt.trim()) {
+      setError("Ephemeral personas need a task prompt — the single task they run, then exit.");
+      return;
+    }
     setError(null);
     setSpawning(true);
     try {
@@ -86,6 +91,7 @@ export function BmbAddAgentPanel({ onSpawned }: BmbAddAgentPanelProps) {
         name: name.trim(),
         backingCli: effectiveCli,
         lifecycle,
+        taskPrompt: lifecycle === "ephemeral" ? taskPrompt.trim() : null,
       });
       setLastSpawned(persona);
       onSpawned?.(persona);
@@ -94,6 +100,7 @@ export function BmbAddAgentPanel({ onSpawned }: BmbAddAgentPanelProps) {
       setCli("claude");
       setCustomBin("");
       setLifecycle("persistent");
+      setTaskPrompt("");
     } catch (e) {
       setError(String(e));
     } finally {
@@ -191,12 +198,30 @@ export function BmbAddAgentPanel({ onSpawned }: BmbAddAgentPanelProps) {
           </div>
         </Field>
 
+        {/* Task prompt — ephemerals run a single task then exit cleanly */}
+        {lifecycle === "ephemeral" && (
+          <Field label="Task prompt">
+            <textarea
+              placeholder='The single task this agent runs, then exits. e.g. "Review PR #42 for security issues and summarize findings."'
+              value={taskPrompt}
+              onChange={(e) => setTaskPrompt(e.target.value)}
+              rows={3}
+              style={{ ...inputStyle, resize: "vertical", fontFamily: "var(--font-mono)" }}
+            />
+          </Field>
+        )}
+
         {/* Spawn button */}
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
           <Btn
             variant="primary"
             onClick={handleSpawn}
-            disabled={spawning || !name.trim() || (cli === "custom" && !customBin.trim())}
+            disabled={
+              spawning ||
+              !name.trim() ||
+              (cli === "custom" && !customBin.trim()) ||
+              (lifecycle === "ephemeral" && !taskPrompt.trim())
+            }
           >
             {spawning ? "Spawning…" : "Spawn Agent →"}
           </Btn>

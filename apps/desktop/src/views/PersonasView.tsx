@@ -39,7 +39,75 @@ interface VaultContextSummary {
   total_chars: number;
 }
 
+// Story 3.5: best-effort out-of-scope write summary, read from
+// `vault/personas/<persona-id>/out-of-scope-writes.log` via the
+// `persona_scope_violations` command.
+interface ScopeViolationSummary {
+  persona_id: string;
+  count: number;
+  latest_path: string | null;
+  latest_ts: string | null;
+}
+
 const STATUS_POLL_MS = 3000;
+
+// Fixed-persona IDs as used by the supervisor (and thus the vault scope
+// log dir name). Must match the persona-id argv passed in
+// spawn_dev_persona / spawn_designer_persona.
+const DEV_PERSONA_ID = "dev";
+const DESIGNER_PERSONA_ID = "frontend-designer";
+
+// Story 3.5: surfacing the scope-violation badge is configurable — the
+// underlying log is always written, but the user can hide the pane badge.
+// Persisted in localStorage so the preference survives restarts.
+const SCOPE_BADGE_PREF_KEY = "c4n.scopeBadges.enabled";
+
+function loadScopeBadgePref(): boolean {
+  try {
+    return window.localStorage.getItem(SCOPE_BADGE_PREF_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+function saveScopeBadgePref(enabled: boolean) {
+  try {
+    window.localStorage.setItem(SCOPE_BADGE_PREF_KEY, enabled ? "on" : "off");
+  } catch {
+    // localStorage unavailable — preference just won't persist.
+  }
+}
+
+// Poll the best-effort out-of-scope write log for one persona. Returns a
+// summary or null until the first read completes. `enabled` gates both the
+// polling and the surfacing, so disabling the badge stops the IPC chatter.
+function useScopeViolations(
+  personaId: string | null,
+  enabled: boolean,
+): ScopeViolationSummary | null {
+  const [summary, setSummary] = useState<ScopeViolationSummary | null>(null);
+
+  useEffect(() => {
+    if (!enabled || !personaId) {
+      setSummary(null);
+      return;
+    }
+    let alive = true;
+    const poll = () => {
+      invoke<ScopeViolationSummary>("persona_scope_violations", { personaId })
+        .then((s) => alive && setSummary(s))
+        .catch(() => {}); // log read failure is non-fatal for the badge
+    };
+    poll();
+    const id = window.setInterval(poll, STATUS_POLL_MS);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+    };
+  }, [personaId, enabled]);
+
+  return summary;
+}
 
 export function PersonasView() {
   const [project, setProject] = useState<ProjectInfo | null>(null);
@@ -56,6 +124,16 @@ export function PersonasView() {
   const [noteBody, setNoteBody] = useState("");
   const [noteWriting, setNoteWriting] = useState(false);
   const [noteConfirm, setNoteConfirm] = useState<string | null>(null);
+  // Story 3.5: configurable surfacing of the scope-violation pane badge.
+  const [scopeBadgesEnabled, setScopeBadgesEnabled] = useState(loadScopeBadgePref);
+
+  function toggleScopeBadges() {
+    setScopeBadgesEnabled((v) => {
+      const next = !v;
+      saveScopeBadgePref(next);
+      return next;
+    });
+  }
 
   useEffect(() => {
     invoke<ProjectInfo | null>("current_project")
@@ -180,12 +258,16 @@ export function PersonasView() {
 
       {project && (
         <>
+          {/* Scope-violation surfacing toggle (Story 3.5) */}
+          <ScopeBadgeToggle enabled={scopeBadgesEnabled} onToggle={toggleScopeBadges} />
+
           {/* Dev persona — read-only mirror of ProjectsView status */}
           <DevStatusPanel
             status={devStatus}
             busy={busyDev}
             setBusy={setBusyDev}
             project={project}
+            scopeBadgesEnabled={scopeBadgesEnabled}
           />
 
           {/* Frontend Designer persona */}
@@ -193,6 +275,7 @@ export function PersonasView() {
             status={designerStatus}
             busy={busyDesigner}
             project={project}
+            scopeBadgesEnabled={scopeBadgesEnabled}
             onSpawn={spawnDesigner}
             onKill={killDesigner}
             onRefresh={() => {
@@ -223,6 +306,7 @@ export function PersonasView() {
           {dynamicPersonas.length > 0 && (
             <DynamicPersonaList
               personas={dynamicPersonas}
+              scopeBadgesEnabled={scopeBadgesEnabled}
               onKill={(sessionName) =>
                 setDynamicPersonas((prev) => prev.filter((p) => p.session_name !== sessionName))
               }
@@ -231,6 +315,57 @@ export function PersonasView() {
         </>
       )}
     </ViewShell>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Story 3.5 — scope-violation pane badge
+
+// Non-blocking badge surfaced on a persona's pane when the best-effort
+// vault scope monitor has logged writes outside the persona's scope.
+// FR-29: observability only — this never blocks the write, it just makes
+// the violation visible. Renders nothing when there are no violations.
+function ScopeViolationBadge({ summary }: { summary: ScopeViolationSummary | null }) {
+  if (!summary || summary.count === 0) return null;
+  const title = summary.latest_path
+    ? `${summary.count} out-of-scope write${summary.count === 1 ? "" : "s"} — latest: ${summary.latest_path}${
+        summary.latest_ts ? ` @ ${summary.latest_ts}` : ""
+      }`
+    : `${summary.count} out-of-scope write${summary.count === 1 ? "" : "s"}`;
+  return (
+    <span title={title} style={{ display: "inline-flex" }}>
+      <Badge color="warn">
+        ⚠ {summary.count} out-of-scope
+      </Badge>
+    </span>
+  );
+}
+
+// Configurable surfacing control for the scope-violation badge. The vault
+// scope log is always written by the supervisor; this only toggles whether
+// the pane badge is shown.
+function ScopeBadgeToggle({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
+  return (
+    <HUDFrame style={{ padding: "10px 18px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Eyebrow color="cyan">Scope monitor</Eyebrow>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--fg-3)" }}>
+            best-effort out-of-scope write log (FR-29) · badges {enabled ? "on" : "off"}
+          </span>
+        </div>
+        <Btn variant="ghost" onClick={onToggle}>
+          {enabled ? "Hide badges" : "Show badges"}
+        </Btn>
+      </div>
+    </HUDFrame>
   );
 }
 
@@ -383,12 +518,17 @@ function DevStatusPanel({
   busy: _busy,
   setBusy: _setBusy,
   project: _project,
+  scopeBadgesEnabled,
 }: {
   status: PersonaState | null;
   busy: boolean;
   setBusy: (v: boolean) => void;
   project: ProjectInfo;
+  scopeBadgesEnabled: boolean;
 }) {
+  // Only poll the scope log while the persona is actually running.
+  const running = status?.state === "running";
+  const scope = useScopeViolations(running ? DEV_PERSONA_ID : null, scopeBadgesEnabled);
   return (
     <HUDFrame style={{ padding: 22 }}>
       <div
@@ -434,9 +574,12 @@ function DevStatusPanel({
             )}
           </p>
         </div>
-        <Badge color={status?.state === "running" ? "online" : "muted"}>
-          {status?.state === "running" ? "RUNNING" : "OFFLINE"}
-        </Badge>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <ScopeViolationBadge summary={scope} />
+          <Badge color={status?.state === "running" ? "online" : "muted"}>
+            {status?.state === "running" ? "RUNNING" : "OFFLINE"}
+          </Badge>
+        </div>
       </div>
     </HUDFrame>
   );
@@ -448,6 +591,7 @@ function DesignerPanel({
   status,
   busy,
   project,
+  scopeBadgesEnabled,
   onSpawn,
   onKill,
   onRefresh,
@@ -455,10 +599,13 @@ function DesignerPanel({
   status: PersonaState | null;
   busy: null | "spawning" | "killing";
   project: ProjectInfo;
+  scopeBadgesEnabled: boolean;
   onSpawn: () => void;
   onKill: () => void;
   onRefresh: () => void;
 }) {
+  const running = status?.state === "running";
+  const scope = useScopeViolations(running ? DESIGNER_PERSONA_ID : null, scopeBadgesEnabled);
   return (
     <HUDFrame style={{ padding: 22 }}>
       <div
@@ -470,7 +617,10 @@ function DesignerPanel({
         }}
       >
         <div style={{ flex: 1 }}>
-          <Eyebrow color="cyan">Frontend Designer · Antigravity CLI</Eyebrow>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Eyebrow color="cyan">Frontend Designer · Antigravity CLI</Eyebrow>
+            <ScopeViolationBadge summary={scope} />
+          </div>
           <div
             style={{
               fontFamily: "var(--font-display)",
@@ -743,9 +893,11 @@ function ErrorAlert({ text, onDismiss }: { text: string; onDismiss: () => void }
 
 function DynamicPersonaList({
   personas,
+  scopeBadgesEnabled,
   onKill,
 }: {
   personas: DynamicPersonaInfo[];
+  scopeBadgesEnabled: boolean;
   onKill: (sessionName: string) => void;
 }) {
   return (
@@ -753,7 +905,12 @@ function DynamicPersonaList({
       <Eyebrow>Dynamic agents · {personas.length} active</Eyebrow>
       <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
         {personas.map((p) => (
-          <DynamicPersonaRow key={p.session_name} persona={p} onKill={onKill} />
+          <DynamicPersonaRow
+            key={p.session_name}
+            persona={p}
+            scopeBadgesEnabled={scopeBadgesEnabled}
+            onKill={onKill}
+          />
         ))}
       </div>
     </HUDFrame>
@@ -762,13 +919,18 @@ function DynamicPersonaList({
 
 function DynamicPersonaRow({
   persona,
+  scopeBadgesEnabled,
   onKill,
 }: {
   persona: DynamicPersonaInfo;
+  scopeBadgesEnabled: boolean;
   onKill: (sessionName: string) => void;
 }) {
   const [killing, setKilling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // A persistent dynamic persona's scope-log dir is named by its slug.
+  // Ephemerals have no persona vault dir, so the log read returns count 0.
+  const scope = useScopeViolations(persona.running ? persona.slug : null, scopeBadgesEnabled);
 
   async function handleKill() {
     setKilling(true);
@@ -826,6 +988,7 @@ function DynamicPersonaRow({
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <ScopeViolationBadge summary={scope} />
         <Badge color={persona.lifecycle === "persistent" ? "muted" : "warn"}>
           {persona.lifecycle}
         </Badge>

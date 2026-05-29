@@ -113,7 +113,31 @@ Architecture assumes single-instance desktop. Running two instances of `pnpm dev
 - **Story 1.12** — Dev persona spawn — provides `spawn_dev_persona` with the existing session-reuse branch (chain link 4) and `current_project()` for restoring the pointer on launch (chain link 1).
 - **Story 1.14** — Persona supervisor — provides the supervisor + `close_on_exit: false` semantics (chain link 3).
 - **Story 1.16** — Hermes TUI embedded as a pane — uses the **same** restart-survival chain documented here. The 1.16a sub-story upgrades the supervisor from raw stdio to a PTY tap (`<vault>/personas/<id>/log/<date>.pty.raw`); restart survival is unaffected because Zellij still parents the supervisor (chain link 3 holds). The xterm.js layer in 1.16c is a DISPLAY of the running session, not a replacement; on desktop restart, xterm.js re-attaches its tail to the existing tap file. Both Dev and Hermes get restart survival on the same pattern.
-- **Story 2.5** (M2) — Frontend Designer's restart survival — extends the same five-link chain to the third persona. Confirms the architecture generalizes to N personas.
+- **Story 2.5** (M2) — Frontend Designer's restart survival — extends the same five-link chain to the third persona. Confirms the architecture generalizes to N personas. See the dedicated section below.
+
+## Both fixed personas (Story 2.5)
+
+Story 2.5 closes the loop on the product's "two fixed personas" promise: **both** Dev (Claude Code) and Frontend Designer (Antigravity CLI / `agy`) must reattach on restart, with zero orphans and scrollback preserved.
+
+No new runtime code path was needed — `spawn_designer_persona` (`apps/desktop/src-tauri/src/commands/mod.rs`) was already built on the same five-link chain as Dev:
+
+| Link | Dev (Story 1.15) | Frontend Designer (Story 2.5) |
+| ---- | ---------------- | ----------------------------- |
+| 1. On-disk active-project pointer | `read_active_project()` | shared — same pointer |
+| 2. Zellij daemon outlives desktop | `dev-<id>` session | `designer-<id>` session |
+| 3. Supervisor `close_on_exit: false` | `spawn_dev_persona` | `spawn_designer_persona` |
+| 4. Session-reuse branch | `if already_running { Running }` | identical branch in `spawn_designer_persona` |
+| 5. UI auto-reflects on launch | `ProjectsView` polls `dev_persona_status` | `PersonasView` polls `designer_persona_status` every 3s |
+
+### The `agy`-vs-Claude-Code session-persistence concern
+
+The story flags a real-looking risk: "`agy` session persistence vs Claude Code session persistence differ." It turns out to be a non-issue for OS-level restart survival, and it's worth spelling out why so nobody re-litigates it:
+
+**Restart survival never restarts either CLI.** Zellij owns the PTY and parents the supervisor + CLI; closing the desktop merely drops a Zellij *client*. The `claude` and `agy` processes keep running, untouched, with all of their in-memory state intact. Because neither process is ever killed-and-relaunched on a desktop restart, neither one's *own* on-disk session-resume mechanism is exercised — so any difference between how `agy` and Claude Code persist their sessions is irrelevant here. The guarantee is identical for both, and it's stronger than relying on either CLI's resume: the live process simply never goes away.
+
+### Scrollback ≥ 1000 lines
+
+The AC requires each pane's scrollback to show ≥ the last 1000 lines after restart. This is carried by Zellij's pane scrollback buffer, held in the Zellij server's memory. Since the pane and its process survive (links 2–3), the buffer survives with it. Zellij's `scroll_buffer_size` default is 10000 lines — comfortably above the 1000-line floor — so the AC holds for both panes out of the box. (A user who manually sets `scroll_buffer_size < 1000` in their own Zellij config would undercut this; that's a user-config concern outside the app's control.)
 
 ## Bottom line for new contributors
 

@@ -343,6 +343,9 @@ pub fn spawn_dev_persona(project_id: String) -> Result<DevPersonaStatus, String>
         args: vec![
             "dev".to_string(),
             workspace_config.vault_path,
+            // Story 3.5: scope the vault monitor to this project's shared area.
+            "--project".to_string(),
+            project.id.clone(),
             "--".to_string(),
             "claude".to_string(),
         ],
@@ -604,6 +607,8 @@ pub fn spawn_hermes(project_id: String) -> Result<HermesStatus, String> {
         args: vec![
             "hermes".to_string(),        // persona-id → vault/personas/hermes/log/
             workspace_config.vault_path, // vault root
+            "--project".to_string(),     // Story 3.5: scope monitor project
+            project.id.clone(),
             "--".to_string(),            // argv separator
             hermes_bin,                  // child command
         ],
@@ -796,6 +801,9 @@ pub fn spawn_designer_persona(project_id: String) -> Result<DesignerPersonaStatu
         args: vec![
             "frontend-designer".to_string(),
             workspace_config.vault_path,
+            // Story 3.5: scope the vault monitor to this project's shared area.
+            "--project".to_string(),
+            project.id.clone(),
             "--".to_string(),
             agy_bin,
         ],
@@ -977,6 +985,80 @@ fn iso8601_utc_now() -> String {
     let rem = secs % 86400;
     let (h, mi, s) = (rem / 3600, (rem % 3600) / 60, rem % 60);
     format!("{y:04}-{mo:02}-{d:02}T{h:02}:{mi:02}:{s:02}Z")
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Story 3.5 — vault scope-violation surface (pane badge)
+// ────────────────────────────────────────────────────────────────────
+//
+// The persona-supervisor runs a best-effort `c4n-vault-scoping` monitor
+// (D-7, FR-29) that appends out-of-scope writes to
+// `vault/personas/<persona-id>/out-of-scope-writes.log`. This command
+// reads that log so the desktop can render a non-blocking badge on the
+// persona's pane. We parse the JSONL with `serde_json::Value` rather than
+// pulling the `c4n-vault-scoping` crate (and its `notify` tree) into the
+// desktop build — the badge only needs a count + the latest entry.
+
+/// Summary of a persona's logged scope violations, for the pane badge.
+#[derive(Debug, Clone, Serialize)]
+pub struct ScopeViolationSummary {
+    pub persona_id: String,
+    /// Number of out-of-scope writes logged for this persona.
+    pub count: usize,
+    /// Path of the most recent out-of-scope write, if any.
+    pub latest_path: Option<String>,
+    /// ISO-8601 timestamp of the most recent out-of-scope write, if any.
+    pub latest_ts: Option<String>,
+}
+
+/// Read the out-of-scope write log for `persona_id` and summarize it for
+/// the UI badge. Returns a zero-count summary (not an error) when the log
+/// doesn't exist yet — the common case for a persona that's stayed in
+/// scope. Only surfacing-side errors (unreadable vault config / file)
+/// propagate.
+#[tauri::command]
+pub fn persona_scope_violations(persona_id: String) -> Result<ScopeViolationSummary, String> {
+    if persona_id.trim().is_empty() {
+        return Err("persona_id must not be empty".to_string());
+    }
+    let workspace_config = read_workspace_config()?;
+    let log_path = PathBuf::from(&workspace_config.vault_path)
+        .join("personas")
+        .join(&persona_id)
+        .join("out-of-scope-writes.log");
+
+    if !log_path.exists() {
+        return Ok(ScopeViolationSummary {
+            persona_id,
+            count: 0,
+            latest_path: None,
+            latest_ts: None,
+        });
+    }
+
+    let body = std::fs::read_to_string(&log_path).map_err(|e| format!("read scope log: {e}"))?;
+    let lines: Vec<&str> = body.lines().filter(|l| !l.trim().is_empty()).collect();
+    let count = lines.len();
+    let (latest_path, latest_ts) = match lines.last() {
+        Some(last) => {
+            let v: serde_json::Value =
+                serde_json::from_str(last).unwrap_or(serde_json::Value::Null);
+            (
+                v.get("attempted_path")
+                    .and_then(|x| x.as_str())
+                    .map(String::from),
+                v.get("ts").and_then(|x| x.as_str()).map(String::from),
+            )
+        }
+        None => (None, None),
+    };
+
+    Ok(ScopeViolationSummary {
+        persona_id,
+        count,
+        latest_path,
+        latest_ts,
+    })
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -1222,13 +1304,41 @@ Coordinate with other personas via the pub/sub bus; Hermes Agent intervenes only
     )
 }
 
+/// Build the supervisor child-args for an ephemeral one-shot run. The
+/// task prompt is encoded in each CLI's non-interactive form so the
+/// process runs to completion and exits. Claude Code uses `-p <prompt>`
+/// print mode; other CLIs receive the prompt as a trailing arg.
+fn ephemeral_cli_args(backing_cli: &str, cli_bin: &str, task_prompt: &str) -> Vec<String> {
+    match backing_cli {
+        "claude" => vec![
+            cli_bin.to_string(),
+            "-p".to_string(),
+            task_prompt.to_string(),
+        ],
+        _ => vec![cli_bin.to_string(), task_prompt.to_string()],
+    }
+}
+
 /// Spawn a dynamic persona via the BMad Builder. Creates a Zellij session,
 /// writes a minimal persona file, and returns the persona info.
+///
+/// Lifecycle (Story 3.1 + 3.3 + 3.6):
+///   - `persistent`: long-lived supervised session. Gets a
+///     `vault/personas/<slug>/` dir (log/skills/memory) and a stable bus
+///     identity persisted in `.persona-meta.json` (Story 3.3), so a
+///     re-spawn keeps the same identity.
+///   - `ephemeral` (Story 3.6): one-shot. Requires a `task_prompt`. Runs
+///     through the supervisor's `--ephemeral` mode: the CLI runs the task,
+///     its output is written to `vault/projects/<project-id>/reviews/`, and
+///     the pane closes on exit. NO `vault/personas/<slug>/` dir is created
+///     (zero vault residue) and the bus identity is transient — not
+///     persisted to disk, so none is retained after exit.
 #[tauri::command]
 pub fn spawn_dynamic_persona(
     name: String,
     backing_cli: String,
     lifecycle: String,
+    task_prompt: Option<String>,
 ) -> Result<DynamicPersonaInfo, String> {
     if name.trim().is_empty() {
         return Err("name must not be empty".to_string());
@@ -1237,6 +1347,12 @@ pub fn spawn_dynamic_persona(
     if !allowed_lifecycles.contains(&lifecycle.as_str()) {
         return Err(format!("lifecycle must be one of: {}", allowed_lifecycles.join(", ")));
     }
+    let is_ephemeral = lifecycle == "ephemeral";
+    let task_prompt = task_prompt.unwrap_or_default();
+    if is_ephemeral && task_prompt.trim().is_empty() {
+        return Err("an ephemeral persona requires a task prompt".to_string());
+    }
+
     // Resolve project context.
     let project = read_active_project()?
         .ok_or_else(|| "no active project — open a project first".to_string())?;
@@ -1248,14 +1364,27 @@ pub fn spawn_dynamic_persona(
     let slug = slugify_name(&name);
     let session_name = dynamic_session_name(&slug, &project.id);
 
-    // Story 3.3: scaffold the persona's vault dir (log/skills/memory +
-    // .persona-meta.json) and load-or-mint its stable bus identity. Done
-    // before the already-running check so a re-spawn returns the SAME
-    // identity rather than minting a fresh one.
     let workspace_config = read_workspace_config()?;
     let vault_path = PathBuf::from(&workspace_config.vault_path);
-    let meta = ensure_persona_vault_dir(&vault_path, &slug, "dynamic", &lifecycle, &backing_cli)?;
-    let persona_vault_dir = vault_path.join("personas").join(&slug);
+
+    // Lifecycle split for identity + vault residue:
+    //   - persistent (Story 3.3): scaffold the persona vault dir and
+    //     load-or-mint a STABLE bus identity persisted on disk.
+    //   - ephemeral (Story 3.6): NO persona vault dir (zero residue) and a
+    //     TRANSIENT bus identity that is never written to disk, so nothing
+    //     is retained after the ephemeral exits.
+    let (bus_identity, persona_vault_dir) = if is_ephemeral {
+        (build_bus_identity(&slug), String::new())
+    } else {
+        let meta =
+            ensure_persona_vault_dir(&vault_path, &slug, "dynamic", &lifecycle, &backing_cli)?;
+        let dir = vault_path
+            .join("personas")
+            .join(&slug)
+            .to_string_lossy()
+            .to_string();
+        (meta.bus_identity, dir)
+    };
 
     // Check if already running; if so, just return running state.
     let sessions = zellij::list_sessions().map_err(|e| format!("list sessions: {e}"))?;
@@ -1267,14 +1396,15 @@ pub fn spawn_dynamic_persona(
             lifecycle,
             session_name,
             running: true,
-            bus_identity: meta.bus_identity,
-            vault_dir: persona_vault_dir.to_string_lossy().to_string(),
+            bus_identity,
+            vault_dir: persona_vault_dir,
         });
     }
 
     let project_root = PathBuf::from(&project.path);
 
-    // Write the persona file into the project root.
+    // Write the persona file into the project root (project root, not vault
+    // — so it is NOT counted as vault residue for ephemerals).
     let persona_content = build_dynamic_persona_content(&name, &backing_cli, &project.name);
     let persona_file = project_root.join(persona_filename_for_cli(&backing_cli));
     std::fs::write(&persona_file, &persona_content)
@@ -1289,28 +1419,48 @@ pub fn spawn_dynamic_persona(
         backing_cli.clone()
     };
 
-    let close_on_exit = lifecycle == "ephemeral";
     let supervisor_bin = find_supervisor_binary();
 
-    // Story 3.3: hand the persona its bus identity via the environment so
-    // it (and the supervisor) post/subscribe under one stable identity.
+    // Hand the persona its bus identity via the environment so it (and the
+    // supervisor) post/subscribe under one identity.
     let mut env = HashMap::new();
-    env.insert(BUS_IDENTITY_ENV.to_string(), meta.bus_identity.clone());
+    env.insert(BUS_IDENTITY_ENV.to_string(), bus_identity.clone());
+
+    // Build the supervisor argv. Ephemerals run through `--ephemeral` mode
+    // (one-shot → artifact → exit); persistent personas run the standard
+    // long-lived supervise wrap.
+    let supervisor_args = if is_ephemeral {
+        let mut args = vec![
+            "--ephemeral".to_string(),
+            slug.clone(),
+            project.id.clone(),
+            workspace_config.vault_path.clone(),
+            "--".to_string(),
+        ];
+        args.extend(ephemeral_cli_args(&backing_cli, &cli_bin, &task_prompt));
+        args
+    } else {
+        vec![
+            slug.clone(),
+            workspace_config.vault_path.clone(),
+            // Story 3.5: scope the vault monitor to this project's shared area.
+            "--project".to_string(),
+            project.id.clone(),
+            "--".to_string(),
+            cli_bin,
+        ]
+    };
 
     let pane_name = format!("{} · {}", name, project.name);
     let config = SpawnPaneConfig {
         session_name: session_name.clone(),
         command: supervisor_bin,
-        args: vec![
-            slug.clone(),
-            workspace_config.vault_path.clone(),
-            "--".to_string(),
-            cli_bin,
-        ],
+        args: supervisor_args,
         env,
+        // Ephemerals auto-close their pane on exit so no orphan pane lingers.
+        close_on_exit: is_ephemeral,
         cwd: Some(project_root),
         pane_name: Some(pane_name),
-        close_on_exit,
     };
 
     zellij::spawn_pane(config).map_err(|e| format!("spawn dynamic pane: {e}"))?;
@@ -1322,8 +1472,8 @@ pub fn spawn_dynamic_persona(
         lifecycle,
         session_name,
         running: true,
-        bus_identity: meta.bus_identity,
-        vault_dir: persona_vault_dir.to_string_lossy().to_string(),
+        bus_identity,
+        vault_dir: persona_vault_dir,
     })
 }
 
@@ -2317,5 +2467,188 @@ mod tests {
              Pass condition: steps 3, 4, 5, and 6 all hold.\n\
              "
         );
+    }
+
+    // ── Story 2.5 — Frontend Designer restart survival ──────────────
+    //
+    // Same audit-story shape as 1.15: the restart-survival behavior is
+    // already provided by spawn_designer_persona's session-reuse branch +
+    // close_on_exit: false + PersonasView's designer_persona_status poll.
+    // These unit tests pin the prerequisites so a regression in the
+    // designer spawn path (which previously had NO test coverage) is
+    // caught mechanically. The end-to-end protocol lives in the ignored
+    // restart_survival_both_personas_manual_verification test below.
+
+    #[test]
+    fn designer_session_name_format() {
+        assert_eq!(
+            designer_session_name("example-project-deadbeef"),
+            "designer-example-project-deadbeef"
+        );
+    }
+
+    #[test]
+    fn designer_session_name_differs_from_dev_and_hermes_for_same_project() {
+        // Each fixed persona MUST occupy its own Zellij session so killing
+        // (or losing) one never affects the others — the property that lets
+        // both personas survive a restart independently.
+        let pid = "myproject-12345678";
+        let dev = dev_session_name(pid);
+        let hermes = hermes_session_name(pid);
+        let designer = designer_session_name(pid);
+        assert_ne!(dev, designer);
+        assert_ne!(hermes, designer);
+        assert!(designer.starts_with("designer-"));
+    }
+
+    #[test]
+    fn find_agy_binary_uses_env_override_when_set() {
+        let _guard = ENV_VAR_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let key = AGY_BIN_ENV;
+        let original = std::env::var(key).ok();
+        unsafe {
+            std::env::set_var(key, "/custom/path/agy");
+        }
+        assert_eq!(find_agy_binary(), "/custom/path/agy");
+        unsafe {
+            match original {
+                Some(v) => std::env::set_var(key, v),
+                None => std::env::remove_var(key),
+            }
+        }
+    }
+
+    #[test]
+    fn find_agy_binary_falls_back_to_default_name() {
+        let _guard = ENV_VAR_TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
+        let key = AGY_BIN_ENV;
+        let original = std::env::var(key).ok();
+        unsafe {
+            std::env::remove_var(key);
+        }
+        assert_eq!(find_agy_binary(), AGY_BIN_DEFAULT);
+        if let Some(v) = original {
+            unsafe {
+                std::env::set_var(key, v);
+            }
+        }
+    }
+
+    #[test]
+    fn bundled_designer_persona_is_non_empty_and_starts_with_header() {
+        // Catches an include_str! path mismatch between this crate and the
+        // persona-sync package's designer.md.
+        assert!(
+            BUNDLED_DESIGNER_PERSONA_MD.len() > 200,
+            "bundled designer persona too short"
+        );
+        assert!(
+            BUNDLED_DESIGNER_PERSONA_MD.starts_with("# agy.md"),
+            "bundled designer persona must start with the agy.md heading"
+        );
+    }
+
+    #[test]
+    fn resolve_designer_falls_back_to_bundled_when_no_override() {
+        let tmp =
+            std::env::temp_dir().join(format!("c4n-designer-resolve-{}", std::process::id()));
+        std::fs::create_dir_all(&tmp).unwrap();
+        let (content, source) = resolve_designer_persona_content(&tmp).unwrap();
+        std::fs::remove_dir_all(&tmp).ok();
+        assert!(matches!(source, PersonaSource::Bundled));
+        assert_eq!(content, BUNDLED_DESIGNER_PERSONA_MD);
+    }
+
+    #[test]
+    fn resolve_designer_uses_project_override_when_present() {
+        let tmp =
+            std::env::temp_dir().join(format!("c4n-designer-override-{}", std::process::id()));
+        let override_path = tmp.join(PROJECT_DESIGNER_OVERRIDE_RELPATH);
+        std::fs::create_dir_all(override_path.parent().unwrap()).unwrap();
+        std::fs::write(&override_path, "# Custom designer\nhello").unwrap();
+
+        let (content, source) = resolve_designer_persona_content(&tmp).unwrap();
+        std::fs::remove_dir_all(&tmp).ok();
+
+        assert!(matches!(source, PersonaSource::ProjectOverride));
+        assert_eq!(content, "# Custom designer\nhello");
+    }
+
+    // ── Story 2.5 — both-persona restart survival (manual verification) ──
+    //
+    // Extends Story 1.15's protocol to BOTH fixed personas. No new runtime
+    // code path: the chain already generalizes (see docs/restart-survival.md).
+    // This #[ignore] test documents the protocol so a contributor can re-run
+    // it on a real Win 11 box. Run with:
+    //   cargo test -p c4n-desktop -- --ignored
+    #[test]
+    #[ignore = "manual verification protocol — requires Zellij ≥ 0.44.3, Claude Code, Antigravity CLI (agy), and the desktop app running on Win 11"]
+    fn restart_survival_both_personas_manual_verification() {
+        eprintln!(
+            "\n\
+             Story 2.5 — both fixed personas survive desktop-app restart\n\
+             ────────────────────────────────────────────────────────────\n\
+             \n\
+             Preconditions:\n\
+               1. Zellij ≥ 0.44.3 installed and on PATH.\n\
+               2. Claude Code on PATH (`claude --version` works).\n\
+               3. Antigravity CLI on PATH (`agy --version` works).\n\
+               4. `c4n-persona-supervisor` on PATH.\n\
+               5. First-run wizard completed; ~/.4nevercompanyos/config.toml\n\
+                  exists with a vault_path.\n\
+             \n\
+             Protocol:\n\
+               1. `pnpm dev:desktop` — launch.\n\
+               2. Open a project (Projects rail → \"Open project →\").\n\
+               3. Spawn the Dev persona from the Projects rail; wait for the\n\
+                  green \"attached\" badge.\n\
+               4. Open the Personas rail; click \"Spawn Designer →\". Wait for\n\
+                  the green \"attached\" badge on the Frontend Designer panel.\n\
+               5. In a separate shell: `zellij list-sessions` shows BOTH\n\
+                  `dev-<project-id>` and `designer-<project-id>`.\n\
+               6. `zellij attach dev-<id>` → Claude Code prompt; drive it so\n\
+                  the pane scrollback exceeds 1000 lines. Detach (Ctrl+Q).\n\
+               7. `zellij attach designer-<id>` → agy prompt; likewise drive\n\
+                  it so its scrollback exceeds 1000 lines. Detach.\n\
+               8. Fully close the desktop app. Confirm no `c4n-desktop`\n\
+                  process remains (Get-Process c4n-desktop).\n\
+               9. `zellij list-sessions` STILL shows BOTH sessions — zero\n\
+                  orphans, zero duplicates.\n\
+              10. `zellij attach` each session: Claude Code AND agy are STILL\n\
+                  running, prompts intact, and scrollback still shows >= 1000\n\
+                  lines (scroll up to confirm). Detach.\n\
+              11. `pnpm dev:desktop` to relaunch. Within ~3s the Personas rail\n\
+                  shows BOTH personas \"Running\" with their original session\n\
+                  names.\n\
+              12. `zellij list-sessions` STILL shows exactly ONE of each —\n\
+                  no duplicate spawn.\n\
+             \n\
+             Pass condition: steps 9, 10, 11, and 12 all hold.\n\
+             \n\
+             Why agy and Claude Code behave identically here (the story's\n\
+             flagged concern — \"agy session persistence vs Claude Code\n\
+             session persistence differ\"):\n\
+               Restart survival never RESTARTS either CLI. Zellij owns the\n\
+               PTY and parents the supervisor + CLI; closing the desktop just\n\
+               drops a client. Each CLI process stays alive with all of its\n\
+               in-memory state and the Zellij pane's scrollback buffer intact.\n\
+               So whatever differences exist between agy's and Claude Code's\n\
+               OWN on-disk session-resume mechanisms are irrelevant to OS-\n\
+               level restart survival — neither is exercised. The pane\n\
+               scrollback (Zellij scroll_buffer_size, default 10000 lines)\n\
+               carries the >= 1000-line guarantee for both.\n\
+             \n\
+             Failure-mode handling:\n\
+               - Step 9 missing `designer-<id>`: agy crashed or the pane\n\
+                 closed. close_on_exit MUST be false in spawn_designer_persona.\n\
+               - Step 11 designer not \"Running\": PersonasView's\n\
+                 designer_persona_status poll regressed.\n\
+               - Step 12 duplicate: the session-reuse branch in\n\
+                 spawn_designer_persona regressed.\n\
+             "
+        );
+        // No assertion: this test only documents the protocol. Pass/fail of
+        // restart survival is determined by the human running it on a real
+        // dev box.
     }
 }
