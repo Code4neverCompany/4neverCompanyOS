@@ -36,5 +36,15 @@ tracing-subscriber = { workspace = true }
 c4n-zellij-adapter = { path = "../../../crates/zellij-adapter" }
 # Story 2.3: vault reader for Obsidian context injection at persona spawn.
 c4n-platform-fs = { path = "../../../crates/platform-fs" }
+# Story 3.4: FR-21 backflow drift detection.
+c4n-persona-drift = { path = "../../../crates/persona-drift" }
+# Story 2.9: bus relay → Tauri UI bridge. The relay's broadcast hub is the
+# IPC fan-out the bus_subscribe command drains into the webview.
+c4n-bus-relay = { path = "../../../crates/bus-relay" }
 toml = "0.8"
 dirs = "5"
+# Story 2.9: parse the relay envelope's RFC-3339 `ts` into the canonical
+# Unix-millisecond `ts` the @c4n/core envelope schema expects.
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+# Story 2.9: per-subscription ids for bus_subscribe / bus_unsubscribe.
+uuid = { version = "1", features = ["v4"] }

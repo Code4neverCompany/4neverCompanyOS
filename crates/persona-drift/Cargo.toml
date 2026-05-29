@@ -1,0 +1,26 @@
+[package]
+name = "c4n-persona-drift"
+version = "0.0.1"
+edition = "2021"
+description = "FR-21 backflow drift detection — watches a persona's vault dir and detects when runtime state diverges from the canonical definition file."
+authors = ["4neverCompany"]
+
+[lib]
+name = "c4n_persona_drift"
+crate-type = ["rlib"]
+
+[dependencies]
+thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+
+# Story 3.4: notify-based filesystem watcher (D-4). Same major version as
+# vault-scoping so platform watcher backends stay consistent.
+notify = { workspace = true }
+
+# ISO-8601 UTC timestamps for drift event records.
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+
+[dev-dependencies]
+tempfile = "3"

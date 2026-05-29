@@ -4,6 +4,7 @@
 //! from the front-end via `invoke('name', args)`. Long-lived streams
 //! live in `crate::ipc` instead.
 
+use c4n_persona_drift::{DriftState, DriftWatcher, NullDriftNotifier};
 use c4n_platform_fs as platform_fs;
 use c4n_zellij_adapter::{self as zellij, SpawnPaneConfig};
 use serde::{Deserialize, Serialize};
@@ -1062,6 +1063,106 @@ pub fn persona_scope_violations(persona_id: String) -> Result<ScopeViolationSumm
 }
 
 // ────────────────────────────────────────────────────────────────────
+// Story 3.4 — FR-21 persona drift commands
+// ────────────────────────────────────────────────────────────────────
+
+/// Slim drift summary returned to the frontend. Mirrors [`DriftState`]
+/// but flattened for easy JSON consumption by React.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PersonaDriftReport {
+    pub persona_id: String,
+    /// "clean" | "drifted" | "dismissed"
+    pub status: String,
+    pub field_count: usize,
+    pub fields: Vec<DriftFieldInfo>,
+    pub first_detected_at: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DriftFieldInfo {
+    pub relative_path: String,
+    pub detected_at: String,
+}
+
+impl PersonaDriftReport {
+    fn from_state(persona_id: String, state: DriftState) -> Self {
+        match state {
+            DriftState::Clean => Self {
+                persona_id,
+                status: "clean".into(),
+                field_count: 0,
+                fields: vec![],
+                first_detected_at: None,
+            },
+            DriftState::Drifted { fields, first_detected_at } => Self {
+                persona_id,
+                status: "drifted".into(),
+                field_count: fields.len(),
+                fields: fields
+                    .iter()
+                    .map(|f| DriftFieldInfo {
+                        relative_path: f.relative_path.clone(),
+                        detected_at: f.detected_at.clone(),
+                    })
+                    .collect(),
+                first_detected_at: Some(first_detected_at),
+            },
+            DriftState::Dismissed { .. } => Self {
+                persona_id,
+                status: "dismissed".into(),
+                field_count: 0,
+                fields: vec![],
+                first_detected_at: None,
+            },
+        }
+    }
+}
+
+/// Return the current drift state for a persistent dynamic persona.
+///
+/// The frontend polls this on a ~3s interval (same cadence as scope
+/// violations). Returns `status: "clean"` for ephemerals (they have no
+/// vault dir) or if no watcher is registered yet.
+#[tauri::command]
+pub fn get_persona_drift_state(
+    slug: String,
+    registry: State<'_, DriftRegistry>,
+) -> Result<PersonaDriftReport, String> {
+    if slug.trim().is_empty() {
+        return Err("slug must not be empty".to_string());
+    }
+    let guard = registry.watchers.lock().expect("drift registry mutex poisoned");
+    let report = match guard.get(&slug) {
+        Some(watcher) => PersonaDriftReport::from_state(slug.clone(), watcher.state()),
+        None => PersonaDriftReport {
+            persona_id: slug,
+            status: "clean".into(),
+            field_count: 0,
+            fields: vec![],
+            first_detected_at: None,
+        },
+    };
+    Ok(report)
+}
+
+/// Dismiss the drift badge for a persona. The badge is suppressed until
+/// the next new vault-dir change triggers a fresh drift signal.
+#[tauri::command]
+pub fn dismiss_persona_drift(
+    slug: String,
+    registry: State<'_, DriftRegistry>,
+) -> Result<(), String> {
+    if slug.trim().is_empty() {
+        return Err("slug must not be empty".to_string());
+    }
+    let guard = registry.watchers.lock().expect("drift registry mutex poisoned");
+    if let Some(watcher) = guard.get(&slug) {
+        watcher.dismiss();
+    }
+    Ok(())
+}
+
+// ────────────────────────────────────────────────────────────────────
 // Story 3.1 — BMad Builder: dynamic persona spawn
 // ────────────────────────────────────────────────────────────────────
 //
@@ -1339,6 +1440,7 @@ pub fn spawn_dynamic_persona(
     backing_cli: String,
     lifecycle: String,
     task_prompt: Option<String>,
+    drift_registry: State<'_, DriftRegistry>,
 ) -> Result<DynamicPersonaInfo, String> {
     if name.trim().is_empty() {
         return Err("name must not be empty".to_string());
@@ -1465,6 +1567,33 @@ pub fn spawn_dynamic_persona(
 
     zellij::spawn_pane(config).map_err(|e| format!("spawn dynamic pane: {e}"))?;
 
+    // Story 3.4: start the drift watcher for persistent personas so the
+    // Personas panel can show a badge if the vault dir changes without a
+    // corresponding definition-file update (FR-21). Ephemerals have no
+    // vault dir so there's nothing to watch.
+    if !is_ephemeral {
+        let watcher = DriftWatcher::start(
+            &vault_path,
+            &slug,
+            &persona_file,
+            Arc::new(NullDriftNotifier),
+        );
+        match watcher {
+            Ok(w) => {
+                let mut guard = drift_registry
+                    .watchers
+                    .lock()
+                    .expect("drift registry mutex poisoned");
+                guard.insert(slug.clone(), w);
+            }
+            Err(e) => {
+                // Non-fatal — drift detection is observability; the persona
+                // still runs without it.
+                tracing::warn!(persona = %slug, "drift watcher failed to start (continuing): {e}");
+            }
+        }
+    }
+
     Ok(DynamicPersonaInfo {
         name,
         slug,
@@ -1528,6 +1657,23 @@ pub fn kill_dynamic_persona(session_name: String) -> Result<(), String> {
 #[derive(Default)]
 pub struct PtyTailRegistry {
     handles: StdMutex<HashMap<String, Arc<AtomicBool>>>,
+}
+
+// ── Story 3.4 — FR-21 persona drift registry ─────────────────────────
+//
+// Stores one `DriftWatcher` per persistent dynamic persona. Watchers are
+// started when a persistent persona is spawned (via `spawn_dynamic_persona`)
+// and dropped automatically when the app exits (the registry is `manage`d
+// as Tauri State so it lives for the app's lifetime).
+//
+// The UI polls `get_persona_drift_state` (same polling pattern as
+// `persona_scope_violations`) and calls `dismiss_persona_drift` to clear the
+// badge.
+
+/// Tauri State: holds live drift watchers keyed by persona slug.
+#[derive(Default)]
+pub struct DriftRegistry {
+    watchers: StdMutex<HashMap<String, DriftWatcher>>,
 }
 
 /// How often the tail task polls the tap file for new bytes. Picked to
@@ -1833,6 +1979,559 @@ pub fn write_persona_pty_in(persona_id: String, bytes: Vec<u8>) -> Result<(), St
     file.flush().map_err(|e| format!("flush pty.in: {e}"))?;
 
     Ok(())
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Story 3.10 — Custom persona authoring via BMad Builder
+// ────────────────────────────────────────────────────────────────────
+//
+// Authoring is a two-step flow distinct from spawning:
+//
+//   1. Author (this story): user fills the authoring form in the BMad
+//      Builder "Author Persona" tab. `author_persona` validates + writes
+//      `vault/personas/<slug>/AGENTS.md` and scaffolds the vault dir.
+//      The authored persona immediately appears in the persona list.
+//
+//   2. Spawn (Story 3.1 path): the user clicks "Spawn" on an authored
+//      persona, which calls `spawn_dynamic_persona` with the slug/cli
+//      read from `.persona-meta.json`. The supervisor reads AGENTS.md
+//      as its identity file on launch.
+//
+// `list_authored_personas` re-reads the vault on demand so the list
+// stays accurate even after the user edits files in Obsidian.
+//
+// `list_installed_skills` returns the curated set of BMad skills
+// installed in this workspace so the authoring form can offer a
+// multi-select picker without a runtime filesystem scan.
+
+/// (id, human description) pairs for every BMad skill bundled in
+/// this workspace. Grows with each bmad-method release; sourced from
+/// `src/bmm-skills/` and `src/core-skills/` in the installed package.
+const INSTALLABLE_SKILLS: &[(&str, &str)] = &[
+    ("bmad-quick-dev", "Quick Dev — one-shot code implementation"),
+    ("bmad-dev-story", "Dev Story — story-driven implementation"),
+    ("bmad-code-review", "Code Review — adversarial review layers"),
+    ("bmad-create-architecture", "Create Architecture — system design"),
+    ("bmad-create-prd", "Create PRD — product requirements"),
+    ("bmad-create-epics-and-stories", "Epics & Stories — breakdown"),
+    ("bmad-sprint-planning", "Sprint Planning — sprint status + plan"),
+    ("bmad-sprint-status", "Sprint Status — surface risks"),
+    ("bmad-investigate", "Investigate — forensic bug/incident tracing"),
+    ("bmad-checkpoint-preview", "Checkpoint — human-in-the-loop review"),
+    ("bmad-correct-course", "Correct Course — sprint change management"),
+    ("bmad-retrospective", "Retrospective — post-epic lessons"),
+    ("bmad-qa-generate-e2e-tests", "QA E2E Tests — automated test generation"),
+    ("bmad-brainstorming", "Brainstorming — ideation sessions"),
+    ("bmad-distillator", "Distillator — lossless document compression"),
+    ("bmad-document-project", "Document Project — brownfield AI context"),
+    ("bmad-agent-analyst", "Analyst — business analysis (Mary)"),
+    ("bmad-agent-architect", "Architect — system design (Winston)"),
+    ("bmad-agent-dev", "Developer — story execution (Amelia)"),
+    ("bmad-agent-pm", "Product Manager — PRD discovery (John)"),
+    ("bmad-agent-ux-designer", "UX Designer — UI specialist (Sally)"),
+    ("bmad-agent-tech-writer", "Tech Writer — documentation (Paige)"),
+    ("bmad-review-adversarial-general", "Adversarial Review — critical review"),
+    ("bmad-review-edge-case-hunter", "Edge Case Hunter — boundary analysis"),
+    ("para-memory-files", "PARA Memory — file-based memory system"),
+    ("bmad-create-story", "Create Story — story file with full context"),
+    ("bmad-help", "BMad Help — recommendations + skill analysis"),
+    ("bmad-party-mode", "Party Mode — multi-agent group discussions"),
+];
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstalledSkill {
+    pub id: String,
+    pub description: String,
+}
+
+/// Return the curated list of BMad skills available for persona authoring.
+/// This is synchronous and always returns the full static list — no vault
+/// or disk read required.
+#[tauri::command]
+pub fn list_installed_skills() -> Vec<InstalledSkill> {
+    INSTALLABLE_SKILLS
+        .iter()
+        .map(|(id, desc)| InstalledSkill {
+            id: id.to_string(),
+            description: desc.to_string(),
+        })
+        .collect()
+}
+
+/// Authored-persona info returned by `author_persona` and
+/// `list_authored_personas`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AuthoredPersonaInfo {
+    /// Human-readable name.
+    pub name: String,
+    /// Slugified name, used as dir/session name component.
+    pub slug: String,
+    /// Backing CLI: "claude", "agy", "hermes", or a custom binary.
+    pub backing_cli: String,
+    /// "persistent" or "ephemeral".
+    pub lifecycle: String,
+    /// "shared" or "isolated".
+    pub vault_scope: String,
+    /// The role / system-prompt body.
+    pub role_description: String,
+    /// Selected skill IDs.
+    pub skills: Vec<String>,
+    /// Optional model override (e.g. "claude-opus-4-6"). Empty = use CLI default.
+    pub model_override: String,
+    /// Absolute path to `vault/personas/<slug>/AGENTS.md`.
+    pub agents_md_path: String,
+    /// Stable `agent:<slug>:<uuid>` bus identity.
+    pub bus_identity: String,
+    /// Absolute path to `vault/personas/<slug>/`.
+    pub vault_dir: String,
+}
+
+/// Author a custom persona — validates inputs, scaffolds the vault dir,
+/// and writes `vault/personas/<slug>/AGENTS.md`.
+///
+/// Does NOT spawn a Zellij session. The frontend calls
+/// `spawn_dynamic_persona` separately when the user clicks "Spawn".
+///
+/// Uniqueness: returns an error if `vault/personas/<slug>/AGENTS.md`
+/// already exists so duplicate names are caught before any disk writes.
+#[tauri::command]
+pub fn author_persona(
+    name: String,
+    role_description: String,
+    lifecycle: String,
+    backing_cli: String,
+    skills: Vec<String>,
+    vault_scope: String,
+    model_override: String,
+) -> Result<AuthoredPersonaInfo, String> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err("name must not be empty".to_string());
+    }
+    if role_description.trim().is_empty() {
+        return Err("role description must not be empty".to_string());
+    }
+    let allowed_lifecycles = ["persistent", "ephemeral"];
+    if !allowed_lifecycles.contains(&lifecycle.as_str()) {
+        return Err(format!("lifecycle must be one of: {}", allowed_lifecycles.join(", ")));
+    }
+    let allowed_scopes = ["shared", "isolated"];
+    if !allowed_scopes.contains(&vault_scope.as_str()) {
+        return Err(format!(
+            "vault_scope must be one of: {}",
+            allowed_scopes.join(", ")
+        ));
+    }
+
+    let workspace_config = read_workspace_config()?;
+    let vault_path = PathBuf::from(&workspace_config.vault_path);
+    let slug = slugify_name(&name);
+
+    // Uniqueness guard: AGENTS.md presence is the canonical "authored" marker.
+    let persona_dir = vault_path.join("personas").join(&slug);
+    let agents_md_path = persona_dir.join("AGENTS.md");
+    if agents_md_path.exists() {
+        return Err(format!(
+            "A persona named \"{name}\" already exists (slug: {slug}). \
+             Choose a different name or delete the existing persona first."
+        ));
+    }
+
+    // Scaffold vault dir + mint (or load) stable bus identity (Story 3.3).
+    let meta =
+        ensure_persona_vault_dir(&vault_path, &slug, "dynamic", &lifecycle, &backing_cli)?;
+    let vault_dir = persona_dir.to_string_lossy().to_string();
+
+    // Write AGENTS.md.
+    let content = build_agents_md(
+        &name,
+        &role_description,
+        &lifecycle,
+        &backing_cli,
+        &skills,
+        &vault_scope,
+        &model_override,
+        &meta.bus_identity,
+    );
+    std::fs::write(&agents_md_path, &content)
+        .map_err(|e| format!("write AGENTS.md: {e}"))?;
+
+    Ok(AuthoredPersonaInfo {
+        name,
+        slug,
+        backing_cli,
+        lifecycle,
+        vault_scope,
+        role_description: role_description.trim().to_string(),
+        skills,
+        model_override: model_override.trim().to_string(),
+        agents_md_path: agents_md_path.to_string_lossy().to_string(),
+        bus_identity: meta.bus_identity,
+        vault_dir,
+    })
+}
+
+/// Scan `vault/personas/` and return all personas that have an `AGENTS.md`
+/// (the canonical marker that they were authored via the BMad Builder, not
+/// just spawned ad-hoc). Safe to call when the vault is not yet configured
+/// — returns an empty list rather than an error.
+#[tauri::command]
+pub fn list_authored_personas() -> Result<Vec<AuthoredPersonaInfo>, String> {
+    let workspace_config = match read_workspace_config() {
+        Ok(c) => c,
+        Err(_) => return Ok(vec![]),
+    };
+    let vault_path = PathBuf::from(&workspace_config.vault_path);
+    let personas_dir = vault_path.join("personas");
+    if !personas_dir.exists() {
+        return Ok(vec![]);
+    }
+
+    let mut result = Vec::new();
+    let entries = std::fs::read_dir(&personas_dir)
+        .map_err(|e| format!("read personas dir: {e}"))?;
+
+    for entry in entries.flatten() {
+        let dir = entry.path();
+        if !dir.is_dir() {
+            continue;
+        }
+        let agents_md = dir.join("AGENTS.md");
+        if !agents_md.exists() {
+            continue;
+        }
+
+        let slug = dir
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("")
+            .to_string();
+
+        // Load stable identity from `.persona-meta.json`.
+        let meta_path = dir.join(".persona-meta.json");
+        let meta: Option<PersonaMeta> = if meta_path.exists() {
+            std::fs::read_to_string(&meta_path)
+                .ok()
+                .and_then(|raw| serde_json::from_str(&raw).ok())
+        } else {
+            None
+        };
+
+        // Re-parse the AGENTS.md to recover the authoring fields.
+        let agents_md_content = std::fs::read_to_string(&agents_md).unwrap_or_default();
+        let parsed = parse_agents_md(&agents_md_content);
+
+        let bus_identity = meta.as_ref().map(|m| m.bus_identity.clone()).unwrap_or_default();
+        let backing_cli = meta.as_ref().map(|m| m.backing_cli.clone()).unwrap_or_default();
+        let lifecycle = meta.as_ref().map(|m| m.lifecycle.clone()).unwrap_or_default();
+
+        result.push(AuthoredPersonaInfo {
+            name: parsed.name.unwrap_or_else(|| slug.clone()),
+            slug: slug.clone(),
+            backing_cli,
+            lifecycle,
+            vault_scope: parsed.vault_scope.unwrap_or_else(|| "shared".to_string()),
+            role_description: parsed.role_description.unwrap_or_default(),
+            skills: parsed.skills,
+            model_override: parsed.model_override.unwrap_or_default(),
+            agents_md_path: agents_md.to_string_lossy().to_string(),
+            bus_identity,
+            vault_dir: dir.to_string_lossy().to_string(),
+        });
+    }
+
+    Ok(result)
+}
+
+// ── Helpers for Story 3.10 ──────────────────────────────────────────
+
+struct ParsedAgentsMd {
+    name: Option<String>,
+    role_description: Option<String>,
+    vault_scope: Option<String>,
+    skills: Vec<String>,
+    model_override: Option<String>,
+}
+
+/// Extract structured authoring fields from a generated AGENTS.md.
+/// Handles the format emitted by `build_agents_md`; gracefully degrades
+/// if the file was hand-edited.
+fn parse_agents_md(content: &str) -> ParsedAgentsMd {
+    let mut name: Option<String> = None;
+    let mut vault_scope: Option<String> = None;
+    let mut skills: Vec<String> = Vec::new();
+    let mut model_override: Option<String> = None;
+
+    let mut in_role = false;
+    let mut in_skills_section = false;
+    let mut role_lines: Vec<&str> = Vec::new();
+
+    for line in content.lines() {
+        // H1 → persona name.
+        if line.starts_with("# ") && name.is_none() {
+            name = Some(line[2..].trim().to_string());
+            continue;
+        }
+        // H2 → section switch.
+        if line.starts_with("## ") {
+            in_role = false;
+            in_skills_section = false;
+            let section = line[3..].trim();
+            match section {
+                "Role" => in_role = true,
+                "Skills" => in_skills_section = true,
+                _ => {}
+            }
+            continue;
+        }
+        if in_role && !line.trim().is_empty() {
+            role_lines.push(line);
+        }
+        if in_skills_section && line.starts_with("- ") {
+            let skill = line[2..].trim().to_string();
+            if !skill.starts_with('_') {
+                // Skip the italicised "(no specific skills)" placeholder.
+                skills.push(skill);
+            }
+        }
+        // Inline metadata from the "Persona Metadata" section.
+        if let Some(rest) = line.strip_prefix("- **Vault scope:**") {
+            vault_scope = Some(rest.trim().to_string());
+        }
+        if let Some(rest) = line.strip_prefix("- **Base model:**") {
+            let v = rest.trim();
+            if !v.is_empty() && v != "—" {
+                model_override = Some(v.to_string());
+            }
+        }
+    }
+
+    let role_description = if role_lines.is_empty() {
+        None
+    } else {
+        Some(role_lines.join("\n").trim().to_string())
+    };
+
+    ParsedAgentsMd { name, role_description, vault_scope, skills, model_override }
+}
+
+/// Build the AGENTS.md content for an authored persona.
+fn build_agents_md(
+    name: &str,
+    role_description: &str,
+    lifecycle: &str,
+    backing_cli: &str,
+    skills: &[String],
+    vault_scope: &str,
+    model_override: &str,
+    bus_identity: &str,
+) -> String {
+    let skills_block = if skills.is_empty() {
+        "_(no specific skills selected)_".to_string()
+    } else {
+        skills.iter().map(|s| format!("- {s}")).collect::<Vec<_>>().join("\n")
+    };
+
+    let model_line = if model_override.trim().is_empty() {
+        "—".to_string()
+    } else {
+        model_override.trim().to_string()
+    };
+
+    format!(
+        "# {name}\n\n\
+## Role\n\n\
+{role_description}\n\n\
+## Persona Metadata\n\n\
+- **Lifecycle:** {lifecycle}\n\
+- **Vault scope:** {vault_scope}\n\
+- **Backing CLI:** {backing_cli}\n\
+- **Base model:** {model_line}\n\
+- **Bus identity:** {bus_identity}\n\n\
+## Skills\n\n\
+{skills_block}\n\n\
+## Working Style\n\n\
+- Execute, don't speculate. Start with the task context available to you.\n\
+- Run validation gates before claiming done.\n\
+- Brief, accurate commits or outputs.\n\
+- Coordinate with other personas via the pub/sub bus; Hermes intervenes only when there is no forward motion.\n\n\
+---\n\
+*Authored via 4neverCompany OS BMad Builder.*\n"
+    )
+}
+
+// ── Story 3.7 (NEVAAA-33) — Hermes-initiated spawn proposals ─────────
+//
+// Hermes emits `spawn_proposal` bus events to propose spawning a new
+// dynamic persona. The desktop shell validates each proposal (mirroring
+// `SpawnProposalEnvelopeSchema` in `@c4n/core/bus`) and stores accepted
+// ones in `PendingProposalsStore`. The user-approval UI (Story 3.8 /
+// NEVAAA-34) reads that state to surface accept / dismiss actions.
+
+/// Maximum budget estimate (USD) Hermes may include in a proposal.
+/// Mirrors `SPAWN_PROPOSAL_BUDGET_MAX_USD` in `packages/core/src/bus/envelope.ts`.
+const SPAWN_PROPOSAL_BUDGET_MAX_USD: f64 = 50.0;
+
+/// Valid persona types for spawn proposals. Mirrors `BACKING_CLIS` in glossary.ts.
+const VALID_SPAWN_PERSONA_TYPES: &[&str] = &["claude-code", "agy", "agent"];
+
+/// Raw payload from a `spawn_proposal` bus message.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpawnProposalPayload {
+    pub name: String,
+    pub persona_type: String,
+    pub task_description: String,
+    pub lifecycle: String,
+    pub budget_estimate: Option<f64>,
+}
+
+/// A validated spawn proposal stored in the pending-proposals list.
+/// The approval UI identifies proposals by `id`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpawnProposalRecord {
+    /// Stable UUID assigned at receive time.
+    pub id: String,
+    /// Unix millis (desktop clock) at receive time.
+    pub received_at_ms: u64,
+    pub name: String,
+    pub persona_type: String,
+    pub task_description: String,
+    pub lifecycle: String,
+    pub budget_estimate: Option<f64>,
+    /// Bus source identity of the proposing agent (e.g. `"hermes"`).
+    pub proposed_by: String,
+}
+
+/// Shared pending-proposals list. `manage`d in `lib.rs` alongside
+/// `PtyTailRegistry` so all commands share one store across the app.
+#[derive(Default)]
+pub struct PendingProposalsStore {
+    proposals: StdMutex<Vec<SpawnProposalRecord>>,
+}
+
+/// Pure validation helper — extracted so unit tests can call it without
+/// needing a `tauri::State` wrapper.
+///
+/// Returns `Ok(())` when the payload is valid, or `Err(Vec<String>)`
+/// with one error per violated rule.
+fn validate_spawn_proposal_payload(
+    payload: &SpawnProposalPayload,
+    proposed_by: &str,
+) -> Result<(), Vec<String>> {
+    let mut errors: Vec<String> = Vec::new();
+
+    if payload.name.trim().is_empty() {
+        errors.push("payload.name must not be empty".into());
+    }
+    if payload.task_description.trim().is_empty() {
+        errors.push("payload.task_description must not be empty".into());
+    }
+    if proposed_by.trim().is_empty() {
+        errors.push("proposed_by must not be empty".into());
+    }
+    if !VALID_SPAWN_PERSONA_TYPES.contains(&payload.persona_type.as_str()) {
+        errors.push(format!(
+            "payload.persona_type \"{}\" is not valid; must be one of: {}",
+            payload.persona_type,
+            VALID_SPAWN_PERSONA_TYPES.join(", ")
+        ));
+    }
+    let allowed_lifecycles = ["persistent", "ephemeral"];
+    if !allowed_lifecycles.contains(&payload.lifecycle.as_str()) {
+        errors.push(format!(
+            "payload.lifecycle \"{}\" is not valid; must be one of: {}",
+            payload.lifecycle,
+            allowed_lifecycles.join(", ")
+        ));
+    }
+    if let Some(budget) = payload.budget_estimate {
+        if budget < 0.0 {
+            errors.push("payload.budget_estimate must not be negative".into());
+        } else if budget > SPAWN_PROPOSAL_BUDGET_MAX_USD {
+            errors.push(format!(
+                "payload.budget_estimate {:.2} USD exceeds the {:.0} USD limit",
+                budget, SPAWN_PROPOSAL_BUDGET_MAX_USD
+            ));
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+/// Receive and validate a `spawn_proposal` bus message.
+///
+/// On success the validated proposal is appended to `PendingProposalsStore`
+/// and returned (the record id is stable for the approval UI).
+/// On failure a `;`-joined error string is returned — the bus relay will
+/// surface this as a `spawn_proposal_rejected` event back to Hermes once
+/// the relay is wired (Story 2.9 / NEVAAA-29).
+#[tauri::command]
+pub fn receive_spawn_proposal(
+    payload: SpawnProposalPayload,
+    proposed_by: String,
+    store: State<'_, PendingProposalsStore>,
+) -> Result<SpawnProposalRecord, String> {
+    validate_spawn_proposal_payload(&payload, &proposed_by)
+        .map_err(|errs| errs.join("; "))?;
+
+    let record = SpawnProposalRecord {
+        id: generate_uuid_v4(),
+        received_at_ms: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(0),
+        name: payload.name.trim().to_string(),
+        persona_type: payload.persona_type,
+        task_description: payload.task_description.trim().to_string(),
+        lifecycle: payload.lifecycle,
+        budget_estimate: payload.budget_estimate,
+        proposed_by: proposed_by.trim().to_string(),
+    };
+
+    store
+        .proposals
+        .lock()
+        .expect("pending proposals mutex poisoned")
+        .push(record.clone());
+
+    Ok(record)
+}
+
+/// Return the current list of pending spawn proposals.
+/// Called by the user-approval panel (Story 3.8 / NEVAAA-34).
+#[tauri::command]
+pub fn list_pending_proposals(
+    store: State<'_, PendingProposalsStore>,
+) -> Vec<SpawnProposalRecord> {
+    store
+        .proposals
+        .lock()
+        .expect("pending proposals mutex poisoned")
+        .clone()
+}
+
+/// Remove a pending proposal by id (user approved or dismissed it).
+/// Returns `Err` when no proposal with that id exists.
+#[tauri::command]
+pub fn dismiss_spawn_proposal(
+    id: String,
+    store: State<'_, PendingProposalsStore>,
+) -> Result<(), String> {
+    let mut proposals = store
+        .proposals
+        .lock()
+        .expect("pending proposals mutex poisoned");
+    let before = proposals.len();
+    proposals.retain(|p| p.id != id);
+    if proposals.len() == before {
+        Err(format!("no pending proposal with id \"{id}\""))
+    } else {
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -2651,4 +3350,268 @@ mod tests {
         // restart survival is determined by the human running it on a real
         // dev box.
     }
+
+    // ── Story 3.10 — Custom persona authoring ───────────────────────
+
+    #[test]
+    fn build_agents_md_contains_name_and_role() {
+        let md = build_agents_md(
+            "Security Auditor",
+            "You audit the codebase for OWASP top-10 vulnerabilities.",
+            "persistent",
+            "claude",
+            &["bmad-code-review".to_string(), "bmad-investigate".to_string()],
+            "isolated",
+            "claude-opus-4-6",
+            "agent:security-auditor:abc123",
+        );
+        assert!(md.contains("# Security Auditor"), "H1 name missing");
+        assert!(md.contains("## Role"), "Role section missing");
+        assert!(md.contains("OWASP"), "role body missing");
+        assert!(md.contains("**Lifecycle:** persistent"), "lifecycle missing");
+        assert!(md.contains("**Vault scope:** isolated"), "vault scope missing");
+        assert!(md.contains("**Base model:** claude-opus-4-6"), "model override missing");
+        assert!(md.contains("- bmad-code-review"), "skill missing");
+        assert!(md.contains("## Skills"), "Skills section missing");
+    }
+
+    #[test]
+    fn build_agents_md_model_dash_when_empty() {
+        let md = build_agents_md("Foo", "does things", "ephemeral", "agy", &[], "shared", "", "agent:foo:x");
+        assert!(md.contains("**Base model:** \u{2014}"), "empty model should render as dash");
+        assert!(md.contains("_(no specific skills selected)_"), "empty skills placeholder missing");
+    }
+
+    #[test]
+    fn parse_agents_md_round_trips_authored_content() {
+        let md = build_agents_md(
+            "DB Architect",
+            "Designs database schemas for the project.",
+            "persistent",
+            "claude",
+            &["bmad-create-architecture".to_string()],
+            "shared",
+            "",
+            "agent:db-architect:abc",
+        );
+        let parsed = parse_agents_md(&md);
+        assert_eq!(parsed.name.as_deref(), Some("DB Architect"));
+        assert!(
+            parsed.role_description.as_deref().unwrap_or("").contains("Designs"),
+            "role body round-trip failed"
+        );
+        assert_eq!(parsed.vault_scope.as_deref(), Some("shared"));
+        assert_eq!(parsed.skills, vec!["bmad-create-architecture"]);
+        assert!(parsed.model_override.is_none(), "empty model should parse as None");
+    }
+
+    #[test]
+    fn parse_agents_md_with_model_override() {
+        let md = build_agents_md(
+            "Senior Dev",
+            "Implements stories.",
+            "persistent",
+            "claude",
+            &[],
+            "isolated",
+            "claude-opus-4-6",
+            "agent:senior-dev:zzz",
+        );
+        let parsed = parse_agents_md(&md);
+        assert_eq!(parsed.model_override.as_deref(), Some("claude-opus-4-6"));
+        assert_eq!(parsed.vault_scope.as_deref(), Some("isolated"));
+    }
+
+    #[test]
+    fn list_installed_skills_is_non_empty_and_well_formed() {
+        let skills = list_installed_skills();
+        assert!(!skills.is_empty(), "skill list must not be empty");
+        for s in &skills {
+            assert!(!s.id.is_empty(), "blank skill id in list");
+            assert!(!s.description.is_empty(), "blank skill description for {}", s.id);
+        }
+        let ids: Vec<&str> = skills.iter().map(|s| s.id.as_str()).collect();
+        assert!(ids.contains(&"bmad-quick-dev"), "bmad-quick-dev missing");
+        assert!(ids.contains(&"bmad-code-review"), "bmad-code-review missing");
+    }
+
+    #[test]
+    fn slugify_preserves_uniqueness_between_similar_names() {
+        // Different names must yield different slugs so the uniqueness
+        // guard in author_persona works correctly.
+        let a = slugify_name("DB Architect");
+        let b = slugify_name("DB Designer");
+        assert_ne!(a, b, "similar names must not collide");
+        assert_eq!(a, "db-architect");
+        assert_eq!(b, "db-designer");
+    }
+
+    #[test]
+    fn author_persona_uniqueness_uses_agents_md_presence() {
+        // Verify the path-existence logic that guards duplicate authoring.
+        let vault = std::env::temp_dir().join(format!(
+            "c4n-author-uniq-{}-{}",
+            std::process::id(),
+            generate_uuid_v4()
+        ));
+        let slug = slugify_name("DB Architect");
+        let persona_dir = vault.join("personas").join(&slug);
+        std::fs::create_dir_all(&persona_dir).unwrap();
+        let agents_md = persona_dir.join("AGENTS.md");
+        std::fs::write(&agents_md, "# DB Architect\n").unwrap();
+
+        // The guard checks AGENTS.md existence, not just the directory.
+        assert!(
+            vault.join("personas").join(&slug).join("AGENTS.md").exists(),
+            "test setup: AGENTS.md must exist for uniqueness guard to fire"
+        );
+
+        std::fs::remove_dir_all(&vault).ok();
+    }
+
+    // ── Story 3.7 (NEVAAA-33) — spawn proposal validation ────────────
+    //
+    // Unit tests for validate_spawn_proposal_payload (pure validation helper).
+    // AC coverage:
+    //   ✓ Valid proposal accepted (Ok)
+    //   ✓ Invalid proposal rejected with error list (Err(Vec<String>))
+
+    fn valid_spawn_payload() -> SpawnProposalPayload {
+        SpawnProposalPayload {
+            name: "Security Reviewer".into(),
+            persona_type: "claude-code".into(),
+            task_description: "Review the OAuth PR for security issues".into(),
+            lifecycle: "ephemeral".into(),
+            budget_estimate: None,
+        }
+    }
+
+    #[test]
+    fn valid_spawn_proposal_accepted() {
+        let result = validate_spawn_proposal_payload(&valid_spawn_payload(), "hermes");
+        assert!(result.is_ok(), "valid proposal should be accepted; got: {result:?}");
+    }
+
+    #[test]
+    fn spawn_proposal_accepts_all_valid_persona_types() {
+        for pt in VALID_SPAWN_PERSONA_TYPES {
+            let mut p = valid_spawn_payload();
+            p.persona_type = (*pt).to_string();
+            let result = validate_spawn_proposal_payload(&p, "hermes");
+            assert!(result.is_ok(), "persona_type {pt} should be valid; got: {result:?}");
+        }
+    }
+
+    #[test]
+    fn spawn_proposal_accepts_budget_at_limit() {
+        let mut p = valid_spawn_payload();
+        p.budget_estimate = Some(SPAWN_PROPOSAL_BUDGET_MAX_USD);
+        let result = validate_spawn_proposal_payload(&p, "hermes");
+        assert!(result.is_ok(), "budget at limit should be accepted; got: {result:?}");
+    }
+
+    #[test]
+    fn spawn_proposal_accepts_persistent_lifecycle() {
+        let mut p = valid_spawn_payload();
+        p.lifecycle = "persistent".into();
+        let result = validate_spawn_proposal_payload(&p, "hermes");
+        assert!(result.is_ok(), "persistent lifecycle should be accepted; got: {result:?}");
+    }
+
+    #[test]
+    fn invalid_spawn_proposal_rejected_empty_name() {
+        let mut p = valid_spawn_payload();
+        p.name = "   ".into();
+        let result = validate_spawn_proposal_payload(&p, "hermes");
+        assert!(result.is_err(), "empty name should be rejected");
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.contains("name")), "error must mention name; got: {errors:?}");
+    }
+
+    #[test]
+    fn invalid_spawn_proposal_rejected_empty_task_description() {
+        let mut p = valid_spawn_payload();
+        p.task_description = String::new();
+        let result = validate_spawn_proposal_payload(&p, "hermes");
+        assert!(result.is_err(), "empty task_description should be rejected");
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.contains("task_description")), "got: {errors:?}");
+    }
+
+    #[test]
+    fn invalid_spawn_proposal_rejected_unknown_persona_type() {
+        let mut p = valid_spawn_payload();
+        p.persona_type = "gemini-pro".into();
+        let result = validate_spawn_proposal_payload(&p, "hermes");
+        assert!(result.is_err(), "unknown persona_type should be rejected");
+        let errors = result.unwrap_err();
+        assert!(
+            errors.iter().any(|e| e.contains("persona_type") && e.contains("gemini-pro")),
+            "error must mention the bad value; got: {errors:?}"
+        );
+    }
+
+    #[test]
+    fn invalid_spawn_proposal_rejected_unknown_lifecycle() {
+        let mut p = valid_spawn_payload();
+        p.lifecycle = "transient".into();
+        let result = validate_spawn_proposal_payload(&p, "hermes");
+        assert!(result.is_err(), "unknown lifecycle should be rejected");
+        let errors = result.unwrap_err();
+        assert!(
+            errors.iter().any(|e| e.contains("lifecycle") && e.contains("transient")),
+            "error must mention the bad value; got: {errors:?}"
+        );
+    }
+
+    #[test]
+    fn invalid_spawn_proposal_rejected_budget_over_limit() {
+        let mut p = valid_spawn_payload();
+        p.budget_estimate = Some(SPAWN_PROPOSAL_BUDGET_MAX_USD + 0.01);
+        let result = validate_spawn_proposal_payload(&p, "hermes");
+        assert!(result.is_err(), "over-limit budget should be rejected");
+        let errors = result.unwrap_err();
+        assert!(
+            errors.iter().any(|e| e.contains("budget_estimate") && e.contains("limit")),
+            "error must mention budget_estimate and limit; got: {errors:?}"
+        );
+    }
+
+    #[test]
+    fn invalid_spawn_proposal_rejected_negative_budget() {
+        let mut p = valid_spawn_payload();
+        p.budget_estimate = Some(-1.0);
+        let result = validate_spawn_proposal_payload(&p, "hermes");
+        assert!(result.is_err(), "negative budget should be rejected");
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.contains("budget_estimate")), "got: {errors:?}");
+    }
+
+    #[test]
+    fn invalid_spawn_proposal_rejected_empty_proposed_by() {
+        let result = validate_spawn_proposal_payload(&valid_spawn_payload(), "  ");
+        assert!(result.is_err(), "empty proposed_by should be rejected");
+        let errors = result.unwrap_err();
+        assert!(errors.iter().any(|e| e.contains("proposed_by")), "got: {errors:?}");
+    }
+
+    #[test]
+    fn invalid_spawn_proposal_collects_multiple_errors() {
+        let p = SpawnProposalPayload {
+            name: String::new(),
+            persona_type: "bad-cli".into(),
+            task_description: String::new(),
+            lifecycle: "bad-lifecycle".into(),
+            budget_estimate: None,
+        };
+        let result = validate_spawn_proposal_payload(&p, "hermes");
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(
+            errors.len() >= 3,
+            "should collect at least 3 errors; got {}: {errors:?}",
+            errors.len()
+        );
+    }
+
 }

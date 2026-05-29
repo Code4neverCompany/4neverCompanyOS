@@ -23,6 +23,13 @@ import { BACKING_CLIS, LIFECYCLES, PROGRESS_SIGNALS } from "../glossary";
  */
 export const BUS_SCHEMA_VERSION = 1 as const;
 
+/**
+ * Maximum budget estimate (USD) Hermes may include in a spawn_proposal.
+ * Proposals above this threshold are rejected so over-budget requests go
+ * through the board-approval gate (Story 3.7 / NEVAAA-33).
+ */
+export const SPAWN_PROPOSAL_BUDGET_MAX_USD = 50 as const;
+
 /** The event types that can appear on the bus — the discriminator values. */
 export const BUS_EVENT_TYPES = [
   "progress.signal",
@@ -30,6 +37,8 @@ export const BUS_EVENT_TYPES = [
   "agent.message",
   "stall.detected",
   "stall.resumed",
+  // Story 3.7 (NEVAAA-33): Hermes-initiated spawn proposal
+  "spawn_proposal",
 ] as const;
 export type BusEventType = (typeof BUS_EVENT_TYPES)[number];
 
@@ -110,6 +119,48 @@ export const StallResumedEnvelopeSchema = z.object({
   }),
 });
 
+/**
+ * Hermes proposes spawning a new dynamic persona (Story 3.7 / NEVAAA-33).
+ *
+ * Validation rules applied here (also enforced on the Rust side in
+ * `apps/desktop/src-tauri/src/commands/mod.rs`):
+ *   - `name` / `task_description` — non-empty strings.
+ *   - `persona_type` — must be a member of BACKING_CLIS.
+ *   - `lifecycle` — must be "persistent" or "ephemeral".
+ *   - `budget_estimate` — when present, must not exceed SPAWN_PROPOSAL_BUDGET_MAX_USD.
+ *
+ * The desktop app stores accepted proposals in `PendingProposalsStore`; the
+ * user approval UI (Story 3.8 / NEVAAA-34) reads that state.
+ */
+export const SpawnProposalEnvelopeSchema = z.object({
+  ...envelopeBase,
+  type: z.literal("spawn_proposal"),
+  payload: z.object({
+    /** Human-readable persona name (e.g. "Security Reviewer"). */
+    name: z.string().min(1),
+    /** Backing CLI type — must be a member of BACKING_CLIS (glossary). */
+    persona_type: z.enum(BACKING_CLIS),
+    /** Short description of the task the persona should perform. */
+    task_description: z.string().min(1),
+    /** Whether the persona exits when the task completes. */
+    lifecycle: z.enum(LIFECYCLES),
+    /**
+     * Optional cost estimate in USD. Rejected when above
+     * SPAWN_PROPOSAL_BUDGET_MAX_USD so over-budget proposals require
+     * explicit board approval rather than silent acceptance.
+     * Omit when cost is unknown (treated as 0 for limit purposes).
+     */
+    budget_estimate: z
+      .number()
+      .nonnegative()
+      .max(
+        SPAWN_PROPOSAL_BUDGET_MAX_USD,
+        `budget_estimate must not exceed ${SPAWN_PROPOSAL_BUDGET_MAX_USD} USD`,
+      )
+      .optional(),
+  }),
+});
+
 // ── The discriminated union ───────────────────────────────────────────
 
 /**
@@ -122,6 +173,7 @@ export const BusEnvelopeSchema = z.discriminatedUnion("type", [
   AgentMessageEnvelopeSchema,
   StallDetectedEnvelopeSchema,
   StallResumedEnvelopeSchema,
+  SpawnProposalEnvelopeSchema,
 ]);
 
 /** Inferred TypeScript type for any bus envelope. */
@@ -132,6 +184,7 @@ export type AgentLifecycleEnvelope = z.infer<typeof AgentLifecycleEnvelopeSchema
 export type AgentMessageEnvelope = z.infer<typeof AgentMessageEnvelopeSchema>;
 export type StallDetectedEnvelope = z.infer<typeof StallDetectedEnvelopeSchema>;
 export type StallResumedEnvelope = z.infer<typeof StallResumedEnvelopeSchema>;
+export type SpawnProposalEnvelope = z.infer<typeof SpawnProposalEnvelopeSchema>;
 
 // ── Helpers ───────────────────────────────────────────────────────────
 

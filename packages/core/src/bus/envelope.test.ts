@@ -64,6 +64,21 @@ const sample = {
     type: "stall.resumed",
     payload: { signalKind: "code.changed" },
   },
+  // Story 3.7 (NEVAAA-33): Hermes-initiated spawn proposal
+  spawnProposal: {
+    schemaVersion: BUS_SCHEMA_VERSION,
+    id: "77777777-7777-4777-8777-777777777777",
+    source: "hermes",
+    ts: 1_700_000_000_006,
+    type: "spawn_proposal",
+    payload: {
+      name: "Security Reviewer",
+      persona_type: "claude-code",
+      task_description: "Review the OAuth PR for security issues",
+      lifecycle: "ephemeral",
+      budget_estimate: 5,
+    },
+  },
 } satisfies Record<string, BusEnvelope>;
 
 describe("bus envelope round-trip serialization", () => {

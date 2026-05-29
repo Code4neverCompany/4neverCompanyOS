@@ -11,6 +11,8 @@
 //! Story 1.16c adds the `tail_persona_pty` Channel command + the
 //! `PtyTailRegistry` shared state so the embedded xterm.js views can
 //! stream the supervisor's PTY tap file.
+//! Story 3.7 adds `PendingProposalsStore` + receive/list/dismiss commands
+//! for Hermes-initiated spawn proposals.
 
 mod commands;
 mod ipc;
@@ -27,6 +29,16 @@ pub fn run() {
         // per persona_id so React's StrictMode double-mounts don't leak
         // tasks.
         .manage(commands::PtyTailRegistry::default())
+        // Story 3.4: per-persona drift watchers (FR-21). One registry for
+        // the whole app; watchers started at spawn_dynamic_persona.
+        .manage(commands::DriftRegistry::default())
+        // Story 3.7 (NEVAAA-33): pending spawn proposals from Hermes.
+        // Shared store read by the approval UI (Story 3.8 / NEVAAA-34).
+        .manage(commands::PendingProposalsStore::default())
+        // Story 2.9 (NEVAAA-29): bus relay → UI bridge. One BusRelayState
+        // (the IPC fan-out hub + per-subscription handles) for the whole app
+        // so every `bus_subscribe` shares the same upstream event stream.
+        .manage(ipc::BusRelayState::default())
         .invoke_handler(tauri::generate_handler![
             commands::ping,
             commands::open_project,
@@ -73,6 +85,27 @@ pub fn run() {
             // Story 3.5 (vault scoping): read the best-effort out-of-scope
             // write log so the Personas panel can surface a violation badge.
             commands::persona_scope_violations,
+            // Story 3.4 (FR-21 drift detection): poll drift state and dismiss
+            // the badge for dynamic persistent personas.
+            commands::get_persona_drift_state,
+            commands::dismiss_persona_drift,
+            // Story 3.10 (persona authoring): author a custom persona,
+            // list all authored personas, and list installable BMad skills.
+            commands::author_persona,
+            commands::list_authored_personas,
+            commands::list_installed_skills,
+            // Story 3.7 (NEVAAA-33): Hermes-initiated spawn proposals.
+            // receive validates and stores; list/dismiss used by the
+            // approval UI (Story 3.8 / NEVAAA-34).
+            commands::receive_spawn_proposal,
+            commands::list_pending_proposals,
+            commands::dismiss_spawn_proposal,
+            // Story 2.9 (NEVAAA-29): bus relay → UI bridge. bus_subscribe
+            // streams canonical envelopes into a Tauri Channel; bus_unsubscribe
+            // tears a subscription down by id. Consumed by the Story 2.10
+            // channel-view panel.
+            ipc::bus_subscribe,
+            ipc::bus_unsubscribe,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

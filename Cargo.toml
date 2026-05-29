@@ -14,6 +14,7 @@ members = [
   "crates/platform-fs",
   "crates/vault-scoping",
   "crates/credential-storage",
+  "crates/persona-drift",
 ]
 
 # Workspace-wide dependency pinning.

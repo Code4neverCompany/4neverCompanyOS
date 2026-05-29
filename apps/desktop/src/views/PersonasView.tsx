@@ -19,6 +19,7 @@ import { Badge, Btn, Eyebrow, HUDFrame, StatusDot } from "@c4n/ui-tokens";
 import {
   BmbAddAgentPanel,
   type DynamicPersonaInfo,
+  type AuthoredPersonaInfo,
 } from "../panels/bmb-add-agent/BmbAddAgentPanel";
 
 interface ProjectInfo {
@@ -47,6 +48,17 @@ interface ScopeViolationSummary {
   count: number;
   latest_path: string | null;
   latest_ts: string | null;
+}
+
+// Story 3.4: drift state for a persistent dynamic persona (FR-21).
+// Polled from `get_persona_drift_state` on the same cadence as scope
+// violations. `status` is "clean" | "drifted" | "dismissed".
+interface PersonaDriftReport {
+  persona_id: string;
+  status: "clean" | "drifted" | "dismissed";
+  field_count: number;
+  fields: Array<{ relative_path: string; detected_at: string }>;
+  first_detected_at: string | null;
 }
 
 const STATUS_POLL_MS = 3000;
@@ -109,6 +121,34 @@ function useScopeViolations(
   return summary;
 }
 
+// Story 3.4: poll drift state for a persistent dynamic persona (FR-21).
+// Returns null until the first read completes. `slug` is null for
+// ephemerals (they have no vault dir) or when polling is not needed.
+function useDriftState(slug: string | null): PersonaDriftReport | null {
+  const [report, setReport] = useState<PersonaDriftReport | null>(null);
+
+  useEffect(() => {
+    if (!slug) {
+      setReport(null);
+      return;
+    }
+    let alive = true;
+    const poll = () => {
+      invoke<PersonaDriftReport>("get_persona_drift_state", { slug })
+        .then((r) => alive && setReport(r))
+        .catch(() => {}); // non-fatal for the badge
+    };
+    poll();
+    const id = window.setInterval(poll, STATUS_POLL_MS);
+    return () => {
+      alive = false;
+      window.clearInterval(id);
+    };
+  }, [slug]);
+
+  return report;
+}
+
 export function PersonasView() {
   const [project, setProject] = useState<ProjectInfo | null>(null);
   const [devStatus, setDevStatus] = useState<PersonaState | null>(null);
@@ -117,6 +157,7 @@ export function PersonasView() {
   const [busyDev, setBusyDev] = useState(false);
   const [busyDesigner, setBusyDesigner] = useState<null | "spawning" | "killing">(null);
   const [dynamicPersonas, setDynamicPersonas] = useState<DynamicPersonaInfo[]>([]);
+  const [authoredPersonas, setAuthoredPersonas] = useState<AuthoredPersonaInfo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [bootstrapped, setBootstrapped] = useState(false);
   const [writeNoteOpen, setWriteNoteOpen] = useState(false);
@@ -144,6 +185,11 @@ export function PersonasView() {
     // Load vault summary (independent of project).
     invoke<VaultContextSummary>("vault_context_summary")
       .then(setVaultSummary)
+      .catch(() => {}); // vault may not be configured yet — silent
+
+    // Load authored personas (Story 3.10).
+    invoke<AuthoredPersonaInfo[]>("list_authored_personas")
+      .then(setAuthoredPersonas)
       .catch(() => {}); // vault may not be configured yet — silent
   }, []);
 
@@ -299,8 +345,20 @@ export function PersonasView() {
             confirm={noteConfirm}
           />
 
-          {/* BMad Builder — Add Agent panel (Story 3.1) */}
-          <BmbAddAgentPanel onSpawned={(p) => setDynamicPersonas((prev) => [p, ...prev])} />
+          {/* BMad Builder — Add Agent / Author Persona panel (Stories 3.1 + 3.10) */}
+          <BmbAddAgentPanel
+            onSpawned={(p) => setDynamicPersonas((prev) => [p, ...prev])}
+            onAuthored={(p) => setAuthoredPersonas((prev) => [p, ...prev.filter((a) => a.slug !== p.slug)])}
+          />
+
+          {/* Authored persona list (Story 3.10) */}
+          {authoredPersonas.length > 0 && (
+            <AuthoredPersonaList
+              personas={authoredPersonas}
+              project={project}
+              onSpawned={(p) => setDynamicPersonas((prev) => [p, ...prev])}
+            />
+          )}
 
           {/* Dynamic persona list */}
           {dynamicPersonas.length > 0 && (
@@ -337,6 +395,49 @@ function ScopeViolationBadge({ summary }: { summary: ScopeViolationSummary | nul
       <Badge color="warn">
         ⚠ {summary.count} out-of-scope
       </Badge>
+    </span>
+  );
+}
+
+// Story 3.4: drift badge shown on a persona card when vault runtime state
+// has changed but the canonical definition file hasn't been updated (FR-21).
+// The badge is dismissible — clicking Dismiss calls `dismiss_persona_drift`,
+// suppressing it until the next new vault change.
+function DriftBadge({
+  report,
+  onDismiss,
+}: {
+  report: PersonaDriftReport | null;
+  onDismiss?: () => void;
+}) {
+  if (!report || report.status !== "drifted") return null;
+  const title =
+    report.field_count === 1
+      ? `1 vault file changed since last definition update: ${report.fields[0]?.relative_path}`
+      : `${report.field_count} vault files changed since last definition update`;
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <span title={title} style={{ display: "inline-flex" }}>
+        <Badge color="warn">⟳ {report.field_count} drift</Badge>
+      </span>
+      {onDismiss && (
+        <button
+          type="button"
+          onClick={onDismiss}
+          title="Dismiss drift badge until next vault change"
+          style={{
+            background: "none",
+            border: "none",
+            color: "var(--fg-3)",
+            cursor: "pointer",
+            fontFamily: "var(--font-mono)",
+            fontSize: 9,
+            padding: "1px 4px",
+          }}
+        >
+          ✕
+        </button>
+      )}
     </span>
   );
 }
@@ -835,6 +936,133 @@ function VaultWritePanel({
   );
 }
 
+// ────────────────────────────────────────────────────────────────────
+// Story 3.10 — Authored persona list
+
+function AuthoredPersonaList({
+  personas,
+  project,
+  onSpawned,
+}: {
+  personas: AuthoredPersonaInfo[];
+  project: ProjectInfo;
+  onSpawned: (p: DynamicPersonaInfo) => void;
+}) {
+  return (
+    <HUDFrame style={{ padding: 22 }}>
+      <div style={{ marginBottom: 14 }}>
+        <Eyebrow color="purple">Authored personas · {personas.length}</Eyebrow>
+        <p style={{ color: "var(--fg-3)", fontSize: 12, margin: "4px 0 0" }}>
+          These personas have a full{" "}
+          <code style={{ fontFamily: "var(--font-mono)", color: "var(--fn-cyan)" }}>AGENTS.md</code>{" "}
+          in the vault. Click Spawn to run them.
+        </p>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {personas.map((p) => (
+          <AuthoredPersonaRow key={p.slug} persona={p} project={project} onSpawned={onSpawned} />
+        ))}
+      </div>
+    </HUDFrame>
+  );
+}
+
+function AuthoredPersonaRow({
+  persona,
+  project,
+  onSpawned,
+}: {
+  persona: AuthoredPersonaInfo;
+  project: ProjectInfo;
+  onSpawned: (p: DynamicPersonaInfo) => void;
+}) {
+  const [spawning, setSpawning] = useState(false);
+  const [spawnError, setSpawnError] = useState<string | null>(null);
+
+  async function handleSpawn() {
+    setSpawnError(null);
+    setSpawning(true);
+    try {
+      const spawned = await invoke<DynamicPersonaInfo>("spawn_dynamic_persona", {
+        name: persona.name,
+        backingCli: persona.backing_cli,
+        lifecycle: persona.lifecycle,
+        taskPrompt: null,
+      });
+      onSpawned(spawned);
+    } catch (e) {
+      setSpawnError(String(e));
+    } finally {
+      setSpawning(false);
+    }
+  }
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        gap: 12,
+        padding: "10px 14px",
+        background: "rgba(176,0,255,0.03)",
+        border: "1px solid rgba(176,0,255,0.2)",
+        borderRadius: 2,
+      }}
+    >
+      <div style={{ flex: 1 }}>
+        <div
+          style={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 700,
+            fontSize: 14,
+            color: "var(--fn-white)",
+          }}
+        >
+          {persona.name}
+        </div>
+        <div
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            color: "var(--fg-3)",
+            marginTop: 2,
+          }}
+        >
+          {persona.backing_cli} · {persona.vault_scope} scope
+          {persona.skills.length > 0 && ` · ${persona.skills.length} skill${persona.skills.length === 1 ? "" : "s"}`}
+        </div>
+        {persona.role_description && (
+          <div
+            style={{
+              fontSize: 11,
+              color: "var(--fg-2)",
+              marginTop: 4,
+              maxWidth: 440,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {persona.role_description}
+          </div>
+        )}
+        {spawnError && (
+          <div style={{ fontSize: 10, color: "#FF8FA3", fontFamily: "var(--font-mono)", marginTop: 4 }}>
+            {spawnError}
+          </div>
+        )}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+        <Badge color="purple">{persona.lifecycle}</Badge>
+        <Btn variant="secondary" onClick={handleSpawn} disabled={spawning || !project}>
+          {spawning ? "Spawning…" : "Spawn →"}
+        </Btn>
+      </div>
+    </div>
+  );
+}
+
 const inputStyle: React.CSSProperties = {
   background: "rgba(255,255,255,0.04)",
   border: "1px solid var(--border-neutral)",
@@ -931,6 +1159,17 @@ function DynamicPersonaRow({
   // A persistent dynamic persona's scope-log dir is named by its slug.
   // Ephemerals have no persona vault dir, so the log read returns count 0.
   const scope = useScopeViolations(persona.running ? persona.slug : null, scopeBadgesEnabled);
+  // Story 3.4: drift detection — only poll for persistent personas with a vault dir.
+  const isPersistent = persona.lifecycle === "persistent" && !!persona.vault_dir;
+  const driftReport = useDriftState(isPersistent && persona.running ? persona.slug : null);
+
+  async function handleDismissDrift() {
+    try {
+      await invoke("dismiss_persona_drift", { slug: persona.slug });
+    } catch {
+      // badge will refresh on next poll
+    }
+  }
 
   async function handleKill() {
     setKilling(true);
@@ -989,6 +1228,7 @@ function DynamicPersonaRow({
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <ScopeViolationBadge summary={scope} />
+        <DriftBadge report={driftReport} onDismiss={handleDismissDrift} />
         <Badge color={persona.lifecycle === "persistent" ? "muted" : "warn"}>
           {persona.lifecycle}
         </Badge>

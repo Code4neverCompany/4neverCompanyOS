@@ -371,8 +371,11 @@ name = "c4n-desktop"
 version = "0.0.1"
 dependencies = [
  "anyhow",
+ "c4n-bus-relay",
+ "c4n-persona-drift",
  "c4n-platform-fs",
  "c4n-zellij-adapter",
+ "chrono",
  "dirs 5.0.1",
  "serde",
  "serde_json",
@@ -385,6 +388,20 @@ dependencies = [
  "toml 0.8.2",
  "tracing",
  "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "c4n-persona-drift"
+version = "0.0.1"
+dependencies = [
+ "chrono",
+ "notify",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tracing",
 ]
 
 [[package]]
