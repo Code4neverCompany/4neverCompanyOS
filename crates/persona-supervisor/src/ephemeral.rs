@@ -1,4 +1,7 @@
 //! Ephemeral persona lifecycle — spawn → task → exit cleanly (Story 3.6).
+//! Story 3.9 extends this with a promotion path: after 3 spawns of the same
+//! ephemeral persona, `run_ephemeral` returns a [`PromotionState::Offer`] in
+//! the outcome so callers can surface a UI prompt. See `promotion.rs`.
 //!
 //! An *ephemeral* persona (e.g. a Security Reviewer spun up for a single
 //! PR) differs from the persistent personas wrapped by [`crate::supervise`]
@@ -41,6 +44,7 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+use crate::promotion::{EphemeralRegistry, PromotionState};
 use crate::SupervisorError;
 
 /// What the ephemeral runner needs to spawn a one-shot persona, capture
@@ -81,6 +85,11 @@ pub struct EphemeralOutcome {
     /// run — the field exists so callers and the SM-5 cycle test can sum
     /// it across many runs and assert the invariant explicitly.
     pub orphans: usize,
+    /// Story 3.9: promotion state after this spawn. [`PromotionState::Offer`]
+    /// when the spawn count reached `PROMOTION_THRESHOLD` and the persona
+    /// hasn't been permanently dismissed or already promoted. `None` when
+    /// no registry is wired or the count is still below the threshold.
+    pub promotion: PromotionState,
 }
 
 /// Hook surface for the pub/sub bus. See the module docs for why this is
@@ -145,6 +154,8 @@ fn artifact_timestamp() -> String {
 ///   4. `notifier.on_task_complete(slug, artifact, exit_code)`.
 ///   5. `notifier.on_deregister(slug)` — always, via the deregister-on-
 ///      drop guard, even if step 3 fails.
+///   6. (Story 3.9) If `registry` is `Some`, record the spawn and attach
+///      the promotion state to the outcome.
 ///
 /// Returns the [`EphemeralOutcome`]. Does NOT create
 /// `<vault>/personas/<slug>/` — that absence is the "zero vault residue"
@@ -152,6 +163,7 @@ fn artifact_timestamp() -> String {
 pub fn run_ephemeral(
     config: EphemeralConfig,
     notifier: &dyn EphemeralNotifier,
+    registry: Option<&EphemeralRegistry>,
 ) -> Result<EphemeralOutcome, SupervisorError> {
     // Deregister-on-drop: guarantees the bus identity is dropped no matter
     // which error path we take after registering. "No bus identity retained
@@ -204,11 +216,20 @@ pub fn run_ephemeral(
 
     notifier.on_task_complete(&config.slug, &artifact_path, exit_code);
 
+    // Story 3.9: record the spawn in the registry (if wired) and surface
+    // the promotion state in the outcome. Registry errors are non-fatal —
+    // the ephemeral ran successfully; a counter miss is not a reason to
+    // fail the whole lifecycle.
+    let promotion = registry
+        .and_then(|r| r.record_spawn(&config.slug).ok())
+        .unwrap_or(PromotionState::None);
+
     Ok(EphemeralOutcome {
         exit_code,
         artifact_path,
         bytes_written: body.len(),
         orphans: 0,
+        promotion,
     })
 }
 
@@ -330,7 +351,7 @@ mod tests {
         let vault = TempDir::new().unwrap();
         let notifier = RecordingNotifier::default();
         let outcome =
-            run_ephemeral(config_for(vault.path(), "security-reviewer"), &notifier).unwrap();
+            run_ephemeral(config_for(vault.path(), "security-reviewer"), &notifier, None).unwrap();
 
         assert_eq!(outcome.exit_code, 0);
         assert_eq!(outcome.orphans, 0);
@@ -352,7 +373,7 @@ mod tests {
     fn run_ephemeral_leaves_no_persona_vault_dir() {
         let vault = TempDir::new().unwrap();
         let notifier = NullNotifier;
-        run_ephemeral(config_for(vault.path(), "security-reviewer"), &notifier).unwrap();
+        run_ephemeral(config_for(vault.path(), "security-reviewer"), &notifier, None).unwrap();
 
         // The ephemeral must NOT create vault/personas/<slug>/ — zero residue.
         let personas = vault.path().join("personas");
@@ -384,7 +405,7 @@ mod tests {
             args: vec![],
             cwd: None,
         };
-        let res = run_ephemeral(cfg, &notifier);
+        let res = run_ephemeral(cfg, &notifier, None);
         assert!(res.is_err(), "spawn of a missing binary should error");
         assert_eq!(notifier.registered.load(Ordering::SeqCst), 1);
         assert_eq!(
@@ -392,6 +413,58 @@ mod tests {
             1,
             "identity must be deregistered even on spawn failure"
         );
+    }
+
+    // ── Story 3.9 integration: run_ephemeral wires into EphemeralRegistry ────
+
+    #[test]
+    fn two_runs_no_promotion() {
+        let vault = TempDir::new().unwrap();
+        let notifier = NullNotifier;
+        let registry = crate::promotion::EphemeralRegistry::new(vault.path());
+
+        let o1 = run_ephemeral(config_for(vault.path(), "reviewer"), &notifier, Some(&registry))
+            .unwrap();
+        assert_eq!(o1.promotion, crate::promotion::PromotionState::None);
+
+        let o2 = run_ephemeral(config_for(vault.path(), "reviewer"), &notifier, Some(&registry))
+            .unwrap();
+        assert_eq!(o2.promotion, crate::promotion::PromotionState::None);
+    }
+
+    #[test]
+    fn third_run_surfaces_promotion_offer() {
+        let vault = TempDir::new().unwrap();
+        let notifier = NullNotifier;
+        let registry = crate::promotion::EphemeralRegistry::new(vault.path());
+
+        run_ephemeral(config_for(vault.path(), "reviewer"), &notifier, Some(&registry)).unwrap();
+        run_ephemeral(config_for(vault.path(), "reviewer"), &notifier, Some(&registry)).unwrap();
+        let o3 =
+            run_ephemeral(config_for(vault.path(), "reviewer"), &notifier, Some(&registry))
+                .unwrap();
+
+        assert_eq!(
+            o3.promotion,
+            crate::promotion::PromotionState::Offer { spawn_count: 3 },
+            "3rd run must surface Offer {{ spawn_count: 3 }}"
+        );
+    }
+
+    #[test]
+    fn no_registry_means_no_promotion() {
+        let vault = TempDir::new().unwrap();
+        let notifier = NullNotifier;
+
+        // Run 5 times with no registry — promotion field stays None.
+        for _ in 0..5 {
+            let o = run_ephemeral(config_for(vault.path(), "reviewer"), &notifier, None).unwrap();
+            assert_eq!(
+                o.promotion,
+                crate::promotion::PromotionState::None,
+                "no registry → promotion must be None"
+            );
+        }
     }
 
     /// SM-5 success metric: 100 spawn/exit cycles leave zero orphans, write
@@ -410,7 +483,7 @@ mod tests {
 
         for i in 0..100 {
             let slug = format!("reviewer-{i:03}");
-            let outcome = run_ephemeral(config_for(vault.path(), &slug), &notifier)
+            let outcome = run_ephemeral(config_for(vault.path(), &slug), &notifier, None)
                 .unwrap_or_else(|e| panic!("cycle {i} failed: {e}"));
             total_orphans += outcome.orphans;
             assert_eq!(outcome.exit_code, 0, "cycle {i} child should exit 0");

@@ -63,6 +63,12 @@ pub use ephemeral::{
     NullNotifier,
 };
 
+pub mod promotion;
+pub use promotion::{
+    EphemeralRecord, EphemeralRegistry, PersonaMeta, PromotionState, RegistryError,
+    PROMOTION_THRESHOLD,
+};
+
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use serde::Serialize;
 use std::io::{Read, Write};

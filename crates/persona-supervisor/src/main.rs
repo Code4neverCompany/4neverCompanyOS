@@ -96,7 +96,7 @@ async fn run_ephemeral_mode(args: &[String]) -> ExitCode {
 
     // run_ephemeral is synchronous (std::process); run it off the async
     // runtime so we never block the reactor thread.
-    let result = tokio::task::spawn_blocking(move || run_ephemeral(config, &NullNotifier)).await;
+    let result = tokio::task::spawn_blocking(move || run_ephemeral(config, &NullNotifier, None)).await;
 
     match result {
         Ok(Ok(outcome)) => {
