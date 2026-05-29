@@ -1,18 +1,19 @@
-// BMad Builder — "Add Agent" panel (Story 3.1 MVP).
+// BMad Builder — "Add Agent" panel (Story 3.1 MVP + Story 3.10 authoring).
 //
-// Lets the user spawn a dynamic persona by:
-//   - Giving it a name (e.g. "Database Architect")
-//   - Picking a backing CLI (Claude Code by default)
-//   - Choosing a lifecycle (persistent or ephemeral)
+// Two tabs:
 //
-// On submit, calls `spawn_dynamic_persona` which:
-//   1. Writes a minimal persona file to the project root.
-//   2. Creates vault/personas/<slug>/ directory.
-//   3. Spawns the persona-supervisor + CLI in a Zellij pane.
+//   "Spawn Agent" (Story 3.1): quick-spawn a dynamic persona by name,
+//   CLI, and lifecycle. Calls `spawn_dynamic_persona` — writes a minimal
+//   persona file to the project root and opens a Zellij pane.
+//
+//   "Author Persona" (Story 3.10): full persona authoring form. Writes a
+//   rich AGENTS.md to vault/personas/<slug>/ and scaffolds the vault dir.
+//   The authored persona appears in the list ready to spawn later.
 
 import { invoke } from "@tauri-apps/api/core";
 import { useState } from "react";
 import { Badge, Btn, Eyebrow, HUDFrame, StatusDot } from "@c4n/ui-tokens";
+import { PersonaAuthorForm, type AuthoredPersonaInfo } from "./PersonaAuthorForm";
 
 export interface DynamicPersonaInfo {
   name: string;
@@ -57,9 +58,78 @@ const LIFECYCLE_OPTIONS: ReadonlyArray<{
 interface BmbAddAgentPanelProps {
   /** Called with the spawned persona info so the parent can refresh its list. */
   onSpawned?: (persona: DynamicPersonaInfo) => void;
+  /** Called when a persona is authored (Story 3.10). */
+  onAuthored?: (persona: AuthoredPersonaInfo) => void;
 }
 
-export function BmbAddAgentPanel({ onSpawned }: BmbAddAgentPanelProps) {
+// Re-export so callers can import AuthoredPersonaInfo from this entry file.
+export type { AuthoredPersonaInfo } from "./PersonaAuthorForm";
+
+type PanelTab = "spawn" | "author";
+
+export function BmbAddAgentPanel({ onSpawned, onAuthored }: BmbAddAgentPanelProps) {
+  const [tab, setTab] = useState<PanelTab>("spawn");
+
+  return (
+    <div>
+      {/* Tab bar */}
+      <div style={{ display: "flex", gap: 2, marginBottom: -1 }}>
+        <TabButton active={tab === "spawn"} onClick={() => setTab("spawn")}>
+          Spawn Agent
+        </TabButton>
+        <TabButton active={tab === "author"} onClick={() => setTab("author")}>
+          Author Persona
+        </TabButton>
+      </div>
+      {tab === "spawn" ? (
+        <SpawnPanel onSpawned={onSpawned} />
+      ) : (
+        <PersonaAuthorForm onAuthored={onAuthored} />
+      )}
+    </div>
+  );
+}
+
+function TabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        fontFamily: "var(--font-mono)",
+        fontSize: 11,
+        letterSpacing: "0.1em",
+        textTransform: "uppercase",
+        padding: "8px 16px",
+        border: "1px solid var(--border-neutral)",
+        borderBottom: active ? "1px solid var(--bg-panel, #0c0d14)" : "1px solid var(--border-neutral)",
+        borderRadius: "2px 2px 0 0",
+        background: active ? "rgba(255,255,255,0.04)" : "transparent",
+        color: active ? "var(--fn-gold)" : "var(--fg-3)",
+        cursor: "pointer",
+        transition: "color 0.1s",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ── Spawn panel (Story 3.1 content, extracted into its own component) ──
+
+interface SpawnPanelProps {
+  onSpawned?: (persona: DynamicPersonaInfo) => void;
+}
+
+function SpawnPanel({ onSpawned }: SpawnPanelProps) {
   const [name, setName] = useState("");
   const [cli, setCli] = useState<BackingCli>("claude");
   const [customBin, setCustomBin] = useState("");
