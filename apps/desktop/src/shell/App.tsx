@@ -12,13 +12,15 @@ import monogramUrl from "@c4n/ui-tokens/assets/logo/monogram.png";
 import { ProjectsView } from "../views/ProjectsView";
 import { MemoryView } from "../views/MemoryView";
 import { PersonasView } from "../views/PersonasView";
+import { ChannelsView } from "../views/ChannelsView";
 import { SettingsView } from "../views/SettingsView";
 
-type RailItem = "projects" | "personas" | "vault" | "memory" | "settings";
+type RailItem = "projects" | "personas" | "channels" | "vault" | "memory" | "settings";
 
 const RAIL_ITEMS: ReadonlyArray<{ id: RailItem; label: string; icon: string }> = [
   { id: "projects", label: "Projects", icon: "▣" },
   { id: "personas", label: "Personas", icon: "◉" },
+  { id: "channels", label: "Channels", icon: "≈" },
   { id: "vault", label: "Vault", icon: "◈" },
   { id: "memory", label: "Memory", icon: "⌬" },
   { id: "settings", label: "Settings", icon: "⚙" },
@@ -196,7 +198,10 @@ function SideRail({
  *  to a real view yet. `projects` has its own implementation in
  *  views/ProjectsView (Story 1.12). `memory` lands in Story 1.16c.
  *  `personas` lands in Story 2.3 (PersonasView). `settings` in Story 1.19. */
-type PlaceholderRailItem = Exclude<RailItem, "projects" | "memory" | "personas" | "settings">;
+type PlaceholderRailItem = Exclude<
+  RailItem,
+  "projects" | "memory" | "personas" | "channels" | "settings"
+>;
 
 const SLOT_COPY: Record<
   PlaceholderRailItem,
@@ -222,6 +227,10 @@ function MainSlot({ active }: { active: RailItem }) {
   // Story 2.3: Personas rail item renders the Frontend Designer spawn panel.
   if (active === "personas") {
     return <PersonasView />;
+  }
+  // Story 2.10: Channels rail item renders the live bus-traffic panel.
+  if (active === "channels") {
+    return <ChannelsView />;
   }
   // Story 1.19: Settings rail item now renders the Settings → About view.
   if (active === "settings") {
