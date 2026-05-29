@@ -59,14 +59,20 @@
 
 mod ephemeral;
 pub use ephemeral::{
-    ephemeral_artifact_path, run_ephemeral, EphemeralConfig, EphemeralNotifier, EphemeralOutcome,
-    NullNotifier,
+    ephemeral_artifact_path, run_ephemeral, run_ephemeral_controlled, EphemeralConfig,
+    EphemeralNotifier, EphemeralOutcome, EphemeralPauseFlag, NullNotifier,
 };
 
 pub mod promotion;
 pub use promotion::{
     EphemeralRecord, EphemeralRegistry, PersonaMeta, PromotionState, RegistryError,
     PROMOTION_THRESHOLD,
+};
+
+mod control;
+pub use control::{
+    ControlNotifier, ControlSignal, NullControlNotifier, PersonaControlHandle, PersonaGone,
+    PersonaState, CONTROL_CHANNEL_CAPACITY, EVENT_PAUSED, EVENT_REDIRECTED, EVENT_RESUMED,
 };
 
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
@@ -183,22 +189,47 @@ pub fn pty_in_file_path(vault: &Path, persona_id: &str) -> PathBuf {
         .join("current.pty.in")
 }
 
-/// Spawn the child described by `config` inside a PTY. Produces three
-/// outputs simultaneously:
+/// Spawn the child described by `config` inside a PTY with optional
+/// pause / redirect / resume control (Story 3.11).
+///
+/// `control_rx` — receiver for [`ControlSignal`]s sent by the UI layer via
+/// [`PersonaControlHandle`]. Pass `None` (or use the [`supervise`] wrapper)
+/// when control is not needed.
+///
+/// `notifier` — called on every state transition so callers can emit bus
+/// events (NEVAAA-28 schema). Use [`Arc::new(NullControlNotifier)`][NullControlNotifier]
+/// when not wired to the bus.
+///
+/// ## Pause semantics
+///
+/// When paused, new bytes from `current.pty.in` are not forwarded to the PTY.
+/// The child process and PTY remain alive; the persona's current output stays
+/// visible. A [`ControlSignal::Resume`] resumes normal forwarding.
+///
+/// ## Redirect semantics
+///
+/// A [`ControlSignal::Redirect`] writes `task + "\n"` directly to the PTY stdin,
+/// bypassing `current.pty.in`. Valid from any state (Running or Paused).
+///
+/// ## Outputs
+///
+/// Same three-output fan-out as [`supervise`]:
 ///
 /// - bytes forwarded to our own stdout (outer-terminal display)
 /// - bytes appended to `.pty.raw` (xterm.js tap)
 /// - line-stripped JSONL entries appended to `.jsonl` (telemetry)
 ///
-/// Returns the child's exit code. Both log files are opened in append
-/// mode so multiple `supervise()` runs in one day extend rather than
-/// overwrite.
-pub async fn supervise(config: SupervisorConfig) -> Result<i32, SupervisorError> {
+/// Returns the child's exit code.
+pub async fn supervise_controlled(
+    config: SupervisorConfig,
+    control_rx: Option<tokio::sync::mpsc::Receiver<ControlSignal>>,
+    notifier: Arc<dyn ControlNotifier>,
+) -> Result<i32, SupervisorError> {
     debug!(
         persona = %config.persona_id,
         command = %config.command,
         args = ?config.args,
-        "supervising child process (PTY mode)"
+        "supervising child process (PTY mode, control enabled)"
     );
 
     let pty_raw_path = pty_raw_file_path(&config.vault_path, &config.persona_id);
@@ -208,15 +239,7 @@ pub async fn supervise(config: SupervisorConfig) -> Result<i32, SupervisorError>
         std::fs::create_dir_all(parent)?;
     }
 
-    // Story 3.5: start the best-effort vault scope monitor for this
-    // persona. It watches the vault and logs writes outside the persona's
-    // scope to `personas/<id>/out-of-scope-writes.log` (D-7, FR-29 —
-    // observability only, never blocks). Held for the lifetime of
-    // supervision; dropped (stopping the watcher) when `supervise` returns.
-    //
-    // Non-fatal by design: if the watcher can't attach (e.g. unsupported
-    // FS, permission), we warn and continue — scope logging is an
-    // observability nicety, not a precondition for running the persona.
+    // Story 3.5: best-effort vault scope monitor (observability only).
     let _scope_monitor = {
         let guard = c4n_vault_scoping::ScopeGuard::new(
             config.vault_path.clone(),
@@ -241,17 +264,9 @@ pub async fn supervise(config: SupervisorConfig) -> Result<i32, SupervisorError>
         .append(true)
         .open(&jsonl_path)?;
 
-    // Story 1.16d: truncate `.pty.in` at startup so input from a
-    // previous supervisor instance (different PID, possibly different
-    // child) can't leak into the new child's stdin. Creating the file
-    // also gives the desktop's `write_persona_pty_in` something to
-    // append to immediately — no race between supervisor startup and
-    // the first keystroke.
+    // Story 1.16d: truncate `.pty.in` at startup.
     std::fs::File::create(&pty_in_path)?;
 
-    // Default PTY size — most TUI apps respect SIGWINCH if we need to
-    // resize later (Story 1.16c will plumb the xterm.js viewport size
-    // through and call `master.resize()`).
     let pty_system = native_pty_system();
     let pair = pty_system
         .openpty(PtySize {
@@ -270,8 +285,6 @@ pub async fn supervise(config: SupervisorConfig) -> Result<i32, SupervisorError>
         cmd.cwd(cwd);
     }
 
-    // Spawn child via slave. After spawn, drop the slave on our side
-    // (the kernel keeps it alive via the child); we use the master.
     let mut child = pair
         .slave
         .spawn_command(cmd)
@@ -286,78 +299,124 @@ pub async fn supervise(config: SupervisorConfig) -> Result<i32, SupervisorError>
         .try_clone_reader()
         .map_err(|e| SupervisorError::PtyOpen(format!("could not clone PTY master reader: {e}")))?;
 
-    // Story 1.16d: take the master's writer BEFORE the master moves into
-    // `_master`. We hand this to the input-watcher task below so user
-    // keystrokes can flow into the child's stdin.
     let pty_writer = pair
         .master
         .take_writer()
         .map_err(|e| SupervisorError::PtyOpen(format!("could not take PTY master writer: {e}")))?;
 
-    // Keep master alive for the duration of supervision — dropping it
-    // would close the PTY and signal EOF to the child.
     let _master = pair.master;
 
     let pty_raw_writer = Arc::new(Mutex::new(pty_raw_writer));
     let jsonl_writer = Arc::new(Mutex::new(jsonl_writer));
 
-    // Story 1.16d: input-watcher task. Polls `.pty.in` for newly-
-    // appended bytes (50ms cadence) and writes them to the PTY writer,
-    // which delivers them to the child as if typed at a real terminal.
-    // Uses an atomic stop flag (vs dropping the writer to signal) so we
-    // can let the writer drop naturally at end-of-function.
+    // Story 3.11: input-watcher + control-signal task.
+    //
+    // Each poll cycle:
+    //   1. Drain any pending ControlSignals via try_recv (non-blocking).
+    //      - Pause  → set paused = true, call notifier.
+    //      - Resume → set paused = false, call notifier.
+    //      - Redirect{task} → write task+"\n" directly to PTY (interrupt),
+    //        call notifier. Valid from either state.
+    //   2. Forward pty.in → PTY only when not paused.
+    //
+    // `try_recv` is sync and doesn't need a tokio context, so it's safe
+    // inside spawn_blocking alongside the existing sync pty_writer.
     let writer_stop = Arc::new(AtomicBool::new(false));
     let writer_handle = tokio::task::spawn_blocking({
         let path = pty_in_path.clone();
         let stop = writer_stop.clone();
         let mut pty_writer = pty_writer;
+        let mut ctrl = control_rx;
+        let notifier = notifier.clone();
+        let persona_id = config.persona_id.clone();
         move || -> Result<(), SupervisorError> {
             let mut position: u64 = 0;
+            let mut paused = false;
             let poll = std::time::Duration::from_millis(PTY_IN_POLL_MS);
             loop {
                 if stop.load(Ordering::SeqCst) {
                     break;
                 }
-                if let Ok(meta) = std::fs::metadata(&path) {
-                    let size = meta.len();
-                    if size > position {
-                        let take = size - position;
-                        match std::fs::File::open(&path) {
-                            Ok(mut f) => {
-                                use std::io::{Read, Seek, SeekFrom};
-                                if f.seek(SeekFrom::Start(position)).is_ok() {
-                                    let mut buf = Vec::with_capacity(take as usize);
-                                    if f.take(take).read_to_end(&mut buf).is_ok() && !buf.is_empty()
-                                    {
-                                        position += buf.len() as u64;
-                                        if let Err(e) = pty_writer.write_all(&buf) {
-                                            warn!("pty.in writer error: {e}");
-                                            return Err(SupervisorError::Io(e));
-                                        }
-                                        if let Err(e) = pty_writer.flush() {
-                                            warn!("pty.in flush error: {e}");
-                                            return Err(SupervisorError::Io(e));
+
+                // 1. Drain control signals.
+                if let Some(ref mut rx) = ctrl {
+                    loop {
+                        match rx.try_recv() {
+                            Ok(ControlSignal::Pause) => {
+                                if !paused {
+                                    paused = true;
+                                    notifier.on_paused(&persona_id);
+                                }
+                            }
+                            Ok(ControlSignal::Resume) => {
+                                if paused {
+                                    paused = false;
+                                    notifier.on_resumed(&persona_id);
+                                }
+                            }
+                            Ok(ControlSignal::Redirect { task }) => {
+                                // Interrupt: bypass pty.in and write directly.
+                                let task_bytes = format!("{task}\n");
+                                if let Err(e) = pty_writer.write_all(task_bytes.as_bytes()) {
+                                    warn!("redirect pty write error: {e}");
+                                } else if let Err(e) = pty_writer.flush() {
+                                    warn!("redirect pty flush error: {e}");
+                                }
+                                notifier.on_redirected(&persona_id, &task);
+                            }
+                            Err(tokio::sync::mpsc::error::TryRecvError::Empty) => break,
+                            Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
+                                // All senders dropped; clear to skip future iterations.
+                                ctrl = None;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // 2. Forward pty.in → PTY only when running (not paused).
+                if !paused {
+                    if let Ok(meta) = std::fs::metadata(&path) {
+                        let size = meta.len();
+                        if size > position {
+                            let take = size - position;
+                            match std::fs::File::open(&path) {
+                                Ok(mut f) => {
+                                    use std::io::{Read, Seek, SeekFrom};
+                                    if f.seek(SeekFrom::Start(position)).is_ok() {
+                                        let mut buf = Vec::with_capacity(take as usize);
+                                        if f.take(take).read_to_end(&mut buf).is_ok()
+                                            && !buf.is_empty()
+                                        {
+                                            position += buf.len() as u64;
+                                            if let Err(e) = pty_writer.write_all(&buf) {
+                                                warn!("pty.in writer error: {e}");
+                                                return Err(SupervisorError::Io(e));
+                                            }
+                                            if let Err(e) = pty_writer.flush() {
+                                                warn!("pty.in flush error: {e}");
+                                                return Err(SupervisorError::Io(e));
+                                            }
                                         }
                                     }
                                 }
+                                Err(e) => {
+                                    warn!("pty.in open failed: {e}");
+                                }
                             }
-                            Err(e) => {
-                                warn!("pty.in open failed: {e}");
-                            }
+                        } else if size < position {
+                            position = 0;
                         }
-                    } else if size < position {
-                        // External truncation (rare; defensive reset).
-                        position = 0;
                     }
                 }
+
                 std::thread::sleep(poll);
             }
             Ok(())
         }
     });
 
-    // Read PTY → fan out to 3 outputs. portable-pty's API is sync, so
-    // we use spawn_blocking. tokio handles the await boundary.
+    // Read PTY → fan out to 3 outputs.
     let read_handle = tokio::task::spawn_blocking({
         let pty_raw = pty_raw_writer.clone();
         let jsonl = jsonl_writer.clone();
@@ -368,19 +427,16 @@ pub async fn supervise(config: SupervisorConfig) -> Result<i32, SupervisorError>
             let mut stdout_handle = stdout.lock();
             loop {
                 match reader.read(&mut buf) {
-                    Ok(0) => break, // EOF — child closed PTY
+                    Ok(0) => break,
                     Ok(n) => {
                         let bytes = &buf[..n];
-                        // 1. Outer-terminal display (Zellij pane).
                         stdout_handle.write_all(bytes)?;
                         stdout_handle.flush()?;
-                        // 2. xterm.js tap file.
                         {
                             let mut w = pty_raw.lock().expect("pty.raw writer mutex poisoned");
                             w.write_all(bytes)?;
                             w.flush()?;
                         }
-                        // 3. Line-strip for JSONL.
                         process_lines_for_jsonl(bytes, &mut line_buf, &jsonl)?;
                     }
                     Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
@@ -390,7 +446,6 @@ pub async fn supervise(config: SupervisorConfig) -> Result<i32, SupervisorError>
                     }
                 }
             }
-            // Flush any final partial line (no trailing newline).
             if !line_buf.is_empty() {
                 emit_jsonl_line(&line_buf, &jsonl)?;
                 line_buf.clear();
@@ -399,25 +454,29 @@ pub async fn supervise(config: SupervisorConfig) -> Result<i32, SupervisorError>
         }
     });
 
-    // child.wait() is sync; run in another blocking task.
     let exit_code = tokio::task::spawn_blocking(move || -> Result<i32, SupervisorError> {
         let status = child.wait().map_err(SupervisorError::Io)?;
         Ok(status.exit_code() as i32)
     })
     .await??;
 
-    // Drain any remaining reader output before returning.
     read_handle.await??;
 
-    // Story 1.16d: stop the input watcher and wait for it to finish.
-    // Errors during shutdown are non-fatal — the child has already
-    // exited so dropped input doesn't matter.
     writer_stop.store(true, Ordering::SeqCst);
     if let Err(e) = writer_handle.await {
         warn!("pty.in writer join error during shutdown: {e}");
     }
 
     Ok(exit_code)
+}
+
+/// Convenience wrapper: supervise a child with no control signals.
+///
+/// Equivalent to calling
+/// `supervise_controlled(config, None, Arc::new(NullControlNotifier))`.
+/// Existing callers that don't need pause/redirect should use this.
+pub async fn supervise(config: SupervisorConfig) -> Result<i32, SupervisorError> {
+    supervise_controlled(config, None, Arc::new(NullControlNotifier)).await
 }
 
 /// Scan `bytes` for newlines; accumulate into `line_buf` until we see
