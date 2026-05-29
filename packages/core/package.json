@@ -10,6 +10,7 @@
     ".": "./src/index.ts",
     "./attribution": "./src/attribution.ts",
     "./glossary": "./src/glossary.ts",
+    "./bus": "./src/bus/index.ts",
     "./schemas/*": "./src/schemas/*.ts"
   },
   "scripts": {
