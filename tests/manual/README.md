@@ -6,9 +6,9 @@
 
 This directory holds artifacts a tester produces while running one of the project's manual verification protocols. The protocols themselves live under `docs/`; this folder is where the run records land.
 
-| Protocol                                                | Recording filename                          | Notes filename                          |
-| ------------------------------------------------------- | ------------------------------------------- | --------------------------------------- |
-| `docs/e2e-smoke-test.md` (Story 1.18 — M1 exit criterion) | `m1-exit-criterion-recording.mp4`           | `m1-exit-criterion-notes.md`            |
+| Protocol                                                  | Recording filename                | Notes filename               |
+| --------------------------------------------------------- | --------------------------------- | ---------------------------- |
+| `docs/e2e-smoke-test.md` (Story 1.18 — M1 exit criterion) | `m1-exit-criterion-recording.mp4` | `m1-exit-criterion-notes.md` |
 
 These filenames are mandated by the Story 1.18 acceptance criteria (epics.md §1.18). The story file at `_bmad-output/implementation-artifacts/stories/1.18-e2e-scenario-test.md` is the spec.
 
@@ -27,6 +27,6 @@ These filenames are mandated by the Story 1.18 acceptance criteria (epics.md §1
 
 ## Why this is `tests/manual/` and not `apps/desktop/tests/manual/`
 
-The recording + notes are runtime captures of a manual protocol that exercises *the entire monorepo end-to-end* — installer (`apps/desktop`) + wizard (`apps/wizard`) + supervisor (`crates/persona-supervisor`) + Zellij adapter (`crates/zellij-adapter`) + the embedded xterm.js terminal (`apps/desktop/src/views/`). Nesting under any single crate's `tests/` would imply a crate-scoped concern that this isn't. Top-level `tests/manual/` reads as "manual artifacts for the whole repo," which is accurate.
+The recording + notes are runtime captures of a manual protocol that exercises _the entire monorepo end-to-end_ — installer (`apps/desktop`) + wizard (`apps/wizard`) + supervisor (`crates/persona-supervisor`) + Zellij adapter (`crates/zellij-adapter`) + the embedded xterm.js terminal (`apps/desktop/src/views/`). Nesting under any single crate's `tests/` would imply a crate-scoped concern that this isn't. Top-level `tests/manual/` reads as "manual artifacts for the whole repo," which is accurate.
 
 The `.gitkeep` next to this README keeps the directory in git pre-capture. Delete `.gitkeep` once a real recording lands.

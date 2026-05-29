@@ -99,7 +99,7 @@ export function MemoryView() {
       // Optimistically flip to not-running; the next poll will confirm.
       setStatus({
         state: "not-running",
-        session_name: status?.state !== "zellij-missing" ? status?.session_name ?? "" : "",
+        session_name: status?.state !== "zellij-missing" ? (status?.session_name ?? "") : "",
       });
     } catch (e) {
       setError(String(e));
@@ -143,9 +143,7 @@ export function MemoryView() {
             onKill={killHermes}
             onRefresh={refreshStatus}
           />
-          {status?.state === "running" && (
-            <HermesTerminalEmbed key={project.id} />
-          )}
+          {status?.state === "running" && <HermesTerminalEmbed key={project.id} />}
         </>
       )}
     </ViewShell>
@@ -284,7 +282,13 @@ function HermesPanel({
           </div>
           <StatusBody status={status} />
         </div>
-        <HermesActions status={status} busy={busy} onSpawn={onSpawn} onKill={onKill} onRefresh={onRefresh} />
+        <HermesActions
+          status={status}
+          busy={busy}
+          onSpawn={onSpawn}
+          onKill={onKill}
+          onRefresh={onRefresh}
+        />
       </div>
     </HUDFrame>
   );
@@ -308,7 +312,8 @@ function StatusBody({ status }: { status: HermesStatusValue | null }) {
         <p
           style={{ color: "var(--fg-3)", fontSize: 12, margin: 0, fontFamily: "var(--font-mono)" }}
         >
-          Install:&nbsp;<code style={{ color: "var(--fn-cyan)" }}>winget install zellij-org.zellij</code>
+          Install:&nbsp;
+          <code style={{ color: "var(--fn-cyan)" }}>winget install zellij-org.zellij</code>
         </p>
       </div>
     );
@@ -320,8 +325,8 @@ function StatusBody({ status }: { status: HermesStatusValue | null }) {
         <code style={{ color: "var(--fn-cyan)", fontFamily: "var(--font-mono)" }}>
           {status.session_name}
         </code>
-        . Hermes lives alongside Dev as an independent session — killing one doesn&apos;t affect
-        the other.
+        . Hermes lives alongside Dev as an independent session — killing one doesn&apos;t affect the
+        other.
       </p>
     );
   }

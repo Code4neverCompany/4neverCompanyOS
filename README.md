@@ -77,8 +77,8 @@ spikes/                     throwaway exploratory code (gitignored)
 ## Dev setup (Windows)
 
 1. **Install pre-reqs:**
-   - Node.js ≥ 20 (LTS)
-   - pnpm ≥ 9.15 (pinned to 11.3.0 in this repo)
+   - Node.js ≥ 22.13 (required by pnpm 11's `node:sqlite` builtin)
+   - pnpm 11.3.0 (pinned; install via `npm i -g pnpm@11.3.0`)
    - Rust 1.90.0 stable (managed via `rust-toolchain.toml`)
    - Visual Studio 2022 Build Tools **with the Windows 11 SDK (10.0.28000.0 or newer)** component installed
    - Microsoft Edge WebView2 Runtime (Evergreen)
@@ -101,6 +101,24 @@ spikes/                     throwaway exploratory code (gitignored)
    ```powershell
    pnpm dev:desktop
    ```
+6. **Run the test suite:**
+
+   ```powershell
+   # TypeScript / JavaScript (vitest across all packages)
+   pnpm test
+
+   # Rust (cargo test across all crates)
+   pnpm rust:test
+
+   # Linting, formatting, and type-checking (same gates as CI)
+   pnpm lint
+   pnpm format
+   pnpm typecheck
+   pnpm rust:fmt
+   pnpm rust:clippy
+   ```
+
+   Integration tests that require optional system tools (Zellij, supervisor binary) are marked `#[ignore]` in Rust and skipped by default — run them with `cargo test --workspace -- --ignored` once those tools are installed.
 
 ## Affiliations and trademarks
 

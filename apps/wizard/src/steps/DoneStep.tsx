@@ -37,8 +37,7 @@ export function DoneStep({ state }: { state: WizardState }) {
           "Powered by…" block — every bundled + integrated component with
           license + version — lives in Settings → About in the main app. */}
       <p className="help-copy" style={{ textAlign: "center" }}>
-        {renderAttributionShort(3)} See full credits in Settings → About once the main app
-        launches.
+        {renderAttributionShort(3)} See full credits in Settings → About once the main app launches.
       </p>
     </HUDFrame>
   );

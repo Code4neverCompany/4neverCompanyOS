@@ -26,21 +26,21 @@ These are one-time setup costs a fresh-install user pays before the stopwatch st
 
 Wall-clock budget from the moment you double-click the `.exe` to the moment you type into a working Dev agent's Zellij pane and get a response. Each phase has an estimated cap; the totals are cumulative.
 
-| #   | Phase                                                              | Budget | Cumulative |
-| --- | ------------------------------------------------------------------ | ------ | ---------- |
-| 1   | Double-click `.exe` → NSIS installer window visible                | 0:30   | 0:30       |
-| 2   | SmartScreen "More info" → "Run anyway" detour                       | 0:30   | 1:00       |
-| 3   | Click through NSIS installer (Next → Install → Finish)             | 1:00   | 2:00       |
-| 4   | App launches → first-run wizard step 1 visible                     | 0:30   | 2:30       |
-| 5   | Wizard — vault location pick + scaffold                            | 0:45   | 3:15       |
-| 6   | Wizard — Anthropic key paste + validate (real network call)        | 1:00   | 4:15       |
-| 7   | Wizard — Claude Code `--version` check passes                      | 0:30   | 4:45       |
-| 8   | Wizard — finish → Projects view visible                            | 0:30   | 5:15       |
-| 9   | Open project — browse dialog + confirm                             | 1:00   | 6:15       |
-| 10  | Click "Spawn Dev →"                                                | 0:30   | 6:45       |
-| 11  | Dev embedded terminal appears with Claude's first prompt           | 1:00   | 7:45       |
-| 12  | Type a real prompt + receive a response                            | 2:00   | 9:45       |
-| —   | **Buffer**                                                         | 0:15   | **10:00**  |
+| #   | Phase                                                       | Budget | Cumulative |
+| --- | ----------------------------------------------------------- | ------ | ---------- |
+| 1   | Double-click `.exe` → NSIS installer window visible         | 0:30   | 0:30       |
+| 2   | SmartScreen "More info" → "Run anyway" detour               | 0:30   | 1:00       |
+| 3   | Click through NSIS installer (Next → Install → Finish)      | 1:00   | 2:00       |
+| 4   | App launches → first-run wizard step 1 visible              | 0:30   | 2:30       |
+| 5   | Wizard — vault location pick + scaffold                     | 0:45   | 3:15       |
+| 6   | Wizard — Anthropic key paste + validate (real network call) | 1:00   | 4:15       |
+| 7   | Wizard — Claude Code `--version` check passes               | 0:30   | 4:45       |
+| 8   | Wizard — finish → Projects view visible                     | 0:30   | 5:15       |
+| 9   | Open project — browse dialog + confirm                      | 1:00   | 6:15       |
+| 10  | Click "Spawn Dev →"                                         | 0:30   | 6:45       |
+| 11  | Dev embedded terminal appears with Claude's first prompt    | 1:00   | 7:45       |
+| 12  | Type a real prompt + receive a response                     | 2:00   | 9:45       |
+| —   | **Buffer**                                                  | 0:15   | **10:00**  |
 
 If any single phase blows past its budget by more than 50%, log the actual time in `tests/manual/m1-exit-criterion-notes.md` with a remediation plan. That's the calibration signal — the budget table itself is an estimate until the first real run.
 
@@ -54,8 +54,8 @@ If any single phase blows past its budget by more than 50%, log the actual time 
 
 **Failure modes:**
 
-- *Nothing happens after 5s.* Event Viewer → Windows Logs → Application; look for `c4n-desktop` or NSIS errors. Most likely cause: corrupted download (re-download and retry).
-- *Installer immediately crashes.* Check the installer's filesize matches the released artifact's; partial download is the usual culprit.
+- _Nothing happens after 5s._ Event Viewer → Windows Logs → Application; look for `c4n-desktop` or NSIS errors. Most likely cause: corrupted download (re-download and retry).
+- _Installer immediately crashes._ Check the installer's filesize matches the released artifact's; partial download is the usual culprit.
 
 ### Step 2 — SmartScreen "Run anyway"
 
@@ -65,8 +65,8 @@ If any single phase blows past its budget by more than 50%, log the actual time 
 
 **Failure modes:**
 
-- *No SmartScreen warning at all.* You're either re-running the same installer (Windows remembers approvals per-file) or have SmartScreen disabled — both fine for the test. Skip this step's time cost.
-- *"Run anyway" button missing.* Group Policy may be locking it down. Use a different test box.
+- _No SmartScreen warning at all._ You're either re-running the same installer (Windows remembers approvals per-file) or have SmartScreen disabled — both fine for the test. Skip this step's time cost.
+- _"Run anyway" button missing._ Group Policy may be locking it down. Use a different test box.
 
 **Note:** SmartScreen warnings retire when code-signing is configured (separate procurement track tracked in `docs/LICENSES.md` / `docs/pinned-versions.md`).
 
@@ -78,8 +78,8 @@ If any single phase blows past its budget by more than 50%, log the actual time 
 
 **Failure modes:**
 
-- *WebView2 bootstrap stalls.* If the system is missing the Edge WebView2 runtime, the installer auto-downloads it. On a slow connection this can spike past budget. Check Task Manager for `MicrosoftEdgeWebview2Setup.exe` — let it finish.
-- *"Access denied" on install.* You probably hit a folder requiring elevation. Per-user install (our default) lands in `%LOCALAPPDATA%\Programs\4neverCompany OS\` — no UAC needed. If you see UAC, something's off with the bundle config.
+- _WebView2 bootstrap stalls._ If the system is missing the Edge WebView2 runtime, the installer auto-downloads it. On a slow connection this can spike past budget. Check Task Manager for `MicrosoftEdgeWebview2Setup.exe` — let it finish.
+- _"Access denied" on install._ You probably hit a folder requiring elevation. Per-user install (our default) lands in `%LOCALAPPDATA%\Programs\4neverCompany OS\` — no UAC needed. If you see UAC, something's off with the bundle config.
 
 ### Step 4 — App launches → first-run wizard
 
@@ -89,8 +89,8 @@ If any single phase blows past its budget by more than 50%, log the actual time 
 
 **Failure modes:**
 
-- *Blank white window.* Vite dev assets failed to embed. Wouldn't happen from a real installer build — only seen on misconfigured `pnpm tauri dev`.
-- *Window crashes on launch.* `%LOCALAPPDATA%\Programs\4neverCompany OS\` has `crash-*.log` files; check the first one.
+- _Blank white window._ Vite dev assets failed to embed. Wouldn't happen from a real installer build — only seen on misconfigured `pnpm tauri dev`.
+- _Window crashes on launch._ `%LOCALAPPDATA%\Programs\4neverCompany OS\` has `crash-*.log` files; check the first one.
 
 ### Step 5 — Wizard: vault location
 
@@ -100,8 +100,8 @@ If any single phase blows past its budget by more than 50%, log the actual time 
 
 **Failure modes:**
 
-- *"Could not write config."* Home dir is read-only (uncommon) or `~/.4nevercompanyos/` permissions are wrong. `attrib` the dir, re-run.
-- *Default path doesn't exist after Continue.* Scaffolding silently failed. Check console logs (`Win+R` → `wt.exe` → `Get-ChildItem ~/.4nevercompanyos-vault/`).
+- _"Could not write config."_ Home dir is read-only (uncommon) or `~/.4nevercompanyos/` permissions are wrong. `attrib` the dir, re-run.
+- _Default path doesn't exist after Continue._ Scaffolding silently failed. Check console logs (`Win+R` → `wt.exe` → `Get-ChildItem ~/.4nevercompanyos-vault/`).
 
 ### Step 6 — Wizard: Anthropic API key
 
@@ -111,9 +111,9 @@ If any single phase blows past its budget by more than 50%, log the actual time 
 
 **Failure modes:**
 
-- *"Validation failed: 401."* The key is invalid or revoked. Get a new one from <https://console.anthropic.com/settings/keys>.
-- *"Validation hangs > 5s."* Likely captive portal or proxy. Test with `curl https://api.anthropic.com/v1/models -H "x-api-key: $YOUR_KEY"` outside the app.
-- *Green check but next step fails to advance.* Hit **Continue →** after the green check; the validate step doesn't auto-advance.
+- _"Validation failed: 401."_ The key is invalid or revoked. Get a new one from <https://console.anthropic.com/settings/keys>.
+- _"Validation hangs > 5s."_ Likely captive portal or proxy. Test with `curl https://api.anthropic.com/v1/models -H "x-api-key: $YOUR_KEY"` outside the app.
+- _Green check but next step fails to advance._ Hit **Continue →** after the green check; the validate step doesn't auto-advance.
 
 ### Step 7 — Wizard: Claude Code check
 
@@ -123,8 +123,8 @@ If any single phase blows past its budget by more than 50%, log the actual time 
 
 **Failure modes:**
 
-- *"Claude Code not found."* The `claude` binary isn't on PATH. Install per <https://docs.claude.com/en/docs/claude-code/setup>. Restart the desktop app after install (PATH refreshes only on new processes).
-- *Stuck on this step.* Window may have lost focus; click into it.
+- _"Claude Code not found."_ The `claude` binary isn't on PATH. Install per <https://docs.claude.com/en/docs/claude-code/setup>. Restart the desktop app after install (PATH refreshes only on new processes).
+- _Stuck on this step._ Window may have lost focus; click into it.
 
 ### Step 8 — Wizard: finish → Projects view
 
@@ -134,8 +134,8 @@ If any single phase blows past its budget by more than 50%, log the actual time 
 
 **Failure modes:**
 
-- *Main shell shows a blank canvas.* Wizard didn't write `~/.4nevercompanyos/config.toml`. Re-run the wizard (delete the file first if it exists).
-- *Window doesn't change after Finish.* The Finish handler errored silently. Console logs.
+- _Main shell shows a blank canvas._ Wizard didn't write `~/.4nevercompanyos/config.toml`. Re-run the wizard (delete the file first if it exists).
+- _Window doesn't change after Finish._ The Finish handler errored silently. Console logs.
 
 ### Step 9 — Open project
 
@@ -145,8 +145,8 @@ If any single phase blows past its budget by more than 50%, log the actual time 
 
 **Failure modes:**
 
-- *Picker doesn't open.* The dialog plugin (`tauri-plugin-dialog`) failed to load. Restart the app.
-- *"Not a directory."* You selected a file, not a folder. Re-open and pick a folder.
+- _Picker doesn't open._ The dialog plugin (`tauri-plugin-dialog`) failed to load. Restart the app.
+- _"Not a directory."_ You selected a file, not a folder. Re-open and pick a folder.
 
 ### Step 10 — Click "Spawn Dev →"
 
@@ -156,9 +156,9 @@ If any single phase blows past its budget by more than 50%, log the actual time 
 
 **Failure modes:**
 
-- *"zellij not on PATH."* Prerequisite #2 was skipped or your shell PATH didn't refresh post-install. Restart the desktop app.
-- *"c4n-persona-supervisor not found."* Prerequisite #6 was skipped. Run `cargo install --path crates/persona-supervisor` and restart the app. Story 1.17b removes this prerequisite when it lands.
-- *"Spawn failed."* Check the dev console (F12 in the embedded WebView2 if devtools are enabled, otherwise the Rust stderr; in dev builds, it's the terminal you launched `pnpm dev:desktop` from).
+- _"zellij not on PATH."_ Prerequisite #2 was skipped or your shell PATH didn't refresh post-install. Restart the desktop app.
+- _"c4n-persona-supervisor not found."_ Prerequisite #6 was skipped. Run `cargo install --path crates/persona-supervisor` and restart the app. Story 1.17b removes this prerequisite when it lands.
+- _"Spawn failed."_ Check the dev console (F12 in the embedded WebView2 if devtools are enabled, otherwise the Rust stderr; in dev builds, it's the terminal you launched `pnpm dev:desktop` from).
 
 ### Step 11 — Dev embedded terminal renders
 
@@ -168,9 +168,9 @@ If any single phase blows past its budget by more than 50%, log the actual time 
 
 **Failure modes:**
 
-- *Terminal blank > 5s.* The `.pty.raw` tail isn't running. Check `<vault>/personas/dev/log/<date>.pty.raw` exists and is being appended to (use Sysinternals Process Monitor filtered on that path).
-- *Terminal shows only ANSI escape gibberish.* xterm.js didn't pick up the theme; cosmetic, not a budget-blocker.
-- *Wrong content (random shell instead of Claude).* The supervisor's child argv is wrong; check `commands::spawn_dev_persona`'s `SpawnPaneConfig.args` chain.
+- _Terminal blank > 5s._ The `.pty.raw` tail isn't running. Check `<vault>/personas/dev/log/<date>.pty.raw` exists and is being appended to (use Sysinternals Process Monitor filtered on that path).
+- _Terminal shows only ANSI escape gibberish._ xterm.js didn't pick up the theme; cosmetic, not a budget-blocker.
+- _Wrong content (random shell instead of Claude)._ The supervisor's child argv is wrong; check `commands::spawn_dev_persona`'s `SpawnPaneConfig.args` chain.
 
 ### Step 12 — Type a real prompt + get a response
 
@@ -180,9 +180,9 @@ If any single phase blows past its budget by more than 50%, log the actual time 
 
 **Failure modes:**
 
-- *Typing produces nothing in the terminal.* Story 1.16d's `.pty.in` writer path is broken. Check `<vault>/personas/dev/log/current.pty.in` grows on keypress (Sysinternals Process Monitor).
-- *Typing echoes but Enter doesn't submit.* xterm.js may be eating the Enter; click into the terminal first to ensure focus.
-- *Response takes > 30s.* Network slow OR the prompt was a long one. Acceptable inside the 2-min phase budget; flag as a remediation note if persistent.
+- _Typing produces nothing in the terminal._ Story 1.16d's `.pty.in` writer path is broken. Check `<vault>/personas/dev/log/current.pty.in` grows on keypress (Sysinternals Process Monitor).
+- _Typing echoes but Enter doesn't submit._ xterm.js may be eating the Enter; click into the terminal first to ensure focus.
+- _Response takes > 30s._ Network slow OR the prompt was a long one. Acceptable inside the 2-min phase budget; flag as a remediation note if persistent.
 
 ## Failure modes — the top 5 (one-page summary)
 
