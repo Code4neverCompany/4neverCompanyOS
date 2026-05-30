@@ -30,7 +30,7 @@
 #   functionally clean.
 
 generated: 2026-05-28
-last_updated: 2026-05-30T23:50:00Z
+last_updated: 2026-05-30T23:55:00Z
 project: c4n-4neverCompanyOS
 project_key: C4N
 tracking_system: file-system
@@ -114,7 +114,7 @@ development_status:
   5-2-m5-supermemory-integration-opt-in-per-content-category: done # dd7106e — SupermemorySettings component + get/save_supermemory_categories Rust commands; 5 category toggles (decisions ON, architecture ON, code-review-notes OFF, personal-notes OFF, secrets NEVER); integrated in SettingsView
   5-3-m5-memory-tier-precedence-read-resolver: done # 9260f49 — docs/memory-precedence.md finalized; MemoryResolver class in packages/memory-resolver; 8 vitest tests; 4-tier precedence (persona→project→hermes→supermemory)
   5-4-m5-github-sync-push-configs-artifacts-skills-personas: done # 2b4fdc4 — c4n-github-sync Rust crate; github_sync_push/pull/init/status Tauri commands; GithubSettings UI panel; FR-33 sync policy implemented
-  5-5-m5-cross-machine-continuity-pull-on-second-machine-resume: backlog
+  5-5-m5-cross-machine-continuity-pull-on-second-machine-resume: done # 699c7f0 — pickAndOpen auto-pulls from GitHub after open_project; cross-machine continuity UX wired into project-open flow
   5-6-m5-per-persona-token-budgets: backlog
   5-7-m5-project-level-kill-switch: backlog
   5-8-m5-basic-docs-site: backlog
