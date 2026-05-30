@@ -13,6 +13,7 @@
 //! stream the supervisor's PTY tap file.
 //! Story 3.7 adds `PendingProposalsStore` + receive/list/dismiss commands
 //! for Hermes-initiated spawn proposals.
+//! Story 4.1 adds `WorkflowRunStore` + list/start/get/pause workflow commands.
 
 mod commands;
 mod ipc;
@@ -37,6 +38,9 @@ pub fn run() {
         // Story 3.7 (NEVAAA-33): pending spawn proposals from Hermes.
         // Shared store read by the approval UI (Story 3.8 / NEVAAA-34).
         .manage(commands::PendingProposalsStore::default())
+        // Story 4.1 (Epic 4): BMAD workflow entry point. Tracks the active
+        // workflow run in-memory; vault dir + SQLite persistence land in Story 4-4.
+        .manage(commands::WorkflowRunStore::default())
         // Story 2.9 (NEVAAA-29): bus relay → UI bridge. One BusRelayState
         // (the IPC fan-out hub + per-subscription handles) for the whole app
         // so every `bus_subscribe` shares the same upstream event stream.
@@ -121,6 +125,12 @@ pub fn run() {
             // while the Paperclip stream is down, then resumes the live feed.
             ipc::bus_connection_subscribe,
             ipc::bus_connection_unsubscribe,
+            // Story 4.1: BMAD workflow engine — entry point.
+            commands::list_workflows,
+            commands::start_workflow_run,
+            commands::get_workflow_run,
+            commands::pause_workflow_run,
+            commands::resume_workflow_run,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

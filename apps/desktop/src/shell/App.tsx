@@ -14,8 +14,9 @@ import { MemoryView } from "../views/MemoryView";
 import { PersonasView } from "../views/PersonasView";
 import { ChannelsView } from "../views/ChannelsView";
 import { SettingsView } from "../views/SettingsView";
+import { WorkflowsView } from "../views/WorkflowsView";
 
-type RailItem = "projects" | "personas" | "channels" | "vault" | "memory" | "settings";
+type RailItem = "projects" | "personas" | "channels" | "vault" | "memory" | "settings" | "workflows";
 
 const RAIL_ITEMS: ReadonlyArray<{ id: RailItem; label: string; icon: string }> = [
   { id: "projects", label: "Projects", icon: "▣" },
@@ -23,6 +24,7 @@ const RAIL_ITEMS: ReadonlyArray<{ id: RailItem; label: string; icon: string }> =
   { id: "channels", label: "Channels", icon: "≈" },
   { id: "vault", label: "Vault", icon: "◈" },
   { id: "memory", label: "Memory", icon: "⌬" },
+  { id: "workflows", label: "Workflows", icon: "⬡" },
   { id: "settings", label: "Settings", icon: "⚙" },
 ];
 
@@ -200,7 +202,7 @@ function SideRail({
  *  `personas` lands in Story 2.3 (PersonasView). `settings` in Story 1.19. */
 type PlaceholderRailItem = Exclude<
   RailItem,
-  "projects" | "memory" | "personas" | "channels" | "settings"
+  "projects" | "memory" | "personas" | "channels" | "settings" | "workflows"
 >;
 
 const SLOT_COPY: Record<
@@ -235,6 +237,10 @@ function MainSlot({ active }: { active: RailItem }) {
   // Story 1.19: Settings rail item now renders the Settings → About view.
   if (active === "settings") {
     return <SettingsView />;
+  }
+  // Story 4.1: Workflows rail item renders the BMAD workflow chooser + active run.
+  if (active === "workflows") {
+    return <WorkflowsView />;
   }
   const copy = SLOT_COPY[active];
   return (

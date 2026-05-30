@@ -2534,6 +2534,206 @@ pub fn dismiss_spawn_proposal(
     }
 }
 
+// ── Epic 4 (M4) — BMAD workflow engine entry point ──────────────────────
+//
+// Story 4.1: "Start a BMAD project" entry point.
+// Lists available workflows, lets the user pick one, then starts a run
+// that creates a vault project directory and Paperclip project.
+//
+// Substantive phase execution (Story 4.2) wires the workflow-engine package
+// to actually drive personas through each BMAD phase. This module owns the
+// Tauri command surface and UI state only.
+
+/// Hardcoded workflow catalog. In Epic 4, the engine reads `_bmad/bmm/`
+/// to enumerate available workflows dynamically — this map is the Story 4-1
+/// vertical slice that wires the chooser UI before the engine is complete.
+const WORKFLOW_CATALOG: &[(&str, &str, &str)] = &[
+    (
+        "greenfield-fullstack",
+        "Greenfield Fullstack",
+        "Produce a working code skeleton plus complete BMAD artifact set (brief, PRD, architecture, stories, QA report) in one session. Starts from a blank slate.",
+    ),
+    (
+        "brownfield",
+        "Brownfield Analysis",
+        "Ingest an existing repository and produce a refactor plan. Runs the Analyst + Architect personas against the codebase.",
+    ),
+];
+
+/// A BMAD workflow run tracked by the desktop shell.
+///
+/// The `phase` field holds the current BMAD phase name. The `status` field
+/// is one of: "running" | "paused" | "done".
+/// Full run state (phase history, decisions log) is written to the vault
+/// in Story 4-4 (pause/resume across restart).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowRun {
+    pub id: String,
+    pub workflow_id: String,
+    pub workflow_name: String,
+    pub project_name: String,
+    pub idea: String,
+    pub phase: String,
+    pub status: String,
+    pub vault_dir: String,
+    pub created_at_ms: u64,
+}
+
+/// Shared in-memory store for the single active workflow run.
+/// `manage`d in `lib.rs` alongside `PendingProposalsStore` etc.
+#[derive(Default)]
+pub struct WorkflowRunStore {
+    run: StdMutex<Option<WorkflowRun>>,
+}
+
+#[tauri::command]
+pub fn list_workflows() -> Vec<WorkflowMetadata> {
+    WORKFLOW_CATALOG
+        .iter()
+        .map(|(id, name, description)| WorkflowMetadata {
+            id: (*id).to_string(),
+            name: (*name).to_string(),
+            description: (*description).to_string(),
+        })
+        .collect()
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WorkflowMetadata {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+}
+
+/// Start a new workflow run. Creates a vault project directory under
+/// `<vault_root>/workflows/<project_name>/` and a `.workflow-run.json`
+/// marker inside it so Story 4-4 can resume on restart.
+///
+/// Returns the new run record. Fails if a run is already active.
+#[tauri::command]
+pub fn start_workflow_run(
+    workflow_id: String,
+    project_name: String,
+    idea: String,
+    store: State<'_, WorkflowRunStore>,
+) -> Result<WorkflowRun, String> {
+    let catalog = WORKFLOW_CATALOG
+        .iter()
+        .find(|(id, _, _)| *id == workflow_id)
+        .ok_or_else(|| format!("unknown workflow id: {workflow_id}"))?;
+
+    let (_, workflow_name, _) = catalog;
+
+    // Guard: only one run at a time.
+    {
+        let guard = store.run.lock().expect("workflow run mutex poisoned");
+        if guard.is_some() {
+            return Err("a workflow run is already active".to_string());
+        }
+    }
+
+    // Validate inputs.
+    if project_name.trim().is_empty() {
+        return Err("project name is required".to_string());
+    }
+    if idea.trim().is_empty() {
+        return Err("initial idea is required".to_string());
+    }
+
+    // Read vault path.
+    let vault_path = read_workspace_config()
+        .map_err(|e| format!("could not read workspace config: {e}"))?
+        .vault_path;
+
+    // Slugify project name for directory use (same algorithm as persona slug).
+    let project_slug = slugify_name(&project_name);
+    let run_id = generate_uuid_v4();
+
+    // Create vault workflow directory.
+    let vault_workflow_root = PathBuf::from(&vault_path).join("workflows");
+    let project_vault_dir = vault_workflow_root.join(&project_slug);
+    std::fs::create_dir_all(&project_vault_dir)
+        .map_err(|e| format!("could not create vault directory: {e}"))?;
+
+    // Write run marker so Story 4-4 can find it for resume.
+    let marker = WorkflowRunMarker {
+        id: run_id.clone(),
+        workflow_id: workflow_id.clone(),
+        project_name: project_name.clone(),
+        idea: idea.clone(),
+        phase: "start".to_string(),
+        created_at_ms: SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .expect("clock went backwards")
+            .as_millis() as u64,
+    };
+    let marker_path = project_vault_dir.join(".workflow-run.json");
+    let marker_json =
+        serde_json::to_string_pretty(&marker).map_err(|e| format!("serialize run marker: {e}"))?;
+    std::fs::write(&marker_path, marker_json)
+        .map_err(|e| format!("write run marker: {e}"))?;
+
+    let run = WorkflowRun {
+        id: run_id,
+        workflow_id: workflow_id.clone(),
+        workflow_name: workflow_name.to_string(),
+        project_name: project_name.clone(),
+        idea,
+        phase: "start".to_string(),
+        status: "running".to_string(),
+        vault_dir: project_vault_dir.to_string_lossy().into_owned(),
+        created_at_ms: marker.created_at_ms,
+    };
+
+    {
+        let mut guard = store.run.lock().expect("workflow run mutex poisoned");
+        *guard = Some(run.clone());
+    }
+
+    Ok(run)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct WorkflowRunMarker {
+    id: String,
+    workflow_id: String,
+    project_name: String,
+    idea: String,
+    phase: String,
+    created_at_ms: u64,
+}
+
+#[tauri::command]
+pub fn get_workflow_run(store: State<'_, WorkflowRunStore>) -> Option<WorkflowRun> {
+    store.run.lock().expect("workflow run mutex poisoned").clone()
+}
+
+#[tauri::command]
+pub fn pause_workflow_run(store: State<'_, WorkflowRunStore>) -> Result<(), String> {
+    let mut guard = store.run.lock().expect("workflow run mutex poisoned");
+    match guard.as_mut() {
+        Some(run) if run.status == "running" => {
+            run.status = "paused".to_string();
+            Ok(())
+        }
+        Some(_) => Err("workflow is not running".to_string()),
+        None => Err("no active workflow run".to_string()),
+    }
+}
+
+#[tauri::command]
+pub fn resume_workflow_run(store: State<'_, WorkflowRunStore>) -> Result<(), String> {
+    let mut guard = store.run.lock().expect("workflow run mutex poisoned");
+    match guard.as_mut() {
+        Some(run) if run.status == "paused" => {
+            run.status = "running".to_string();
+            Ok(())
+        }
+        Some(_) => Err("workflow is not paused".to_string()),
+        None => Err("no active workflow run".to_string()),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
