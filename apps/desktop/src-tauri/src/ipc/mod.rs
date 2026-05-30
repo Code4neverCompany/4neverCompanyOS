@@ -41,17 +41,29 @@
 //! that falls >1024 behind sees a logged `Lagged` and resumes; that only
 //! happens under sustained overload, not a normal minimize).
 //!
-//! **Feeding the relay.** This story wires the *subscribe* side. The live
-//! Paperclip SSE connector that drives `Relay::run` is a follow-up; until
-//! then local producers publish onto the relay via
-//! [`c4n_bus_relay::Relay::publish`]. The feeder attaches to the same
-//! [`BusRelayState`] relay so it can drive `Relay::run` without touching the
-//! subscribe path.
+//! **Feeding the relay.** Story 2.9 wired the *subscribe* side; the live
+//! Paperclip SSE connector that drives `Relay::run` lands in [`feeder`]
+//! (NEVAAA-39). [`start_bus_feeder`] reads the endpoint + token from the
+//! environment and spawns the supervision loop against this same
+//! [`BusRelayState`] relay, so the producer attaches without touching the
+//! subscribe path. Local producers can still publish synthetic events via
+//! [`c4n_bus_relay::Relay::publish`].
+//!
+//! ## Story 2.11 — bus state survives Paperclip restart
+//!
+//! The feeder's supervision loop ([`c4n_bus_relay::Relay::run`]) reconnects
+//! with exponential backoff (max 30 s) when Paperclip restarts, and publishes
+//! its live [`ConnectionState`] onto a `watch` channel. [`bus_connection_subscribe`]
+//! forwards those transitions (mapped to [`UiConnectionState`]) to the webview
+//! so the channel panel can show a "reconnecting…" state plus the current
+//! reconnect attempt count, then resume the live feed once `Connected` returns.
+
+mod feeder;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex as StdMutex};
 
-use c4n_bus_relay::{BusEnvelope, Relay};
+use c4n_bus_relay::{BusEnvelope, ConnectionState, Relay};
 use serde::Serialize;
 use tauri::ipc::Channel;
 use tauri::State;
@@ -110,6 +122,9 @@ pub fn map_envelope(env: &BusEnvelope) -> UiBusEnvelope {
 pub struct BusRelayState {
     relay: Arc<Relay>,
     subscriptions: StdMutex<HashMap<String, Arc<Notify>>>,
+    /// Shutdown handles for connection-state stream tasks (Story 2.11),
+    /// keyed the same way as `subscriptions`.
+    state_subscriptions: StdMutex<HashMap<String, Arc<Notify>>>,
 }
 
 impl Default for BusRelayState {
@@ -117,8 +132,61 @@ impl Default for BusRelayState {
         BusRelayState {
             relay: Arc::new(Relay::new()),
             subscriptions: StdMutex::new(HashMap::new()),
+            state_subscriptions: StdMutex::new(HashMap::new()),
         }
     }
+}
+
+/// Connection-state wire shape consumed by the webview status bar (Story 2.11).
+///
+/// An internally-tagged enum so the frontend can switch on `state`:
+/// `{ "state": "connecting" }`, `{ "state": "connected" }`, or
+/// `{ "state": "reconnecting", "attempt": 2, "delayMs": 2000 }`.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+#[serde(tag = "state", rename_all = "lowercase")]
+pub enum UiConnectionState {
+    /// Establishing the first connection — no live stream yet.
+    Connecting,
+    /// A stream is live; bus traffic is flowing.
+    Connected,
+    /// Disconnected; backing off `delay_ms` ms before reconnect `attempt`.
+    Reconnecting {
+        /// 1-based reconnect attempt count, shown in the panel status bar.
+        attempt: u64,
+        /// Backoff delay before the next attempt, milliseconds.
+        #[serde(rename = "delayMs")]
+        delay_ms: u64,
+    },
+}
+
+/// Map the relay's [`ConnectionState`] onto the [`UiConnectionState`] wire shape.
+pub fn map_connection_state(state: &ConnectionState) -> UiConnectionState {
+    match state {
+        ConnectionState::Connecting => UiConnectionState::Connecting,
+        ConnectionState::Connected => UiConnectionState::Connected,
+        ConnectionState::Reconnecting { attempt, delay_ms } => UiConnectionState::Reconnecting {
+            attempt: *attempt,
+            delay_ms: *delay_ms,
+        },
+    }
+}
+
+/// Spawn the live Paperclip SSE feeder (NEVAAA-39) against the shared relay.
+///
+/// Reads the endpoint URL + auth token from the environment via
+/// [`feeder::FeederConfig::from_env`]. When no endpoint is configured this is a
+/// logged no-op, so the desktop runs fine without a live Paperclip backend.
+/// Called once from the Tauri `setup` hook in `lib.rs`.
+pub fn start_bus_feeder(state: &BusRelayState) {
+    let Some(config) = feeder::FeederConfig::from_env() else {
+        tracing::info!(
+            "bus-relay feeder: no Paperclip SSE endpoint configured (C4N_PAPERCLIP_SSE_URL unset); relay idle"
+        );
+        return;
+    };
+
+    let relay = state.relay.clone();
+    tauri::async_runtime::spawn(feeder::run_feeder(relay, config));
 }
 
 /// Drive one subscription: drain `rx`, map each envelope, hand it to `sink`.
@@ -203,6 +271,107 @@ pub fn bus_unsubscribe(
     Ok(())
 }
 
+/// Drive one connection-state stream: emit the current state immediately, then
+/// each transition, into `sink`. Stops when `notify` fires (unsubscribe), the
+/// sink reports the consumer is gone (`false`), or the relay's state sender is
+/// dropped (app teardown).
+///
+/// Factored out of [`bus_connection_subscribe`] so the relay → UI status path
+/// is testable without a live Tauri Channel.
+async fn drain_connection_state<F>(
+    mut rx: tokio::sync::watch::Receiver<ConnectionState>,
+    notify: Arc<Notify>,
+    mut sink: F,
+) where
+    F: FnMut(UiConnectionState) -> bool,
+{
+    // Emit the current state right away so a late subscriber paints the
+    // correct status immediately rather than waiting for the next transition.
+    if !sink(map_connection_state(&rx.borrow().clone())) {
+        return;
+    }
+    loop {
+        tokio::select! {
+            _ = notify.notified() => break,
+            res = rx.changed() => match res {
+                Ok(()) => {
+                    let state = rx.borrow().clone();
+                    if !sink(map_connection_state(&state)) {
+                        break;
+                    }
+                }
+                // The relay's state sender was dropped (app teardown).
+                Err(_) => break,
+            }
+        }
+    }
+}
+
+/// Subscribe the frontend to live relay connection-state transitions (Story
+/// 2.11). The current state is delivered immediately, then every transition.
+/// Returns a subscription id for [`bus_connection_unsubscribe`].
+#[tauri::command]
+pub async fn bus_connection_subscribe(
+    on_state: Channel<UiConnectionState>,
+    state: State<'_, BusRelayState>,
+) -> Result<String, String> {
+    let subscription_id = uuid::Uuid::new_v4().to_string();
+    let rx = state.relay.connection_state();
+
+    let notify = Arc::new(Notify::new());
+    {
+        let mut subs = state
+            .state_subscriptions
+            .lock()
+            .map_err(|e| format!("bus state subscriptions lock poisoned: {e}"))?;
+        subs.insert(subscription_id.clone(), notify.clone());
+    }
+
+    tokio::spawn(async move {
+        drain_connection_state(rx, notify, move |s| on_state.send(s).is_ok()).await;
+    });
+
+    Ok(subscription_id)
+}
+
+/// Tear down a connection-state subscription by id. Idempotent.
+#[tauri::command]
+pub fn bus_connection_unsubscribe(
+    subscription_id: String,
+    state: State<'_, BusRelayState>,
+) -> Result<(), String> {
+    let mut subs = state
+        .state_subscriptions
+        .lock()
+        .map_err(|e| format!("bus state subscriptions lock poisoned: {e}"))?;
+    if let Some(notify) = subs.remove(&subscription_id) {
+        notify.notify_one();
+    }
+    Ok(())
+}
+
+/// Publish an envelope from the desktop UI back onto the bus relay.
+/// This enables the frontend to emit events (e.g., spawn_proposal_rejected)
+/// that the relay fans out to all subscribers, including the Paperclip SSE
+/// upstream so Hermes receives the response.
+#[tauri::command]
+pub fn bus_publish(
+    event_type: String,
+    payload: serde_json::Value,
+    state: State<'_, BusRelayState>,
+) -> Result<String, String> {
+    let envelope = BusEnvelope {
+        v: c4n_bus_relay::ENVELOPE_VERSION,
+        event_type,
+        from: "desktop".into(),
+        ts: chrono::Utc::now().to_rfc3339(),
+        id: uuid::Uuid::new_v4().to_string(),
+        payload,
+    };
+    state.relay.publish(envelope.clone());
+    Ok(envelope.id)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -283,6 +452,95 @@ mod tests {
         // Unsubscribe stops the drain task.
         notify.notify_one();
         task.await.unwrap();
+    }
+
+    // map_connection_state serializes to the internally-tagged wire shape the
+    // status bar switches on (Story 2.11).
+    #[test]
+    fn connection_state_serializes_to_tagged_wire_shape() {
+        let connected = serde_json::to_value(map_connection_state(&ConnectionState::Connected)).unwrap();
+        assert_eq!(connected["state"], "connected");
+
+        let reconnecting = serde_json::to_value(map_connection_state(
+            &ConnectionState::Reconnecting { attempt: 2, delay_ms: 2000 },
+        ))
+        .unwrap();
+        assert_eq!(reconnecting["state"], "reconnecting");
+        assert_eq!(reconnecting["attempt"], 2);
+        assert_eq!(reconnecting["delayMs"], 2000);
+    }
+
+    // AC (Story 2.11): the connection-state stream delivers the current state
+    // immediately, then each transition the relay's run() loop publishes.
+    #[tokio::test]
+    async fn connection_state_stream_delivers_current_then_transitions() {
+        let relay = Arc::new(Relay::new());
+        let rx = relay.connection_state();
+
+        let (tx, mut rx_ui) = tokio::sync::mpsc::unbounded_channel();
+        let notify = Arc::new(Notify::new());
+        let drain_notify = notify.clone();
+        let task = tokio::spawn(async move {
+            drain_connection_state(rx, drain_notify, move |s| tx.send(s).is_ok()).await;
+        });
+
+        // The current state (Connecting) is delivered immediately.
+        let first = rx_ui.recv().await.expect("current state delivered");
+        assert_eq!(first, UiConnectionState::Connecting);
+
+        // Drive a finite supervision loop so the relay publishes Connected then
+        // Reconnecting transitions onto its watch channel.
+        let connect = || async {
+            Ok::<_, c4n_bus_relay::RelayError>(tokio::io::BufReader::new(
+                "event: agent.message\nid: 1\ndata: {}\n\n".as_bytes(),
+            ))
+        };
+        relay
+            .run(
+                connect,
+                c4n_bus_relay::RetryPolicy {
+                    initial_delay: std::time::Duration::from_millis(1),
+                    max_delay: std::time::Duration::from_millis(2),
+                    multiplier: 2,
+                    max_reconnects: Some(1),
+                },
+            )
+            .await
+            .unwrap();
+
+        // We must observe Connected over the stream after the initial state.
+        let mut saw_connected = false;
+        while let Ok(Some(s)) =
+            tokio::time::timeout(std::time::Duration::from_millis(200), rx_ui.recv()).await
+        {
+            if s == UiConnectionState::Connected {
+                saw_connected = true;
+                break;
+            }
+        }
+        assert!(saw_connected, "stream should report Connected after link-up");
+
+        notify.notify_one();
+        task.await.unwrap();
+    }
+
+    // bus_connection_unsubscribe's notify stops a live state drain task.
+    #[tokio::test]
+    async fn connection_state_unsubscribe_stops_task() {
+        let relay = Arc::new(Relay::new());
+        let rx = relay.connection_state();
+        let notify = Arc::new(Notify::new());
+        let drain_notify = notify.clone();
+
+        let task = tokio::spawn(async move {
+            drain_connection_state(rx, drain_notify, |_| true).await;
+        });
+
+        notify.notify_one();
+        tokio::time::timeout(std::time::Duration::from_secs(1), task)
+            .await
+            .expect("state drain task should stop after unsubscribe")
+            .unwrap();
     }
 
     // bus_unsubscribe's notify stops a live drain task.

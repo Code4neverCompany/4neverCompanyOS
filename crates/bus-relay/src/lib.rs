@@ -57,7 +57,7 @@ mod relay;
 mod sse;
 
 pub use envelope::{BusEnvelope, ENVELOPE_VERSION, RELAY_ORIGIN};
-pub use relay::{Relay, RelayStats, RetryPolicy, DEFAULT_CHANNEL_CAPACITY};
+pub use relay::{ConnectionState, Relay, RelayStats, RetryPolicy, DEFAULT_CHANNEL_CAPACITY};
 pub use sse::{next_frame, SseFrame};
 
 /// Errors the relay can produce.

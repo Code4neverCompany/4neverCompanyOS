@@ -17,6 +17,8 @@
 mod commands;
 mod ipc;
 
+use tauri::Manager;
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -39,6 +41,13 @@ pub fn run() {
         // (the IPC fan-out hub + per-subscription handles) for the whole app
         // so every `bus_subscribe` shares the same upstream event stream.
         .manage(ipc::BusRelayState::default())
+        // NEVAAA-39: start the live Paperclip SSE feeder against that same
+        // relay. Reads endpoint + token from the environment; idle no-op when
+        // unconfigured so the desktop runs without a live Paperclip backend.
+        .setup(|app| {
+            ipc::start_bus_feeder(app.state::<ipc::BusRelayState>().inner());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             commands::ping,
             commands::open_project,
@@ -106,6 +115,12 @@ pub fn run() {
             // channel-view panel.
             ipc::bus_subscribe,
             ipc::bus_unsubscribe,
+            ipc::bus_publish,
+            // Story 2.11 (NEVAAA-31): relay connection-state stream. The panel
+            // status bar subscribes to show "reconnecting…" + attempt count
+            // while the Paperclip stream is down, then resumes the live feed.
+            ipc::bus_connection_subscribe,
+            ipc::bus_connection_unsubscribe,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -24,7 +24,7 @@ use std::future::Future;
 use std::time::Duration;
 
 use tokio::io::AsyncBufRead;
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, watch};
 use tracing::{debug, info, warn};
 
 use crate::envelope::BusEnvelope;
@@ -61,6 +61,29 @@ impl Default for RetryPolicy {
     }
 }
 
+/// Live connection state of the supervision loop, observable while
+/// [`Relay::run`] is in flight (Story 2.11).
+///
+/// The desktop bridge subscribes via [`Relay::connection_state`] and forwards
+/// transitions to the UI panel so it can show a "reconnecting…" state and the
+/// current reconnect attempt count while the Paperclip stream is down.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConnectionState {
+    /// Establishing the first connection — no stream has been pumped yet.
+    /// Also the resting state before [`Relay::run`] is ever called.
+    Connecting,
+    /// A stream is live; bus traffic is flowing.
+    Connected,
+    /// Disconnected (clean EOF, stream error, or connect failure). Backing off
+    /// for `delay_ms` before reconnect attempt number `attempt`.
+    Reconnecting {
+        /// 1-based count of reconnect cycles entered so far.
+        attempt: u64,
+        /// Backoff delay in milliseconds before the next connect attempt.
+        delay_ms: u64,
+    },
+}
+
 /// Running totals reported by [`Relay::run`].
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct RelayStats {
@@ -78,6 +101,7 @@ pub struct RelayStats {
 /// IPC broadcast channel.
 pub struct Relay {
     tx: broadcast::Sender<BusEnvelope>,
+    state_tx: watch::Sender<ConnectionState>,
 }
 
 impl Default for Relay {
@@ -95,7 +119,21 @@ impl Relay {
     /// Create a relay with a custom broadcast channel capacity.
     pub fn with_capacity(capacity: usize) -> Self {
         let (tx, _rx) = broadcast::channel(capacity);
-        Relay { tx }
+        let (state_tx, _) = watch::channel(ConnectionState::Connecting);
+        Relay { tx, state_tx }
+    }
+
+    /// Subscribe to live [`ConnectionState`] transitions driven by
+    /// [`Relay::run`]. The returned receiver's `borrow()` yields the current
+    /// state immediately; `changed()` awaits the next transition. Used by the
+    /// desktop bridge to surface "reconnecting…" + attempt count to the UI.
+    pub fn connection_state(&self) -> watch::Receiver<ConnectionState> {
+        self.state_tx.subscribe()
+    }
+
+    /// Snapshot the current connection state without subscribing.
+    pub fn current_connection_state(&self) -> ConnectionState {
+        self.state_tx.borrow().clone()
     }
 
     /// Subscribe to the IPC channel. Each subscriber receives every envelope
@@ -165,6 +203,7 @@ impl Relay {
                 Ok(mut reader) => {
                     stats.connects += 1;
                     delay = retry.initial_delay; // reset backoff on success
+                    let _ = self.state_tx.send(ConnectionState::Connected);
                     info!("bus-relay: connected to Paperclip event stream");
                     match self.pump(&mut reader).await {
                         Ok(n) => {
@@ -191,6 +230,13 @@ impl Relay {
                     return Ok(stats);
                 }
             }
+
+            // Surface the "reconnecting…" gap + attempt count to observers
+            // (the desktop UI panel, Story 2.11) before we back off.
+            let _ = self.state_tx.send(ConnectionState::Reconnecting {
+                attempt: stats.reconnects,
+                delay_ms: delay.as_millis() as u64,
+            });
 
             tokio::time::sleep(delay).await;
             delay = (delay * retry.multiplier).min(retry.max_delay);
@@ -337,5 +383,47 @@ mod tests {
         assert_eq!(stats.connect_failures, 1);
         assert_eq!(stats.connects, 1);
         assert_eq!(stats.frames_relayed, 1);
+    }
+
+    // AC (Story 2.11): a fresh relay rests in `Connecting` until `run` connects.
+    #[tokio::test]
+    async fn connection_state_starts_connecting() {
+        let relay = Relay::new();
+        assert_eq!(relay.current_connection_state(), ConnectionState::Connecting);
+    }
+
+    // AC (Story 2.11): run() surfaces Connected on link-up and Reconnecting
+    // (with a 1-based attempt count) across each disconnect gap. We collect
+    // every transition via the watch receiver and assert the sequence.
+    #[tokio::test]
+    async fn run_emits_connection_state_transitions() {
+        let relay = Relay::new();
+        let mut state = relay.connection_state();
+
+        // Drive two connect→disconnect cycles. fast_retry stops after 2
+        // reconnects, so run() terminates on its own.
+        let connect = || async { Ok::<_, RelayError>(BufReader::new(ONE_FRAME.as_bytes())) };
+
+        // Collect transitions concurrently with run().
+        let collector = tokio::spawn(async move {
+            let mut seen = vec![state.borrow().clone()];
+            while state.changed().await.is_ok() {
+                seen.push(state.borrow().clone());
+            }
+            seen
+        });
+
+        relay.run(connect, fast_retry(2)).await.unwrap();
+        // Drop the relay so the watch sender closes and the collector ends.
+        drop(relay);
+
+        let seen = collector.await.unwrap();
+        // Must have observed Connected at least once and a Reconnecting with a
+        // 1-based attempt count and a non-negative delay.
+        assert!(seen.contains(&ConnectionState::Connected));
+        assert!(seen.iter().any(|s| matches!(
+            s,
+            ConnectionState::Reconnecting { attempt, .. } if *attempt >= 1
+        )));
     }
 }

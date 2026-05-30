@@ -48,3 +48,11 @@ dirs = "5"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 # Story 2.9: per-subscription ids for bus_subscribe / bus_unsubscribe.
 uuid = { version = "1", features = ["v4"] }
+# NEVAAA-39: live Paperclip SSE feeder for the bus relay. reqwest opens the
+# `text/event-stream` endpoint (rustls-tls to avoid a system OpenSSL/native-tls
+# dependency on Windows); tokio-util::io::StreamReader adapts reqwest's byte
+# stream into the AsyncBufRead that `Relay::run` pumps; futures-util maps the
+# stream's reqwest error into an io::Error. Dep choice flagged to CTO.
+reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls"] }
+tokio-util = { version = "0.7", features = ["io"] }
+futures-util = { version = "0.3", default-features = false }

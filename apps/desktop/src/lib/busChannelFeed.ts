@@ -6,6 +6,8 @@
 // pure transforms (preview, timestamp formatting, filtering).
 
 import type { BusEnvelope } from "@c4n/core";
+// Type-only import — erased at build time, so this module stays Tauri-free.
+import type { BusConnectionState } from "./BusConnection";
 
 /**
  * Cap on the number of envelopes the feed retains in memory. The store
@@ -85,6 +87,37 @@ export function eventMatchesFilter(envelope: BusEnvelope, filter: ChannelFilter)
  */
 export function collectAgents(envelopes: ReadonlyArray<BusEnvelope>): string[] {
   return [...new Set(envelopes.map((e) => e.source))].sort();
+}
+
+/** Resolved status-bar presentation for a relay connection state (Story 2.11). */
+export interface ConnectionStatus {
+  /** Human-readable label, e.g. "live" or "reconnecting… (attempt 2)". */
+  label: string;
+  /** Badge color token for the status pill. */
+  badge: "online" | "warn" | "muted";
+  /** Status-dot CSS color. */
+  dot: string;
+}
+
+/**
+ * Map the relay's live connection state onto a status-bar label + colors.
+ * Surfaces the reconnect attempt count while Paperclip is restarting so the
+ * panel can show "reconnecting… (attempt N)" then resume the live feed.
+ */
+export function connectionStatus(state: BusConnectionState): ConnectionStatus {
+  switch (state.state) {
+    case "connected":
+      return { label: "live", badge: "online", dot: "#6BFF8C" };
+    case "reconnecting":
+      return {
+        label: `reconnecting… (attempt ${state.attempt})`,
+        badge: "warn",
+        dot: "var(--fn-gold)",
+      };
+    case "connecting":
+    default:
+      return { label: "connecting…", badge: "muted", dot: "var(--fg-3)" };
+  }
 }
 
 /**

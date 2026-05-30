@@ -30,7 +30,7 @@
 #   functionally clean.
 
 generated: 2026-05-28
-last_updated: 2026-05-29
+last_updated: 2026-05-30
 project: c4n-4neverCompanyOS
 project_key: C4N
 tracking_system: file-system
@@ -68,11 +68,11 @@ development_status:
   2-4-m2-zellij-adapter-multi-pane-orchestration: done # NEVAAA-16 — MultiPaneSession: N-pane (>=10) spawn, persona-ID labels, detach/reattach snapshot; 11 unit + ignored 5-pane integration test
   2-5-m2-both-fixed-personas-survive-desktop-app-restart: done # NEVAAA-18 — audit story: designer reuses the Story 1.15 five-link chain (session-reuse + close_on_exit:false + PersonasView poll); added designer unit tests + both-persona manual-verification protocol + restart-survival.md section
   2-6-m2-bus-protocol-schema-doc: done # NEVAAA-13 — bus protocol schema doc shipped; gates bus chain (2-7 through 2-11)
-  2-7-m2-bus-relay-crate-paperclip-events-ipc-subscribers: backlog
-  2-8-m2-bus-message-envelope-schemas-in-packages-core: backlog
-  2-9-m2-websocket-relay-for-desktop-ui: backlog
-  2-10-m2-ui-channel-view-panel-showing-live-bus-traffic: backlog
-  2-11-m2-bus-state-survives-paperclip-restart: backlog
+  2-7-m2-bus-relay-crate-paperclip-events-ipc-subscribers: done # NEVAAA-27 — c4n-bus-relay crate: Relay + broadcast hub + SSE parser + retry policy
+  2-8-m2-bus-message-envelope-schemas-in-packages-core: done # NEVAAA-28 — canonical BusEnvelopeSchema in @c4n/core
+  2-9-m2-websocket-relay-for-desktop-ui: done # NEVAAA-29 — bus_subscribe/bus_unsubscribe IPC bridge + BusSubscription.ts
+  2-10-m2-ui-channel-view-panel-showing-live-bus-traffic: done # NEVAAA-30 — ChannelsView: live feed, filter bar, pause/resume, auto-scroll
+  2-11-m2-bus-state-survives-paperclip-restart: done # NEVAAA-40 — ConnectionState watch channel + bus_connection_subscribe + BusConnection.ts + feeder.rs (Paperclip SSE)
   2-12-m2-progress-signal-vault-artifact-changed: done # b63ca20 — ProgressBus singleton (emit/subscribe/emitArtifact)
   2-13-m2-progress-signal-project-code-changed: done # b63ca20 — ProgressBus.emitCode() implemented
   2-14-m2-stall-detector-rolling-window-algorithm: done # b63ca20 — StallDetector class; 8 vitest tests green
@@ -87,14 +87,14 @@ development_status:
   3-1-m3-bmad-builder-add-agent-panel: done # b63ca20 — BmbAddAgentPanel + spawn_dynamic_persona + kill_dynamic_persona; integrated in PersonasView
   3-2-m3-lifecycle-selection-persistent-vs-ephemeral-spawn: done # b63ca20 — persistent/ephemeral lifecycle selection in BmbAddAgentPanel + Rust close_on_exit flag
   3-3-m3-persistent-dynamic-agent-terminal-pane-vault-dir-bus-identity: done # NEVAAA-23 — spawn_dynamic_persona now scaffolds full vault dir (log/skills/memory + .persona-meta.json) + mints stable agent:<slug>:<uuid> bus identity (env + meta); idempotent across re-spawns
-  3-4-m3-persona-sync-fr21-backflow-drift-detection: backlog
+  3-4-m3-persona-sync-fr21-backflow-drift-detection: done # NEVAAA-32 — FR-21 backflow drift detection (c4n-persona-drift crate)
   3-5-m3-per-persona-vault-scoping-best-effort-write-log: done # NEVAAA-24 — c4n-vault-scoping crate (ScopeGuard/ScopeMonitor/OutOfScopeEntry); supervisor starts best-effort watcher (project_ids via --project), logs out-of-scope writes to personas/<id>/out-of-scope-writes.log; persona_scope_violations command + pane badge surface
   3-6-m3-ephemeral-persona-lifecycle-spawn-task-exit-cleanly: done # NEVAAA-25 — run_ephemeral primitive (artifact→reviews/, deregister-on-drop bus identity, zero vault residue); supervisor --ephemeral mode; spawn_dynamic_persona ephemeral path (transient identity, no persona dir, close_on_exit) + task-prompt UI; SM-5 100-cycle zero-orphans test passes
-  3-7-m3-hermes-initiated-spawn-proposal: backlog
-  3-8-m3-user-approval-required-before-spawn: backlog
-  3-9-m3-promotion-path-ephemeral-persistent-after-3-spawns: backlog
-  3-10-m3-custom-persona-authoring-via-bmad-builder: backlog
-  3-11-m3-pause-redirect-any-persona: backlog
+  3-7-m3-hermes-initiated-spawn-proposal: done # NEVAAA-33 — Hermes emits spawn_proposal bus events; receive/list/dismiss commands
+  3-8-m3-user-approval-required-before-spawn: done # NEVAAA-40 — SpawnApprovalTray: floating card for Hermes proposals; Approve/Reject/Modify
+  3-9-m3-promotion-path-ephemeral-persistent-after-3-spawns: done # NEVAAA-34 — ephemeral → persistent promotion after 3 spawns
+  3-10-m3-custom-persona-authoring-via-bmad-builder: done # NEVAAA-35 — PersonaAuthorForm: name/role/lifecycle/skills/model/backing-CLI; author_persona Tauri command
+  3-11-m3-pause-redirect-any-persona: done # NEVAAA-36 — pause/redirect/resume control surface in persona-supervisor
   epic-3-retrospective: optional
 
   # ── Epic 4: One-Click BMAD Workflow Execution (M4) ──────────────
