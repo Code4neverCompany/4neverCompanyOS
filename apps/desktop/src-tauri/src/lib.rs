@@ -131,6 +131,9 @@ pub fn run() {
             commands::get_workflow_run,
             commands::pause_workflow_run,
             commands::resume_workflow_run,
+            // Story 5.2 (FR-31): Supermemory opt-in settings.
+            commands::get_supermemory_categories,
+            commands::save_supermemory_categories,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

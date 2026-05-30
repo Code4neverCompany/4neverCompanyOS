@@ -372,7 +372,7 @@ pub fn spawn_dev_persona(project_id: String) -> Result<DevPersonaStatus, String>
 /// Schema mirrors `apps/wizard/src-tauri/src/commands.rs::WorkspaceConfig`
 /// — they should stay in sync. (Future story: extract to a shared crate
 /// once a third consumer materializes.)
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct WorkspaceConfig {
     /// Absolute vault path picked in the wizard's vault step.
     vault_path: String,
@@ -380,6 +380,21 @@ struct WorkspaceConfig {
     anthropic_authenticated: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     claude_code_authenticated: Option<bool>,
+    /// Supermemory category opt-in flags (Story 5.2).
+    /// Stored as a flat map: "decisions" → bool, etc.
+    #[serde(default)]
+    supermemory_categories: std::collections::HashMap<String, bool>,
+}
+
+impl Default for WorkspaceConfig {
+    fn default() -> Self {
+        Self {
+            vault_path: String::new(),
+            anthropic_authenticated: None,
+            claude_code_authenticated: None,
+            supermemory_categories: std::collections::HashMap::new(),
+        }
+    }
 }
 
 fn workspace_config_path() -> Result<PathBuf, String> {
@@ -399,6 +414,29 @@ fn read_workspace_config() -> Result<WorkspaceConfig, String> {
     }
     let raw = std::fs::read_to_string(&path).map_err(|e| format!("read workspace config: {e}"))?;
     toml::from_str(&raw).map_err(|e| format!("parse workspace config: {e}"))
+}
+
+/// Write the workspace config back to disk after updating a subset of fields.
+fn write_workspace_config(updated: WorkspaceConfig) -> Result<(), String> {
+    let path = workspace_config_path()?;
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("create config dir: {e}"))?;
+    }
+    let raw = toml::to_string_pretty(&updated).map_err(|e| format!("serialize config: {e}"))?;
+    std::fs::write(&path, raw).map_err(|e| format!("write config: {e}"))
+}
+
+#[tauri::command]
+pub fn get_supermemory_categories() -> Result<std::collections::HashMap<String, bool>, String> {
+    let config = read_workspace_config()?;
+    Ok(config.supermemory_categories)
+}
+
+#[tauri::command]
+pub fn save_supermemory_categories(categories: std::collections::HashMap<String, bool>) -> Result<(), String> {
+    let mut config = read_workspace_config()?;
+    config.supermemory_categories = categories;
+    write_workspace_config(config)
 }
 
 /// Return the binary name (or path) to use when invoking the

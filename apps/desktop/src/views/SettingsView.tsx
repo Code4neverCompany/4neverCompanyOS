@@ -13,13 +13,12 @@
 // Layout mirrors MemoryView.tsx's ViewShell + HUDFrame pattern (Story 1.16c)
 // for visual consistency across the desktop shell's views.
 //
-// TODO(M2): this Settings view ships with a single "About" sub-panel. Future
-// stories add sibling sub-panels (Personas, Vault, Theme, Developer flags).
-// When they land, introduce a sub-nav within ViewShell and lift About into
-// its own section component.
+// Story 5.2 adds the Supermemory settings panel (Memory → Supermemory) above
+// the About panel.
 
 import { renderAttributionMarkdown } from "@c4n/core";
 import { Badge, Eyebrow, HUDFrame } from "@c4n/ui-tokens";
+import { SupermemorySettings } from "./SupermemorySettings";
 
 // The public repo's LICENSES.md — the canonical full-text license file.
 // Shown as selectable reference text (not a click-to-open) so this view
@@ -32,7 +31,11 @@ export function SettingsView() {
   const { bundled, integrated } = renderAttributionMarkdown();
 
   return (
-    <ViewShell eyebrow="Settings · About" title="4neverCompany" titleAccent="OS">
+    <ViewShell eyebrow="Settings" title="4neverCompany" titleAccent="OS">
+      <SupermemorySettings />
+
+      <div style={{ height: 18 }} />
+
       <HUDFrame style={{ padding: 24 }}>
         <Eyebrow color="cyan">About</Eyebrow>
         <div
