@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@c4n/core": "workspace:*",
+    "@c4n/progress-signal": "workspace:*",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-fs": "^2",
     "js-yaml": "^4.1.0"

@@ -294,6 +294,9 @@ importers:
       '@c4n/core':
         specifier: workspace:*
         version: link:../core
+      '@c4n/progress-signal':
+        specifier: workspace:*
+        version: link:../progress-signal
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.0

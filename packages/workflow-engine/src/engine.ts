@@ -3,13 +3,17 @@
 // detection, dispatches dynamic personas via Tauri invoke.
 //
 // Architecture: D-12
-// Implementing stories: M4 Story 4.1-4.4
+// Implementing stories: M4 Story 4.1-4.5
 //
 // Story 4.2: Engine core — phase state machine, persona dispatch via
 // spawn_dynamic_persona, vault artifact polling, workflow.phase.advanced
 // bus events via bus_publish.
+//
+// Story 4.5: Emits ProgressBus.emitStoryState() on phase start and phase
+// approval to feed the stall detector's rolling window.
 
 import { invoke } from "@tauri-apps/api/core";
+import { ProgressBus } from "@c4n/progress-signal";
 
 export interface WorkflowPhasePersona {
   name: string;
@@ -253,6 +257,8 @@ export class WorkflowEngine {
     run.status = "running";
     run.active_personas = [];
 
+    ProgressBus.emitStoryState(run.workflow_id);
+
     for (const persona of phase.personas) {
       try {
         const resolvedTask = persona.task_prompt
@@ -392,6 +398,7 @@ export class WorkflowEngine {
     }
 
     await this.advanceToNextPhase(run, phaseToAdvance);
+    ProgressBus.emitStoryState(run.workflow_id);
   }
 
   async requestChanges(runId: string, feedback: string): Promise<void> {

@@ -3,7 +3,7 @@
 // Three signal types (Story 2.12-2.13, M4 Story 4.5):
 //   artifact.changed  — a file inside the vault directory changed
 //   code.changed      — a file inside the project code directory changed
-//   story.state       — a BMAD story transitioned state (M4)
+//   story.state       — a BMAD story transitioned state (M4 Story 4.5 ✓)
 //
 // Architecture: D-4 (progress-signal sits between file-system events and
 // the stall-detector's rolling window). In production the Rust side
@@ -67,6 +67,11 @@ class ProgressBusImpl {
   /** Convenience: emit a code.changed signal. */
   emitCode(path: string): void {
     this.emit({ kind: "code.changed", path, ts: Date.now() });
+  }
+
+  /** Convenience: emit a story.state signal when a BMAD story transitions state. */
+  emitStoryState(slug: string): void {
+    this.emit({ kind: "story.state", path: slug, ts: Date.now() });
   }
 }
 
