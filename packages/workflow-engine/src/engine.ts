@@ -66,6 +66,24 @@ export interface PhaseAdvancedPayload {
   approved: boolean;
 }
 
+/**
+ * Resolves a vault-relative artifact path (e.g. `vault/projects/<id>/bmad/01-brief.md`)
+ * to an absolute path given a workflow-run vault_dir (which is `<vault>/workflows/<slug>`).
+ * Strips the `workflows/<slug>` suffix so artifacts land at the canonical
+ * `vault/projects/<id>/bmad/` location per the vault-layout spec (Story 5.1).
+ */
+function resolveVaultArtifactPath(vaultDir: string, relativePath: string): string {
+  const normalized = vaultDir.replace(/\\/g, "/");
+  const parts = normalized.split("/");
+  const workflowsIdx = parts.findIndex((p) => p === "workflows");
+  if (workflowsIdx !== -1) {
+    parts.splice(workflowsIdx);
+  }
+  const vaultRoot = parts.join("/");
+  const cleanRelative = relativePath.replace(/^vault\//, "");
+  return `${vaultRoot}/${cleanRelative}`;
+}
+
 export class WorkflowEngine {
   private currentRun: WorkflowRunState | null = null;
   private vaultPoller: ReturnType<typeof setInterval> | null = null;
@@ -344,9 +362,10 @@ export class WorkflowEngine {
   }
 
   private async waitForArtifact(run: WorkflowRunState, phase: WorkflowPhase): Promise<void> {
-    const artifactPath = phase.artifact.path
+    const rawPath = phase.artifact.path
       .replace(/\{project_id\}/g, run.project_id)
       .replace(/\{project_name\}/g, run.project_name);
+    const artifactPath = resolveVaultArtifactPath(run.vault_dir, rawPath);
 
     return new Promise((resolve) => {
       const poll = async () => {
