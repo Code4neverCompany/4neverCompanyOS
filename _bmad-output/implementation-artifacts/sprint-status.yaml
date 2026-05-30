@@ -101,7 +101,7 @@ development_status:
   epic-4: in-progress
   4-1-m4-start-a-bmad-project-entry-point: done # NEVAAA-47 — WorkflowsView + list/start/get/pause_workflow Tauri commands + vault dir creation
   4-2-m4-workflow-engine-phase-execution-persona-dispatch: done # NEVAAA-41 — WorkflowEngine phase state machine + persona dispatch via spawn_dynamic_persona + vault artifact polling + workflow.phase.advanced bus events
-  4-3-m4-workflow-approval-gates-ui: backlog
+  4-3-m4-workflow-approval-gates-ui: done # NEVAAA-41 — ApprovalGate overlay modal + approve/request-changes/pause actions + vault/.workflow-decisions.md log
   4-4-m4-workflow-pause-resume-across-app-restart: backlog
   4-5-m4-progress-signal-story-state-changed: backlog
   4-6-m4-brownfield-workflow-support: backlog
