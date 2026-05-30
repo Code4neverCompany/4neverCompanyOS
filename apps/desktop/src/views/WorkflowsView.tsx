@@ -44,6 +44,7 @@ interface ActiveRunDisplay {
   vault_dir: string;
   active_personas: string[];
   created_at_ms: number;
+  project_id?: string;
 }
 
 // ── ViewShell ────────────────────────────────────────────────────────────
@@ -185,6 +186,181 @@ function PhaseStatusSidebar({
         })}
       </div>
     </HUDFrame>
+  );
+}
+
+// ── Approval gate overlay ───────────────────────────────────────────────
+
+function ApprovalGate({
+  run,
+  onApprove,
+  onPause,
+}: {
+  run: ActiveRunDisplay;
+  onApprove: () => void;
+  onPause: () => void;
+}) {
+  const [feedback, setFeedback] = useState("");
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const pendingPhase = workflowEngine.getPendingApprovalPhase();
+  const currentLabel = PHASE_LABELS[pendingPhase?.id ?? run.current_phase] ?? run.current_phase;
+  const nextPhaseId = PHASE_ORDER[PHASE_ORDER.indexOf(pendingPhase?.id ?? run.current_phase ?? "") + 1];
+  const nextLabel = PHASE_LABELS[nextPhaseId] ?? nextPhaseId ?? "Done";
+
+  function handleApprove() {
+    setBusy(true);
+    onApprove();
+  }
+
+  async function handleSubmitFeedback() {
+    if (!feedback.trim()) return;
+    setBusy(true);
+    await workflowEngine.requestChanges(run.id, feedback);
+    setBusy(false);
+  }
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.75)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+      }}
+    >
+      <HUDFrame
+        style={{
+          padding: 32,
+          maxWidth: 520,
+          width: "100%",
+          border: "1px solid var(--fn-gold)",
+          boxShadow: "0 0 40px rgba(255,200,0,0.15)",
+        }}
+      >
+        <div style={{ marginBottom: 20 }}>
+          <Eyebrow color="gold">⛩ Approval Gate</Eyebrow>
+          <h2
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 800,
+              fontSize: 22,
+              color: "var(--fn-white)",
+              margin: "6px 0 0",
+            }}
+          >
+            {currentLabel} phase complete
+          </h2>
+        </div>
+
+        <div
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 12,
+            color: "var(--fg-2)",
+            marginBottom: 20,
+            lineHeight: 1.6,
+          }}
+        >
+          <p style={{ margin: "0 0 12px" }}>
+            The <strong style={{ color: "var(--fn-white)" }}>{currentLabel}</strong> phase has
+            produced its artifact. Review the output and choose how to proceed.
+          </p>
+          {pendingPhase && (
+            <div
+              style={{
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid var(--border-neutral)",
+                borderRadius: 2,
+                padding: "10px 14px",
+              }}
+            >
+              <span style={{ color: "var(--fg-3)", fontSize: 10 }}>EXPECTED ARTIFACT</span>
+              <br />
+              <span style={{ color: "var(--fn-cyan)" }}>
+                {pendingPhase!.artifact.path.replace(/\{project_id\}/g, run.project_id ?? "")}
+              </span>
+              <br />
+              <span style={{ color: "var(--fg-3)", fontSize: 10 }}>DESCRIPTION</span>
+              <br />
+              {pendingPhase.artifact.description}
+            </div>
+          )}
+          <p style={{ margin: "12px 0 0" }}>
+            Next: <strong style={{ color: "var(--fn-purple)" }}>{nextLabel}</strong>
+          </p>
+        </div>
+
+        {showFeedback && (
+          <div style={{ marginBottom: 16 }}>
+            <textarea
+              placeholder="Describe what changes are needed…"
+              value={feedback}
+              onChange={(e) => setFeedback(e.target.value)}
+              rows={3}
+              style={{
+                width: "100%",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid var(--border-neutral)",
+                borderRadius: 2,
+                color: "var(--fg-1)",
+                fontFamily: "var(--font-mono)",
+                fontSize: 12,
+                padding: "8px 10px",
+                resize: "vertical",
+                boxSizing: "border-box",
+                outline: "none",
+              }}
+              autoFocus
+            />
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          {showFeedback ? (
+            <>
+              <Btn
+                variant="ghost"
+                onClick={() => setShowFeedback(false)}
+                disabled={busy}
+              >
+                Cancel
+              </Btn>
+              <Btn
+                variant="purple"
+                onClick={() => {
+                  setShowFeedback(false);
+                  handleSubmitFeedback();
+                }}
+                disabled={!feedback.trim() || busy}
+              >
+                {busy ? "Sending…" : "Submit feedback"}
+              </Btn>
+            </>
+          ) : (
+            <>
+              <Btn variant="ghost" onClick={onPause} disabled={busy}>
+                Pause workflow
+              </Btn>
+              <Btn
+                variant="ghost"
+                onClick={() => setShowFeedback(true)}
+                disabled={busy}
+              >
+                Request changes
+              </Btn>
+              <Btn variant="purple" onClick={handleApprove} disabled={busy}>
+                {busy ? "Approving…" : "✓ Approve and continue"}
+              </Btn>
+            </>
+          )}
+        </div>
+      </HUDFrame>
+    </div>
   );
 }
 
@@ -535,6 +711,13 @@ export function WorkflowsView() {
     const displayRun = activeRun as ActiveRunDisplay;
     return (
       <ViewShell eyebrow="Workflows" title="BMAD" titleAccent="Engine">
+        {displayRun.status === "approval_pending" && (
+          <ApprovalGate
+            run={displayRun}
+            onApprove={() => workflowEngine.approvePhase(displayRun.id)}
+            onPause={() => workflowEngine.pause()}
+          />
+        )}
         <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
           <div style={{ flex: 1 }}>
             <ActiveRunCard run={displayRun} />
@@ -613,6 +796,7 @@ export function WorkflowsView() {
               vault_dir: run.vault_dir,
               active_personas: [],
               created_at_ms: run.created_at_ms,
+              project_id: projectId,
             });
             setSelectedWorkflow(null);
           }}

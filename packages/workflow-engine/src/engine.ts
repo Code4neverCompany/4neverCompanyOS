@@ -64,6 +64,7 @@ export class WorkflowEngine {
   private currentRun: WorkflowRunState | null = null;
   private vaultPoller: ReturnType<typeof setInterval> | null = null;
   private currentWorkflow: WorkflowMetadata | null = null;
+  private pendingApprovalPhase: WorkflowPhase | null = null;
 
   async listWorkflows(): Promise<Array<{ id: string; name: string; description: string }>> {
     return invoke<Array<{ id: string; name: string; description: string }>>("list_workflows");
@@ -292,6 +293,14 @@ export class WorkflowEngine {
 
         if (found) {
           this.clearPoller();
+
+          if (phase.approval_required) {
+            run.status = "approval_pending";
+            this.pendingApprovalPhase = phase;
+            resolve();
+            return;
+          }
+
           await this.advanceToNextPhase(run, phase);
           resolve();
         }
@@ -359,8 +368,55 @@ export class WorkflowEngine {
     const run = this.currentRun;
     if (!this.currentWorkflow) return;
 
-    const currentPhase = this.currentWorkflow.phases[run.phase_index];
-    await this.advanceToNextPhase(run, currentPhase);
+    const phaseToAdvance = this.pendingApprovalPhase
+      ?? this.currentWorkflow.phases[run.phase_index];
+
+    this.pendingApprovalPhase = null;
+
+    try {
+      await invoke("log_workflow_decision", {
+        runId: run.id,
+        projectId: run.project_id,
+        phase: phaseToAdvance.id,
+        decision: "approved",
+        feedback: "",
+      });
+    } catch (e) {
+      console.error("[workflow-engine] failed to log decision:", e);
+    }
+
+    await this.advanceToNextPhase(run, phaseToAdvance);
+  }
+
+  async requestChanges(runId: string, feedback: string): Promise<void> {
+    if (!this.currentRun || this.currentRun.id !== runId) return;
+    const run = this.currentRun;
+    if (!this.currentWorkflow) return;
+
+    const phase = this.pendingApprovalPhase
+      ?? this.currentWorkflow.phases[run.phase_index];
+
+    this.pendingApprovalPhase = null;
+    run.status = "paused";
+    this.clearPoller();
+
+    try {
+      await invoke("log_workflow_decision", {
+        runId: run.id,
+        projectId: run.project_id,
+        phase: phase.id,
+        decision: "changes_requested",
+        feedback,
+      });
+    } catch (e) {
+      console.error("[workflow-engine] failed to log decision:", e);
+    }
+
+    invoke("pause_workflow_run").catch(console.error);
+  }
+
+  getPendingApprovalPhase(): WorkflowPhase | null {
+    return this.pendingApprovalPhase;
   }
 
   pause(): void {

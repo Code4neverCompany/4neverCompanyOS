@@ -2762,6 +2762,49 @@ pub fn check_vault_artifact_exists(path: String) -> bool {
     PathBuf::from(&path).exists()
 }
 
+/// Log a workflow approval gate decision to the vault's decisions log.
+/// Appends a markdown entry to `vault/projects/<project_id>/bmad/.workflow-decisions.md`.
+#[tauri::command]
+pub fn log_workflow_decision(
+    run_id: String,
+    project_id: String,
+    phase: String,
+    decision: String,
+    feedback: String,
+) -> Result<(), String> {
+    let vault_path = read_workspace_config()
+        .map_err(|e| format!("could not read workspace config: {e}"))?
+        .vault_path;
+
+    let decisions_dir = PathBuf::from(&vault_path)
+        .join("projects")
+        .join(&project_id)
+        .join("bmad");
+
+    std::fs::create_dir_all(&decisions_dir)
+        .map_err(|e| format!("could not create bmad directory: {e}"))?;
+
+    let decisions_file = decisions_dir.join(".workflow-decisions.md");
+    let timestamp = chrono::Utc::now().to_rfc3339();
+
+    let entry = if feedback.is_empty() {
+        format!(
+            "## [{timestamp}] Phase `{phase}` — {decision}\n\nRun ID: `{run_id}`\n\n",
+        )
+    } else {
+        format!(
+            "## [{timestamp}] Phase `{phase}` — {decision}\n\nRun ID: `{run_id}`\n\n**Feedback:** {feedback}\n\n",
+        )
+    };
+
+    let existing = std::fs::read_to_string(&decisions_file).unwrap_or_default();
+    let updated = format!("{existing}{entry}");
+    std::fs::write(&decisions_file, updated)
+        .map_err(|e| format!("could not write decisions log: {e}"))?;
+
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
