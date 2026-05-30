@@ -30,7 +30,7 @@
 #   functionally clean.
 
 generated: 2026-05-28
-last_updated: 2026-05-30T17:40:00Z
+last_updated: 2026-05-30T18:40:00Z
 project: c4n-4neverCompanyOS
 project_key: C4N
 tracking_system: file-system
@@ -103,7 +103,7 @@ development_status:
   4-2-m4-workflow-engine-phase-execution-persona-dispatch: done # NEVAAA-41 — WorkflowEngine phase state machine + persona dispatch via spawn_dynamic_persona + vault artifact polling + workflow.phase.advanced bus events
   4-3-m4-workflow-approval-gates-ui: done # NEVAAA-41 — ApprovalGate overlay modal + approve/request-changes/pause actions + vault/.workflow-decisions.md log
   4-4-m4-workflow-pause-resume-across-app-restart: done # 8f6ec9e — WorkflowRunStore::load_or_default + persist + ResumePrompt overlay
-  4-5-m4-progress-signal-story-state-changed: backlog
+  4-5-m4-progress-signal-story-state-changed: done # 87ddb46 — emitStoryState() in executePhase + approvePhase; ProgressBus convenience method added
   4-6-m4-brownfield-workflow-support: backlog
   4-7-m4-end-to-end-scenario-test-greenfield-fullstack: backlog
   epic-4-retrospective: optional
