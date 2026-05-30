@@ -30,7 +30,7 @@
 #   functionally clean.
 
 generated: 2026-05-28
-last_updated: 2026-05-30
+last_updated: 2026-05-30T16:40:00Z
 project: c4n-4neverCompanyOS
 project_key: C4N
 tracking_system: file-system
@@ -83,7 +83,7 @@ development_status:
   epic-2-retrospective: optional
 
   # ── Epic 3: Dynamic Persona Spawning + BMad Builder (M3) ─────────
-  epic-3: in-progress
+  epic-3: done
   3-1-m3-bmad-builder-add-agent-panel: done # b63ca20 — BmbAddAgentPanel + spawn_dynamic_persona + kill_dynamic_persona; integrated in PersonasView
   3-2-m3-lifecycle-selection-persistent-vs-ephemeral-spawn: done # b63ca20 — persistent/ephemeral lifecycle selection in BmbAddAgentPanel + Rust close_on_exit flag
   3-3-m3-persistent-dynamic-agent-terminal-pane-vault-dir-bus-identity: done # NEVAAA-23 — spawn_dynamic_persona now scaffolds full vault dir (log/skills/memory + .persona-meta.json) + mints stable agent:<slug>:<uuid> bus identity (env + meta); idempotent across re-spawns
@@ -98,8 +98,8 @@ development_status:
   epic-3-retrospective: optional
 
   # ── Epic 4: One-Click BMAD Workflow Execution (M4) ──────────────
-  epic-4: backlog
-  4-1-m4-start-a-bmad-project-entry-point: backlog
+  epic-4: in-progress
+  4-1-m4-start-a-bmad-project-entry-point: done # NEVAAA-47 — WorkflowsView + list/start/get/pause_workflow Tauri commands + vault dir creation
   4-2-m4-workflow-engine-phase-execution-persona-dispatch: backlog
   4-3-m4-workflow-approval-gates-ui: backlog
   4-4-m4-workflow-pause-resume-across-app-restart: backlog
