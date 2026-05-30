@@ -115,7 +115,7 @@ development_status:
   5-3-m5-memory-tier-precedence-read-resolver: done # 9260f49 — docs/memory-precedence.md finalized; MemoryResolver class in packages/memory-resolver; 8 vitest tests; 4-tier precedence (persona→project→hermes→supermemory)
   5-4-m5-github-sync-push-configs-artifacts-skills-personas: done # 2b4fdc4 — c4n-github-sync Rust crate; github_sync_push/pull/init/status Tauri commands; GithubSettings UI panel; FR-33 sync policy implemented
   5-5-m5-cross-machine-continuity-pull-on-second-machine-resume: done # 699c7f0 — pickAndOpen auto-pulls from GitHub after open_project; cross-machine continuity UX wired into project-open flow
-  5-6-m5-per-persona-token-budgets: backlog
+  5-6-m5-per-persona-token-budgets: done # 34f2b70 — BudgetStore in-memory tracker; BudgetSettings panel with limit inputs, spend bars, over-limit/paused badges; WorkspaceConfig.persona_budgets; auto-pause on budget exceeded
   5-7-m5-project-level-kill-switch: done # c1c8521 — DynamicPersonaRegistry tracks active sessions; kill_all_project_personas command kills all personas for a project; Kill all personas danger button in ProjectCard
   5-8-m5-basic-docs-site: backlog
   5-9-m5-macos-installer-dmg: backlog
