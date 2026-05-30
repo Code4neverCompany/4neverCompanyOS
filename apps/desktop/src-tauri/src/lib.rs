@@ -38,6 +38,10 @@ pub fn run() {
         // Story 3.7 (NEVAAA-33): pending spawn proposals from Hermes.
         // Shared store read by the approval UI (Story 3.8 / NEVAAA-34).
         .manage(commands::PendingProposalsStore::default())
+        // Story 5.7 (FR-35): project-level kill switch. Tracks active
+        // dynamic persona sessions so kill_all_project_personas can terminate
+        // all personas for a project in one call.
+        .manage(commands::DynamicPersonaRegistry::default())
         // Story 4.1 (Epic 4): BMAD workflow entry point. Tracks the active
         // workflow run in-memory; vault dir + persistence land in Story 4-4.
         .manage(commands::WorkflowRunStore::load_or_default())
@@ -139,6 +143,8 @@ pub fn run() {
             commands::github_sync_push,
             commands::github_sync_pull,
             commands::github_sync_init,
+            // Story 5.7 (FR-35): project-level kill switch.
+            commands::kill_all_project_personas,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

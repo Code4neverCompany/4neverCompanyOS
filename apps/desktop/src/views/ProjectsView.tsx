@@ -45,7 +45,7 @@ const STATUS_POLL_MS = 3000;
 export function ProjectsView() {
   const [project, setProject] = useState<ProjectInfo | null>(null);
   const [status, setStatus] = useState<DevPersonaStatus | null>(null);
-  const [busy, setBusy] = useState<null | "opening" | "spawning" | "closing">(null);
+  const [busy, setBusy] = useState<null | "opening" | "spawning" | "closing" | "killing">(null);
   const [error, setError] = useState<string | null>(null);
   const [bootstrapped, setBootstrapped] = useState(false);
 
@@ -139,6 +139,20 @@ export function ProjectsView() {
     }
   }
 
+  async function killAllPersonas() {
+    if (!project) return;
+    setError(null);
+    setBusy("killing");
+    try {
+      await invoke<string[]>("kill_all_project_personas", { projectId: project.id });
+      setStatus(null);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
   if (!bootstrapped) {
     return (
       <ViewShell eyebrow="Projects" title="The Orchestration" titleAccent="Grid">
@@ -159,7 +173,13 @@ export function ProjectsView() {
 
       {project && (
         <>
-          <ProjectCard project={project} onClose={closeProject} closing={busy === "closing"} />
+          <ProjectCard
+            project={project}
+            onClose={closeProject}
+            onKillAll={killAllPersonas}
+            closing={busy === "closing"}
+            killing={busy === "killing"}
+          />
           <DevPersonaPanel
             status={status}
             spawning={busy === "spawning"}
@@ -282,11 +302,15 @@ function EmptyState({ onOpen, opening }: { onOpen: () => void; opening: boolean 
 function ProjectCard({
   project,
   onClose,
+  onKillAll,
   closing,
+  killing,
 }: {
   project: ProjectInfo;
   onClose: () => void;
+  onKillAll: () => void;
   closing: boolean;
+  killing: boolean;
 }) {
   const openedAt = new Date(project.opened_at * 1000);
   return (
@@ -347,6 +371,26 @@ function ProjectCard({
         <Btn variant="ghost" onClick={onClose} disabled={closing}>
           {closing ? "Closing…" : "Close project"}
         </Btn>
+        <button
+          onClick={onKillAll}
+          disabled={killing || closing}
+          style={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 700,
+            fontSize: 10,
+            letterSpacing: "0.14em",
+            textTransform: "uppercase",
+            padding: "8px 14px",
+            borderRadius: 2,
+            cursor: killing || closing ? "not-allowed" : "pointer",
+            background: "transparent",
+            border: "1px solid var(--fn-red)",
+            color: "var(--fn-red)",
+            opacity: killing || closing ? 0.5 : 1,
+          }}
+        >
+          {killing ? "Stopping…" : "Kill all personas"}
+        </button>
       </div>
     </HUDFrame>
   );

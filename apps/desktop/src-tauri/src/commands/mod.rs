@@ -1533,6 +1533,7 @@ pub fn spawn_dynamic_persona(
     lifecycle: String,
     task_prompt: Option<String>,
     drift_registry: State<'_, DriftRegistry>,
+    dynamic_persona_registry: State<'_, DynamicPersonaRegistry>,
 ) -> Result<DynamicPersonaInfo, String> {
     if name.trim().is_empty() {
         return Err("name must not be empty".to_string());
@@ -1686,6 +1687,9 @@ pub fn spawn_dynamic_persona(
         }
     }
 
+    // Story 5.7: register the dynamic persona session so kill_switch can find it.
+    dynamic_persona_registry.register(session_name.clone(), project.id.clone());
+
     Ok(DynamicPersonaInfo {
         name,
         slug,
@@ -1700,12 +1704,72 @@ pub fn spawn_dynamic_persona(
 
 /// Kill a running dynamic persona by its session name.
 #[tauri::command]
-pub fn kill_dynamic_persona(session_name: String) -> Result<(), String> {
+pub fn kill_dynamic_persona(
+    session_name: String,
+    store: State<'_, DynamicPersonaRegistry>,
+) -> Result<(), String> {
     if !zellij::is_available() {
         return Err("Zellij not available".to_string());
     }
     let handle = c4n_zellij_adapter::PaneHandle { session_name: session_name.clone(), pane_name: None };
-    handle.kill().map_err(|e| format!("kill dynamic persona {session_name}: {e}"))
+    handle.kill().map_err(|e| format!("kill dynamic persona {session_name}: {e}"))?;
+    store.unregister(&session_name);
+    Ok(())
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Story 5.7 (FR-35) — project-level kill switch
+// ────────────────────────────────────────────────────────────────────
+
+/// Kill ALL personas for a given project in one call: dev, hermes, designer,
+/// and all registered dynamic personas. Used by the project-level kill switch
+/// when the user wants to stop everything immediately.
+#[tauri::command]
+pub fn kill_all_project_personas(
+    project_id: String,
+    store: State<'_, DynamicPersonaRegistry>,
+) -> Result<Vec<String>, String> {
+    if !zellij::is_available() {
+        return Err("Zellij not available".to_string());
+    }
+
+    let mut killed = Vec::new();
+    let mut errors = Vec::new();
+
+    // Kill dev, hermes, designer fixed personas
+    for session_prefix in ["dev", "hermes", "designer"] {
+        let session_name = format!("{}-{}", session_prefix, project_id);
+        let handle = c4n_zellij_adapter::PaneHandle {
+            session_name: session_name.clone(),
+            pane_name: None,
+        };
+        match handle.kill() {
+            Ok(()) => killed.push(session_name),
+            Err(e) => errors.push(format!("kill {}: {}", session_prefix, e)),
+        }
+    }
+
+    // Kill all registered dynamic personas for this project
+    let dyn_sessions = store.sessions_for_project(&project_id);
+    for session_name in dyn_sessions {
+        let handle = c4n_zellij_adapter::PaneHandle {
+            session_name: session_name.clone(),
+            pane_name: None,
+        };
+        match handle.kill() {
+            Ok(()) => {
+                killed.push(session_name.clone());
+                store.unregister(&session_name);
+            }
+            Err(e) => errors.push(format!("kill dynamic persona {}: {}", session_name, e)),
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(killed)
+    } else {
+        Err(format!("killed {} but errors: {}", killed.len(), errors.join("; ")))
+    }
 }
 
 // ────────────────────────────────────────────────────────────────────
@@ -1766,6 +1830,43 @@ pub struct PtyTailRegistry {
 #[derive(Default)]
 pub struct DriftRegistry {
     watchers: StdMutex<HashMap<String, DriftWatcher>>,
+}
+
+// ── Story 5.7 — FR-35 project-level kill switch ─────────────────────────
+//
+// Tracks active dynamic persona sessions by project so kill_switch can
+// terminate all personas for a project in one call.
+
+/// Tauri State: tracks active dynamic persona sessions keyed by session_name.
+#[derive(Default)]
+pub struct DynamicPersonaRegistry {
+    sessions: StdMutex<HashMap<String, String>>,
+}
+
+impl DynamicPersonaRegistry {
+    pub fn register(&self, session_name: String, project_id: String) {
+        let mut guard = self.sessions.lock().unwrap();
+        guard.insert(session_name, project_id);
+    }
+
+    pub fn unregister(&self, session_name: &str) {
+        let mut guard = self.sessions.lock().unwrap();
+        guard.remove(session_name);
+    }
+
+    pub fn sessions_for_project(&self, project_id: &str) -> Vec<String> {
+        let guard = self.sessions.lock().unwrap();
+        guard
+            .iter()
+            .filter(|(_, pid)| *pid == project_id)
+            .map(|(s, _)| s.clone())
+            .collect()
+    }
+
+    pub fn all_sessions(&self) -> Vec<(String, String)> {
+        let guard = self.sessions.lock().unwrap();
+        guard.iter().map(|(s, p)| (s.clone(), p.clone())).collect()
+    }
 }
 
 /// How often the tail task polls the tap file for new bytes. Picked to
