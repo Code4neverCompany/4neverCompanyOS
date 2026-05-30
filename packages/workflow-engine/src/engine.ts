@@ -3,7 +3,7 @@
 // detection, dispatches dynamic personas via Tauri invoke.
 //
 // Architecture: D-12
-// Implementing stories: M4 Story 4.1-4.5
+// Implementing stories: M4 Story 4.1-4.6
 //
 // Story 4.2: Engine core — phase state machine, persona dispatch via
 // spawn_dynamic_persona, vault artifact polling, workflow.phase.advanced
@@ -11,6 +11,8 @@
 //
 // Story 4.5: Emits ProgressBus.emitStoryState() on phase start and phase
 // approval to feed the stall detector's rolling window.
+//
+// Story 4.6: brownfield workflow — ingest → analyze → refactor-plan phases.
 
 import { invoke } from "@tauri-apps/api/core";
 import { ProgressBus } from "@c4n/progress-signal";
@@ -209,6 +211,65 @@ export class WorkflowEngine {
             description: "QA report with test results",
           },
           approval_required: true,
+        },
+      ],
+      brownfield: [
+        {
+          id: "ingest",
+          label: "Ingest",
+          description: "Scan and catalog the existing codebase structure.",
+          personas: [
+            {
+              name: "Analyst",
+              backing_cli: "claude",
+              lifecycle: "ephemeral",
+              task_prompt:
+                "You are the Analyst persona. Your job is to ingest an existing codebase. Scan the repository at the provided project path, catalog its structure (languages, frameworks, key files, directory layout), and produce a summary at vault/projects/{project_id}/bmad/01-ingest.md. Be thorough — identify the tech stack, entry points, and overall architecture.",
+            },
+          ],
+          artifact: {
+            path: "vault/projects/{project_id}/bmad/01-ingest.md",
+            description: "Codebase ingest summary",
+          },
+          approval_required: true,
+        },
+        {
+          id: "analyze",
+          label: "Analyze",
+          description: "Analyze the codebase for issues, tech debt, and improvement opportunities.",
+          personas: [
+            {
+              name: "Architect",
+              backing_cli: "claude",
+              lifecycle: "ephemeral",
+              task_prompt:
+                "You are the Architect persona. Read the ingest summary at vault/projects/{project_id}/bmad/01-ingest.md, then perform a deep analysis of the codebase. Identify: (1) architectural problems, (2) tech debt, (3) security concerns, (4) performance bottlenecks, (5) missing tests, (6) code smells. Output your analysis to vault/projects/{project_id}/bmad/02-analyze.md.",
+            },
+          ],
+          artifact: {
+            path: "vault/projects/{project_id}/bmad/02-analyze.md",
+            description: "Codebase analysis report",
+          },
+          approval_required: true,
+        },
+        {
+          id: "refactor-plan",
+          label: "Refactor Plan",
+          description: "Produce a prioritized refactor plan based on the analysis.",
+          personas: [
+            {
+              name: "PM",
+              backing_cli: "claude",
+              lifecycle: "ephemeral",
+              task_prompt:
+                "You are the PM persona. Read the analysis at vault/projects/{project_id}/bmad/02-analyze.md and the ingest summary at vault/projects/{project_id}/bmad/01-ingest.md. Produce a prioritized refactor plan at vault/projects/{project_id}/bmad/03-refactor-plan.md. For each refactoring item: describe the problem, the recommended fix, estimated effort (XS/S/M/L/XL), and expected impact. Prioritize by risk and value.",
+            },
+          ],
+          artifact: {
+            path: "vault/projects/{project_id}/bmad/03-refactor-plan.md",
+            description: "Refactor plan with prioritized recommendations",
+          },
+          approval_required: false,
         },
       ],
     };
