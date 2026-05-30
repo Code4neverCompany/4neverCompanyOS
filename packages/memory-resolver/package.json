@@ -1,0 +1,25 @@
+{
+  "name": "@c4n/memory-resolver",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Memory tier read resolver — searches four tiers in precedence order: persona memory → project vault → Hermes native → Supermemory. Per FR-32.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@c4n/core": "workspace:*",
+    "@c4n/vault-layout": "workspace:*",
+    "@c4n/supermemory-client": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "vitest": "^2.1.8"
+  }
+}
