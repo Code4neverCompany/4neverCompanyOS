@@ -19,6 +19,7 @@
     "@c4n/core": "workspace:*",
     "@c4n/bus-client": "workspace:*",
     "@c4n/ui-tokens": "workspace:*",
+    "@c4n/workflow-engine": "workspace:*",
     "@xterm/xterm": "^5.5.0",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-web-links": "^0.11.0"

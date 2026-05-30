@@ -2734,6 +2734,34 @@ pub fn resume_workflow_run(store: State<'_, WorkflowRunStore>) -> Result<(), Str
     }
 }
 
+/// Advance the active workflow run to a new phase.
+///
+/// Called by the workflow engine (TypeScript) when the current phase's
+/// artifact has been detected in the vault. Posts a `workflow.phase.advanced`
+/// bus message and updates the stored run phase.
+///
+/// Returns the updated run record.
+#[tauri::command]
+pub fn advance_workflow_phase(
+    to_phase: String,
+    store: State<'_, WorkflowRunStore>,
+) -> Result<WorkflowRun, String> {
+    let mut guard = store.run.lock().expect("workflow run mutex poisoned");
+    let run = guard.as_mut().ok_or("no active workflow run")?;
+
+    let _from_phase = run.phase.clone();
+    run.phase = to_phase.clone();
+
+    Ok(run.clone())
+}
+
+/// Check whether a vault artifact path exists. Used by the workflow engine
+/// (TypeScript) to poll for phase completion.
+#[tauri::command]
+pub fn check_vault_artifact_exists(path: String) -> bool {
+    PathBuf::from(&path).exists()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

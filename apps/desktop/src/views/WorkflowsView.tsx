@@ -1,16 +1,18 @@
-// Workflows view — Story 4.1 (Epic 4: One-Click BMAD Workflow Execution).
+// Workflows view — Epic 4: One-Click BMAD Workflow Execution.
 //
-// "Start a BMAD project" entry point. Lists available workflows,
-// lets the user pick one, then starts a run that creates a vault
-// project directory and records the run in the desktop shell state.
+// Story 4.1: "Start a BMAD project" entry point — chooser + vault dir + Tauri commands.
+// Story 4.2: Wires @c4n/workflow-engine to drive personas through BMAD phases.
+//   - Phase state machine: chooser → setup form → active run + phase sidebar
+//   - workflow.phase.advanced bus events at each phase boundary
+//   - Vault artifact polling for phase completion
+//   - Persona spawn via spawn_dynamic_persona at each phase
 //
-// Substantive phase execution (Story 4.2) wires the workflow-engine
-// package to drive personas through each BMAD phase. This view
-// owns the chooser UI and active-run display for Story 4-1 only.
+// Persona lifecycle icon legend: ● persistent  ○ ephemeral
 
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { Badge, Btn, Eyebrow, HUDFrame, StatusDot } from "@c4n/ui-tokens";
+import { workflowEngine } from "@c4n/workflow-engine";
 
 interface WorkflowMetadata {
   id: string;
@@ -27,6 +29,20 @@ interface WorkflowRun {
   phase: string;
   status: string;
   vault_dir: string;
+  created_at_ms: number;
+}
+
+interface ActiveRunDisplay {
+  id: string;
+  workflow_id: string;
+  workflow_name: string;
+  project_name: string;
+  idea: string;
+  current_phase: string;
+  phase_index: number;
+  status: string;
+  vault_dir: string;
+  active_personas: string[];
   created_at_ms: number;
 }
 
@@ -76,9 +92,105 @@ function ViewShell({
   );
 }
 
+// ── Phase status sidebar ───────────────────────────────────────────────
+
+const PHASE_ORDER = ["brief", "plan", "architecture", "solutioning", "implementation", "qa"];
+const PHASE_LABELS: Record<string, string> = {
+  brief: "Brief",
+  plan: "Plan",
+  architecture: "Architecture",
+  solutioning: "Solutioning",
+  implementation: "Implementation",
+  qa: "QA",
+};
+
+function PhaseStatusSidebar({
+  currentPhase,
+  status,
+}: {
+  currentPhase: string;
+  status: string;
+}) {
+  const currentIdx = PHASE_ORDER.indexOf(currentPhase);
+
+  return (
+    <HUDFrame style={{ padding: 18 }}>
+      <Eyebrow color="purple" style={{ marginBottom: 14, display: "block" }}>
+        Phase Progress
+      </Eyebrow>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {PHASE_ORDER.map((phase, idx) => {
+          const isDone = idx < currentIdx;
+          const isCurrent = idx === currentIdx;
+          const label = PHASE_LABELS[phase] ?? phase;
+
+          return (
+            <div key={phase} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: "50%",
+                  border: "2px solid",
+                  borderColor: isDone
+                    ? "var(--fn-green)"
+                    : isCurrent
+                      ? "var(--fn-gold)"
+                      : "var(--border-neutral)",
+                  background: isDone ? "var(--fn-green)" : "transparent",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 10,
+                  flexShrink: 0,
+                }}
+              >
+                {isDone ? (
+                  <span style={{ color: "#000", fontWeight: 700 }}>✓</span>
+                ) : isCurrent ? (
+                  <span
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background:
+                        status === "waiting_for_artifact"
+                          ? "var(--fn-cyan)"
+                          : status === "paused"
+                            ? "var(--fn-gold)"
+                            : "var(--fn-purple)",
+                      display: "block",
+                      animation:
+                        status === "waiting_for_artifact" ? "pulse 1.5s infinite" : "none",
+                    }}
+                  />
+                ) : null}
+              </div>
+              <span
+                style={{
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 12,
+                  color: isDone
+                    ? "var(--fn-green)"
+                    : isCurrent
+                      ? "var(--fn-white)"
+                      : "var(--fg-3)",
+                  fontWeight: isCurrent ? 600 : 400,
+                }}
+              >
+                {label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </HUDFrame>
+  );
+}
+
 // ── Active run display ──────────────────────────────────────────────────
 
-function ActiveRunCard({ run }: { run: WorkflowRun }) {
+function ActiveRunCard({ run }: { run: ActiveRunDisplay }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -106,7 +218,7 @@ function ActiveRunCard({ run }: { run: WorkflowRun }) {
         <Eyebrow color={run.status === "running" ? "cyan" : "gold"}>
           BMAD Workflow · {run.status === "running" ? "Active" : "Paused"}
         </Eyebrow>
-        <Badge color={run.status === "running" ? "online" : "muted"}>{run.phase}</Badge>
+        <Badge color={run.status === "running" ? "online" : "muted"}>{run.current_phase}</Badge>
       </div>
 
       <div
@@ -345,7 +457,7 @@ function SetupForm({
 
 export function WorkflowsView() {
   const [workflows, setWorkflows] = useState<WorkflowMetadata[] | null>(null);
-  const [activeRun, setActiveRun] = useState<WorkflowRun | null>(null);
+  const [activeRun, setActiveRun] = useState<ActiveRunDisplay | null>(null);
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowMetadata | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -355,9 +467,57 @@ export function WorkflowsView() {
       .catch((e) => setLoadError(String(e)));
 
     invoke<WorkflowRun | null>("get_workflow_run")
-      .then((r) => setActiveRun(r))
+      .then((r) => {
+        if (r) {
+          const engRun = workflowEngine.getRun();
+          setActiveRun({
+            id: r.id,
+            workflow_id: r.workflow_id,
+            workflow_name: r.workflow_name,
+            project_name: r.project_name,
+            idea: r.idea,
+            current_phase: engRun?.current_phase ?? r.phase,
+            phase_index: engRun?.phase_index ?? 0,
+            status: engRun?.status ?? r.status,
+            vault_dir: r.vault_dir,
+            active_personas: engRun?.active_personas ?? [],
+            created_at_ms: r.created_at_ms,
+          });
+        } else {
+          setActiveRun(null);
+        }
+      })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!activeRun) return;
+    const id = setInterval(async () => {
+      try {
+        const engRun = workflowEngine.getRun();
+        if (engRun) {
+          setActiveRun({
+            id: engRun.id,
+            workflow_id: engRun.workflow_id,
+            workflow_name: engRun.workflow_name,
+            project_name: engRun.project_name,
+            idea: engRun.idea,
+            current_phase: engRun.current_phase,
+            phase_index: engRun.phase_index,
+            status: engRun.status,
+            vault_dir: engRun.vault_dir,
+            active_personas: engRun.active_personas,
+            created_at_ms: engRun.created_at_ms,
+          });
+        }
+        const rustRun = await invoke<WorkflowRun | null>("get_workflow_run");
+        if (!rustRun) {
+          setActiveRun(null);
+        }
+      } catch {}
+    }, 2000);
+    return () => clearInterval(id);
+  }, [activeRun]);
 
   if (loadError) {
     return (
@@ -372,20 +532,54 @@ export function WorkflowsView() {
   }
 
   if (activeRun) {
+    const displayRun = activeRun as ActiveRunDisplay;
     return (
       <ViewShell eyebrow="Workflows" title="BMAD" titleAccent="Engine">
-        <ActiveRunCard run={activeRun} />
-        <p
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 11,
-            color: "var(--fg-3)",
-            marginTop: 8,
-          }}
-        >
-          Phase execution (Story 4-2) drives personas through each BMAD stage. Vault:{" "}
-          <code style={{ color: "var(--fn-cyan)" }}>{activeRun.vault_dir}</code>
-        </p>
+        <div style={{ display: "flex", gap: 16, alignItems: "flex-start" }}>
+          <div style={{ flex: 1 }}>
+            <ActiveRunCard run={displayRun} />
+            {displayRun.active_personas.length > 0 && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 6,
+                  flexWrap: "wrap",
+                  marginTop: 12,
+                }}
+              >
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 10,
+                    color: "var(--fg-3)",
+                    alignSelf: "center",
+                  }}
+                >
+                  Active personas:
+                </span>
+                {displayRun.active_personas.map((p) => (
+                  <Badge key={p} color="purple">
+                    {p}
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <p
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                color: "var(--fg-3)",
+                marginTop: 12,
+              }}
+            >
+              Vault: <code style={{ color: "var(--fn-cyan)" }}>{displayRun.vault_dir}</code>
+            </p>
+          </div>
+          <PhaseStatusSidebar
+            currentPhase={displayRun.current_phase}
+            status={displayRun.status}
+          />
+        </div>
       </ViewShell>
     );
   }
@@ -397,8 +591,29 @@ export function WorkflowsView() {
           workflowId={selectedWorkflow.id}
           workflowName={selectedWorkflow.name}
           onBack={() => setSelectedWorkflow(null)}
-          onStarted={(run) => {
-            setActiveRun(run);
+          onStarted={async (run) => {
+            const vaultDir = run.vault_dir;
+            const projectId = vaultDir.split(/[/\\]/).pop() ?? run.project_name;
+            workflowEngine.startRun(
+              run.workflow_id,
+              run.project_name,
+              projectId,
+              vaultDir,
+              run.idea,
+            );
+            setActiveRun({
+              id: run.id,
+              workflow_id: run.workflow_id,
+              workflow_name: run.workflow_name,
+              project_name: run.project_name,
+              idea: run.idea,
+              current_phase: run.phase,
+              phase_index: 0,
+              status: run.status,
+              vault_dir: run.vault_dir,
+              active_personas: [],
+              created_at_ms: run.created_at_ms,
+            });
             setSelectedWorkflow(null);
           }}
         />

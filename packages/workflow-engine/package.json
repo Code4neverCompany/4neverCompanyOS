@@ -14,9 +14,13 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@c4n/core": "workspace:*"
+    "@c4n/core": "workspace:*",
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-fs": "^2",
+    "js-yaml": "^4.1.0"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "typescript": "5.8.3",
     "vitest": "^2.1.8"
   }
