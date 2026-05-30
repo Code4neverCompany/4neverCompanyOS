@@ -1,0 +1,118 @@
+# BMAD Workflow: greenfield-fullstack
+# Runs a new project idea through Analyst → PM → Architect → SM → Dev → QA phases.
+# Each phase: spawn persona → wait for vault artifact → user-approval gate → advance.
+
+name: greenfield-fullstack
+description: End-to-end BMAD workflow for greenfield projects — brief, plan, architecture, solutioning, implementation, QA in one session.
+version: "1.0"
+
+phases:
+  - id: brief
+    label: Brief
+    description: Analyst interrogates the idea and produces a project brief.
+    personas:
+      - name: Analyst
+        backing_cli: claude
+        lifecycle: ephemeral
+        task_prompt: >
+          You are the Analyst persona. Your job is to take a vague project idea and
+          produce a structured project brief. Ask probing questions to clarify scope,
+          users, constraints, and success criteria. Output the brief to
+          vault/projects/{project_id}/bmad/01-brief.md
+    artifact:
+      path: vault/projects/{project_id}/bmad/01-brief.md
+      description: Project brief (markdown)
+    approval_required: true
+
+  - id: plan
+    label: Plan
+    description: PM transforms the brief into a full PRD and story backlog.
+    personas:
+      - name: PM
+        backing_cli: claude
+        lifecycle: ephemeral
+        task_prompt: >
+          You are the PM persona. Read the brief at vault/projects/{project_id}/bmad/01-brief.md
+          and produce a full PRD at vault/projects/{project_id}/bmad/02-prd.md.
+          Then create user stories at vault/projects/{project_id}/bmad/stories/ directory.
+          Each story should follow BMAD format: As a <who>, I want <what>, So that <why>.
+    artifact:
+      path: vault/projects/{project_id}/bmad/02-prd.md
+      description: Product Requirements Document (PRD)
+    approval_required: true
+
+  - id: architecture
+    label: Architecture
+    description: Architect designs the system structure and key technical decisions.
+    personas:
+      - name: Architect
+        backing_cli: claude
+        lifecycle: ephemeral
+        task_prompt: >
+          You are the Architect persona. Read the brief and PRD and produce an
+          architecture document at vault/projects/{project_id}/bmad/03-architecture.md.
+          Cover: system overview, data model, API surface, technology choices,
+          directory structure, and non-functional requirements.
+    artifact:
+      path: vault/projects/{project_id}/bmad/03-architecture.md
+      description: Architecture decision document
+    approval_required: true
+
+  - id: solutioning
+    label: Solutioning
+    description: SM refines stories and plans implementation approach.
+    personas:
+      - name: SM
+        backing_cli: claude
+        lifecycle: ephemeral
+        task_prompt: >
+          You are the SM (Solution Manager) persona. Review the stories in
+          vault/projects/{project_id}/bmad/stories/ and the architecture at
+          vault/projects/{project_id}/bmad/03-architecture.md. Add acceptance
+          criteria to each story, estimate effort, and flag dependencies.
+          Output a solutioning summary to vault/projects/{project_id}/bmad/04-solutioning.md
+    artifact:
+      path: vault/projects/{project_id}/bmad/04-solutioning.md
+      description: Solutioning summary with refined stories
+    approval_required: true
+
+  - id: implementation
+    label: Implementation
+    description: Dev and Frontend Designer implement the code skeleton from approved stories.
+    personas:
+      - name: Dev
+        backing_cli: claude
+        lifecycle: persistent
+        task_prompt: >
+          You are the Dev persona. Pick up stories from vault/projects/{project_id}/bmad/stories/
+          and implement them. Write actual code following the architecture at
+          vault/projects/{project_id}/bmad/03-architecture.md.
+          Commit each story's implementation to the project repository.
+      - name: Frontend Designer
+        backing_cli: aggy
+        lifecycle: persistent
+        task_prompt: >
+          You are the Frontend Designer persona. Work on UI components and styling
+          based on the stories in vault/projects/{project_id}/bmad/stories/ and
+          architecture at vault/projects/{project_id}/bmad/03-architecture.md.
+    artifact:
+      path: vault/projects/{project_id}/bmad/05-implementation.md
+      description: Implementation status summary
+    approval_required: true
+
+  - id: qa
+    label: QA
+    description: QA persona reviews implementation and produces test reports.
+    personas:
+      - name: QA
+        backing_cli: claude
+        lifecycle: ephemeral
+        task_prompt: >
+          You are the QA persona. Review the implementation against the stories in
+          vault/projects/{project_id}/bmad/stories/. Check acceptance criteria,
+          write test cases, and report results at
+          vault/projects/{project_id}/bmad/qa-report.md
+    artifact:
+      path: vault/projects/{project_id}/bmad/qa-report.md
+      description: QA report with test results
+    approval_required: true

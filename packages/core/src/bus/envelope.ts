@@ -39,6 +39,8 @@ export const BUS_EVENT_TYPES = [
   "stall.resumed",
   // Story 3.7 (NEVAAA-33): Hermes-initiated spawn proposal
   "spawn_proposal",
+  // Story 4.2 (NEVAAA-41): Workflow phase advance
+  "workflow.phase.advanced",
 ] as const;
 export type BusEventType = (typeof BUS_EVENT_TYPES)[number];
 
@@ -161,6 +163,28 @@ export const SpawnProposalEnvelopeSchema = z.object({
   }),
 });
 
+/**
+ * Workflow engine posted a phase-advance event (Story 4.2 / NEVAAA-41).
+ * Posted at every phase boundary: after the phase artifact is confirmed in
+ * the vault and before the next phase's persona is spawned.
+ */
+export const WorkflowPhaseAdvancedEnvelopeSchema = z.object({
+  ...envelopeBase,
+  type: z.literal("workflow.phase.advanced"),
+  payload: z.object({
+    /** Run ID this event belongs to. */
+    run_id: z.string().min(1),
+    /** Workflow that advanced (e.g. "greenfield-fullstack"). */
+    workflow_id: z.string().min(1),
+    /** Phase that just completed. */
+    from_phase: z.string().min(1),
+    /** Phase that is now active (or empty if workflow completed). */
+    to_phase: z.string().min(1),
+    /** Whether this was an approval-based advance (true) or pause/resume (false). */
+    approved: z.boolean(),
+  }),
+});
+
 // ── The discriminated union ───────────────────────────────────────────
 
 /**
@@ -174,6 +198,7 @@ export const BusEnvelopeSchema = z.discriminatedUnion("type", [
   StallDetectedEnvelopeSchema,
   StallResumedEnvelopeSchema,
   SpawnProposalEnvelopeSchema,
+  WorkflowPhaseAdvancedEnvelopeSchema,
 ]);
 
 /** Inferred TypeScript type for any bus envelope. */
@@ -185,6 +210,7 @@ export type AgentMessageEnvelope = z.infer<typeof AgentMessageEnvelopeSchema>;
 export type StallDetectedEnvelope = z.infer<typeof StallDetectedEnvelopeSchema>;
 export type StallResumedEnvelope = z.infer<typeof StallResumedEnvelopeSchema>;
 export type SpawnProposalEnvelope = z.infer<typeof SpawnProposalEnvelopeSchema>;
+export type WorkflowPhaseAdvancedEnvelope = z.infer<typeof WorkflowPhaseAdvancedEnvelopeSchema>;
 
 // ── Helpers ───────────────────────────────────────────────────────────
 

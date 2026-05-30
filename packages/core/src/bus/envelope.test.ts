@@ -79,6 +79,21 @@ const sample = {
       budget_estimate: 5,
     },
   },
+  // Story 4.2 (NEVAAA-41): Workflow phase advance
+  workflowPhaseAdvanced: {
+    schemaVersion: BUS_SCHEMA_VERSION,
+    id: "88888888-8888-4888-8888-888888888888",
+    source: "workflow-engine",
+    ts: 1_700_000_000_007,
+    type: "workflow.phase.advanced",
+    payload: {
+      run_id: "run-001",
+      workflow_id: "greenfield-fullstack",
+      from_phase: "brief",
+      to_phase: "plan",
+      approved: true,
+    },
+  },
 } satisfies Record<string, BusEnvelope>;
 
 describe("bus envelope round-trip serialization", () => {

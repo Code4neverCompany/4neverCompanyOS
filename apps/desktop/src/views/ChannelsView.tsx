@@ -32,6 +32,7 @@ const TYPE_COLOR: Record<BusEventType, string> = {
   "stall.detected": "#FF8FA3",
   "stall.resumed": "#6BFF8C",
   spawn_proposal: "var(--fn-gold)",
+  "workflow.phase.advanced": "#B8A0FF",
 };
 
 export function ChannelsView() {
