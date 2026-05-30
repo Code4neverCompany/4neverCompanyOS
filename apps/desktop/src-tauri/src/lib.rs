@@ -42,6 +42,8 @@ pub fn run() {
         // dynamic persona sessions so kill_all_project_personas can terminate
         // all personas for a project in one call.
         .manage(commands::DynamicPersonaRegistry::default())
+        // Story 5.6: per-persona token budget tracking.
+        .manage(commands::BudgetStore::default())
         // Story 4.1 (Epic 4): BMAD workflow entry point. Tracks the active
         // workflow run in-memory; vault dir + persistence land in Story 4-4.
         .manage(commands::WorkflowRunStore::load_or_default())
@@ -145,6 +147,13 @@ pub fn run() {
             commands::github_sync_init,
             // Story 5.7 (FR-35): project-level kill switch.
             commands::kill_all_project_personas,
+            // Story 5.6: per-persona token budget management.
+            commands::get_persona_budgets,
+            commands::get_persona_budget_limits,
+            commands::add_persona_spend,
+            commands::save_persona_budgets,
+            commands::reset_persona_spend,
+            commands::unpause_persona_budget,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

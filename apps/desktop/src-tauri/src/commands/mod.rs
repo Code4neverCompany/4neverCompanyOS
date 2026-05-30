@@ -384,6 +384,11 @@ struct WorkspaceConfig {
     /// Stored as a flat map: "decisions" → bool, etc.
     #[serde(default)]
     supermemory_categories: std::collections::HashMap<String, bool>,
+    /// Per-persona budget limits in USD (Story 5.6).
+    /// Keyed by persona slug (e.g. "dev", "frontend-designer").
+    /// A value of 0.0 means no limit.
+    #[serde(default)]
+    persona_budgets: std::collections::HashMap<String, f64>,
 }
 
 impl Default for WorkspaceConfig {
@@ -393,6 +398,7 @@ impl Default for WorkspaceConfig {
             anthropic_authenticated: None,
             claude_code_authenticated: None,
             supermemory_categories: std::collections::HashMap::new(),
+            persona_budgets: std::collections::HashMap::new(),
         }
     }
 }
@@ -1773,6 +1779,84 @@ pub fn kill_all_project_personas(
 }
 
 // ────────────────────────────────────────────────────────────────────
+// Story 5.6 — Per-persona token budgets
+// ────────────────────────────────────────────────────────────────────
+
+/// Get budget status for all personas (spend, limit, % used, paused state).
+#[tauri::command]
+pub fn get_persona_budgets(
+    store: State<'_, BudgetStore>,
+) -> Result<Vec<PersonaBudgetStatus>, String> {
+    let config = read_workspace_config().map_err(|e| e.to_string())?;
+    Ok(store.get_all_status(&config))
+}
+
+/// Get the current budget limits from workspace config (USD limits per persona).
+#[tauri::command]
+pub fn get_persona_budget_limits() -> Result<std::collections::HashMap<String, f64>, String> {
+    let config = read_workspace_config().map_err(|e| e.to_string())?;
+    Ok(config.persona_budgets)
+}
+
+/// Add spend to a persona's budget tracker. Called by telemetry consumer
+/// when token costs are parsed from CLI output.
+#[tauri::command]
+pub fn add_persona_spend(
+    persona_id: String,
+    amount_usd: f64,
+    store: State<'_, BudgetStore>,
+) -> Result<(), String> {
+    store.add_spend(&persona_id, amount_usd);
+
+    // Check if over limit and should auto-pause
+    let config = read_workspace_config().map_err(|e| e.to_string())?;
+    let limit = store.get_limit(&persona_id, &config);
+    if limit > 0.0 {
+        let spend = store.get_spend(&persona_id);
+        if spend > limit && !store.is_paused(&persona_id) {
+            store.set_paused(&persona_id, true);
+            tracing::info!(
+                persona = %persona_id,
+                spend = %spend,
+                limit = %limit,
+                "persona budget exceeded — marked paused"
+            );
+        }
+    }
+    Ok(())
+}
+
+/// Save per-persona budget limits to the workspace config.
+#[tauri::command]
+pub fn save_persona_budgets(
+    budgets: std::collections::HashMap<String, f64>,
+) -> Result<(), String> {
+    let mut config = read_workspace_config().map_err(|e| e.to_string())?;
+    config.persona_budgets = budgets;
+    write_workspace_config(config)
+}
+
+/// Reset accumulated spend for a persona (e.g., after billing cycle).
+#[tauri::command]
+pub fn reset_persona_spend(
+    persona_id: String,
+    store: State<'_, BudgetStore>,
+) -> Result<(), String> {
+    store.reset_spend(&persona_id);
+    Ok(())
+}
+
+/// Unpause a persona after budget was exceeded (e.g., user increased limit).
+#[tauri::command]
+pub fn unpause_persona_budget(
+    persona_id: String,
+    store: State<'_, BudgetStore>,
+) -> Result<(), String> {
+    store.set_paused(&persona_id, false);
+    Ok(())
+}
+
+// ────────────────────────────────────────────────────────────────────
 // Story 1.16c — Tail `.pty.raw` for the xterm.js consumer in the webview
 // ────────────────────────────────────────────────────────────────────
 //
@@ -1867,6 +1951,115 @@ impl DynamicPersonaRegistry {
         let guard = self.sessions.lock().unwrap();
         guard.iter().map(|(s, p)| (s.clone(), p.clone())).collect()
     }
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Story 5.6 — Per-persona token budgets
+// ────────────────────────────────────────────────────────────────────
+
+/// Tracks accumulated spend (USD) per persona. In-memory only — reset on
+/// app restart. Real token→USD conversion comes from telemetry parsing
+/// (future story). For now, spend is updated via `add_persona_spend`.
+#[derive(Default)]
+pub struct BudgetStore {
+    /// persona_id → accumulated spend in USD
+    spend: StdMutex<HashMap<String, f64>>,
+    /// persona_id → whether paused due to budget exceeded
+    paused: StdMutex<HashMap<String, bool>>,
+}
+
+impl BudgetStore {
+    /// Get the current spend for a persona.
+    pub fn get_spend(&self, persona_id: &str) -> f64 {
+        let guard = self.spend.lock().unwrap();
+        *guard.get(persona_id).unwrap_or(&0.0)
+    }
+
+    /// Add spend to a persona's accumulator.
+    pub fn add_spend(&self, persona_id: &str, amount: f64) {
+        let mut guard = self.spend.lock().unwrap();
+        let current = guard.entry(persona_id.to_string()).or_insert(0.0);
+        *current += amount;
+    }
+
+    /// Get the budget limit for a persona (0.0 = no limit).
+    pub fn get_limit(&self, persona_id: &str, config: &WorkspaceConfig) -> f64 {
+        config
+            .persona_budgets
+            .get(persona_id)
+            .copied()
+            .unwrap_or(0.0)
+    }
+
+    /// Check if a persona is paused due to budget.
+    pub fn is_paused(&self, persona_id: &str) -> bool {
+        let guard = self.paused.lock().unwrap();
+        *guard.get(persona_id).unwrap_or(&false)
+    }
+
+    /// Mark a persona as paused.
+    pub fn set_paused(&self, persona_id: &str, paused: bool) {
+        let mut guard = self.paused.lock().unwrap();
+        if paused {
+            guard.insert(persona_id.to_string(), true);
+        } else {
+            guard.remove(persona_id);
+        }
+    }
+
+    /// Get budget status for all tracked personas.
+    pub fn get_all_status(
+        &self,
+        config: &WorkspaceConfig,
+    ) -> Vec<PersonaBudgetStatus> {
+        let spend_guard = self.spend.lock().unwrap();
+        let paused_guard = self.paused.lock().unwrap();
+
+        let mut ids: Vec<String> = spend_guard.keys().cloned().collect();
+        for (id, _) in config.persona_budgets.iter() {
+            if !ids.contains(id) {
+                ids.push(id.clone());
+            }
+        }
+
+        ids.sort();
+        ids.into_iter()
+            .map(|id| {
+                let spend = *spend_guard.get(&id).unwrap_or(&0.0);
+                let limit = config.persona_budgets.get(&id).copied().unwrap_or(0.0);
+                let paused = *paused_guard.get(&id).unwrap_or(&false);
+                let pct = if limit > 0.0 { (spend / limit * 100.0).min(100.0) } else { 0.0 };
+                PersonaBudgetStatus {
+                    persona_id: id,
+                    spend_usd: spend,
+                    limit_usd: limit,
+                    pct_used: pct,
+                    paused,
+                    over_limit: limit > 0.0 && spend > limit,
+                }
+            })
+            .collect()
+    }
+
+    /// Reset spend for a persona.
+    pub fn reset_spend(&self, persona_id: &str) {
+        let mut guard = self.spend.lock().unwrap();
+        guard.remove(persona_id);
+        let mut paused_guard = self.paused.lock().unwrap();
+        paused_guard.remove(persona_id);
+    }
+}
+
+/// Response type for budget status queries.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct PersonaBudgetStatus {
+    pub persona_id: String,
+    pub spend_usd: f64,
+    pub limit_usd: f64,
+    pub pct_used: f64,
+    pub paused: bool,
+    pub over_limit: bool,
 }
 
 /// How often the tail task polls the tap file for new bytes. Picked to
