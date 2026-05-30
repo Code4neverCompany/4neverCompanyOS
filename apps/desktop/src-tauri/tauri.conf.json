@@ -27,7 +27,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis"],
+    "targets": ["nsis", "dmg", "appimage"],
     "publisher": "Code4neverCompany",
     "copyright": "Copyright © 2026 Code4neverCompany. Released under MIT — see LICENSES.md.",
     "category": "DeveloperTool",
@@ -49,6 +49,14 @@
         "installerIcon": "icons/icon.ico",
         "installMode": "currentUser",
         "languages": ["English"]
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    },
+    "linux": {
+      "appimage": {
+        "bundleMediaFramework": false
       }
     }
   }
