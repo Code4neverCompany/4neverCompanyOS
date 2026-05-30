@@ -134,6 +134,11 @@ pub fn run() {
             // Story 5.2 (FR-31): Supermemory opt-in settings.
             commands::get_supermemory_categories,
             commands::save_supermemory_categories,
+            // Story 5.4 (FR-33): GitHub sync push/pull/init/status.
+            commands::github_sync_status,
+            commands::github_sync_push,
+            commands::github_sync_pull,
+            commands::github_sync_init,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

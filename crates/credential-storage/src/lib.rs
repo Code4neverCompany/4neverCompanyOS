@@ -20,6 +20,10 @@ use thiserror::Error;
 /// entries grouped and avoids collisions with other apps.
 pub const SERVICE_PREFIX: &str = "com.c4nfornever";
 
+/// Service and account for the GitHub Personal Access Token (FR-33 / Story 5.4).
+pub const GITHUB_SERVICE: &str = "github";
+pub const GITHUB_ACCOUNT: &str = "pat";
+
 /// All keychain ops that callers can make. Always-typed; never raw strings.
 #[derive(Debug, Error, Serialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]

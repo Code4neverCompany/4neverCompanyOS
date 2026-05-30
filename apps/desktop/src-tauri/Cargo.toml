@@ -41,6 +41,9 @@ c4n-persona-drift = { path = "../../../crates/persona-drift" }
 # Story 2.9: bus relay → Tauri UI bridge. The relay's broadcast hub is the
 # IPC fan-out the bus_subscribe command drains into the webview.
 c4n-bus-relay = { path = "../../../crates/bus-relay" }
+# Story 5.4 (FR-33): GitHub sync + credential storage for GitHub PAT.
+c4n-credential-storage = { path = "../../../crates/credential-storage" }
+c4n-github-sync = { path = "../../../crates/github-sync" }
 toml = "0.8"
 dirs = "5"
 # Story 2.9: parse the relay envelope's RFC-3339 `ts` into the canonical

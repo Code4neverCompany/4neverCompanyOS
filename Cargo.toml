@@ -15,6 +15,7 @@ members = [
   "crates/vault-scoping",
   "crates/credential-storage",
   "crates/persona-drift",
+  "crates/github-sync",
 ]
 
 # Workspace-wide dependency pinning.
@@ -31,6 +32,8 @@ tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 notify = "8"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+ureq = { version = "2", features = ["json"] }
 
 [profile.release]
 lto = true

@@ -1,0 +1,18 @@
+[package]
+name = "c4n-github-sync"
+version = "0.0.1"
+edition = "2021"
+description = "GitHub sync for vault configs, BMAD artifacts, skills, personas. FR-33/34."
+authors = ["4neverCompany"]
+
+[lib]
+name = "c4n_github_sync"
+crate-type = ["rlib"]
+
+[dependencies]
+c4n-credential-storage = { path = "../credential-storage" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+ureq = { workspace = true }
+chrono = { workspace = true }

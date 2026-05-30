@@ -19,6 +19,7 @@
 import { renderAttributionMarkdown } from "@c4n/core";
 import { Badge, Eyebrow, HUDFrame } from "@c4n/ui-tokens";
 import { SupermemorySettings } from "./SupermemorySettings";
+import { GithubSettings } from "./GithubSettings";
 
 // The public repo's LICENSES.md — the canonical full-text license file.
 // Shown as selectable reference text (not a click-to-open) so this view
@@ -33,6 +34,10 @@ export function SettingsView() {
   return (
     <ViewShell eyebrow="Settings" title="4neverCompany" titleAccent="OS">
       <SupermemorySettings />
+
+      <div style={{ height: 18 }} />
+
+      <GithubSettings />
 
       <div style={{ height: 18 }} />
 

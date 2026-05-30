@@ -439,6 +439,60 @@ pub fn save_supermemory_categories(categories: std::collections::HashMap<String,
     write_workspace_config(config)
 }
 
+// ────────────────────────────────────────────────────────────────────
+// Story 5.4 (FR-33) — GitHub sync
+// ────────────────────────────────────────────────────────────────────
+
+/// Get the current GitHub sync status: is vault a git repo, has remote, ahead/behind.
+#[tauri::command]
+pub fn github_sync_status() -> Result<c4n_github_sync::SyncStatus, String> {
+    let config = read_workspace_config().map_err(|e| e.to_string())?;
+    let vault_path = &config.vault_path;
+    if vault_path.is_empty() {
+        return Err("vault path not configured".to_string());
+    }
+    c4n_github_sync::sync_status(vault_path).map_err(|e| e.to_string())
+}
+
+/// Push vault to GitHub. Stages files matching the sync policy and pushes.
+#[tauri::command]
+pub fn github_sync_push(
+    categories: std::collections::HashMap<String, bool>,
+) -> Result<c4n_github_sync::SyncResult, String> {
+    let config = read_workspace_config().map_err(|e| e.to_string())?;
+    let vault_path = &config.vault_path;
+    if vault_path.is_empty() {
+        return Err("vault path not configured".to_string());
+    }
+    let policy = c4n_github_sync::SyncPolicy { categories };
+    c4n_github_sync::sync_push(vault_path, &policy).map_err(|e| e.to_string())
+}
+
+/// Pull from GitHub remote into the vault.
+#[tauri::command]
+pub fn github_sync_pull() -> Result<c4n_github_sync::SyncResult, String> {
+    let config = read_workspace_config().map_err(|e| e.to_string())?;
+    let vault_path = &config.vault_path;
+    if vault_path.is_empty() {
+        return Err("vault path not configured".to_string());
+    }
+    c4n_github_sync::sync_pull(vault_path).map_err(|e| e.to_string())
+}
+
+/// Create a GitHub repo and configure the vault as a git repo with the remote.
+#[tauri::command]
+pub fn github_sync_init(
+    repo_name: String,
+    is_private: bool,
+) -> Result<(String, String), String> {
+    let config = read_workspace_config().map_err(|e| e.to_string())?;
+    let vault_path = &config.vault_path;
+    if vault_path.is_empty() {
+        return Err("vault path not configured".to_string());
+    }
+    c4n_github_sync::sync_init(vault_path, &repo_name, is_private).map_err(|e| e.to_string())
+}
+
 /// Return the binary name (or path) to use when invoking the
 /// persona-supervisor. Honors the `C4N_PERSONA_SUPERVISOR` env override
 /// (useful for tests and non-standard installs); otherwise returns the
