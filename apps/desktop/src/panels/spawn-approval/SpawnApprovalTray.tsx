@@ -4,11 +4,11 @@
 // spawning a new dynamic persona. This component subscribes to that event type
 // and renders a floating approval tray: each proposal card shows the proposed
 // persona name, role, task description, lifecycle, and budget estimate.
-// User actions: Approve (calls spawn_dynamic_persona), Reject (dismisses + emits
-// spawn_proposal_rejected on the bus), Modify (calls onModify so the parent can
+// User actions: Approve (calls spawn_dynamic_persona), Veto (dismisses + emits
+// persona.spawn.vetoed on the bus), Modify (calls onModify so the parent can
 // pre-fill the authoring form).
 //
-// Proposals expire after 5 minutes client-side (auto-rejected with timeout reason).
+// Proposals expire after 5 minutes client-side (auto-vetoed with timeout reason).
 
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState, useCallback, useRef } from "react";
@@ -48,13 +48,17 @@ interface DynamicPersonaInfo {
 function ProposalCard({
   proposal,
   onApprove,
-  onReject,
+  onVeto,
   onModify,
+  isVetoing,
+  isApproving,
 }: {
   proposal: SpawnProposalRecord;
   onApprove: (p: SpawnProposalRecord) => void;
-  onReject: (p: SpawnProposalRecord) => void;
+  onVeto: (p: SpawnProposalRecord) => void;
   onModify: (p: SpawnProposalRecord) => void;
+  isVetoing?: boolean;
+  isApproving?: boolean;
 }) {
   const [timeLeft, setTimeLeft] = useState(() => {
     const elapsed = Date.now() - proposal.received_at_ms;
@@ -74,9 +78,10 @@ function ProposalCard({
 
   useEffect(() => {
     if (timeLeft === 0) {
-      onReject(proposal);
+      onVeto(proposal);
     }
-  }, [timeLeft === 0]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeLeft, proposal.id]);
 
   const mins = Math.floor(timeLeft / 60000);
   const secs = Math.floor((timeLeft % 60000) / 1000);
@@ -154,14 +159,14 @@ function ProposalCard({
         </div>
 
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
-          <Btn variant="ghost" onClick={() => onReject(proposal)}>
-            Reject
+          <Btn variant="danger" onClick={() => onVeto(proposal)} disabled={isVetoing}>
+            {isVetoing ? "Vetoing…" : "Veto"}
           </Btn>
-          <Btn variant="secondary" onClick={() => onModify(proposal)}>
+          <Btn variant="secondary" onClick={() => onModify(proposal)} disabled={isVetoing || isApproving}>
             Modify
           </Btn>
-          <Btn variant="primary" onClick={() => onApprove(proposal)}>
-            Approve
+          <Btn variant="primary" onClick={() => onApprove(proposal)} disabled={isVetoing || isApproving}>
+            {isApproving ? "Spawning…" : "Approve"}
           </Btn>
         </div>
       </div>
@@ -171,6 +176,8 @@ function ProposalCard({
 
 export function SpawnApprovalTray({ onModify, onSpawned }: SpawnApprovalTrayProps) {
   const [proposals, setProposals] = useState<SpawnProposalRecord[]>([]);
+  const [vetoingIds, setVetoingIds] = useState<Set<string>>(new Set());
+  const [approvingIds, setApprovingIds] = useState<Set<string>>(new Set());
   const subscriptionRef = useRef<BusSubscription | null>(null);
 
   const loadInitialProposals = useCallback(async () => {
@@ -224,6 +231,7 @@ export function SpawnApprovalTray({ onModify, onSpawned }: SpawnApprovalTrayProp
 
   const handleApprove = useCallback(
     async (proposal: SpawnProposalRecord) => {
+      setApprovingIds((prev) => new Set(prev).add(proposal.id));
       try {
         const persona = await invoke<DynamicPersonaInfo>("spawn_dynamic_persona", {
           name: proposal.name,
@@ -236,25 +244,37 @@ export function SpawnApprovalTray({ onModify, onSpawned }: SpawnApprovalTrayProp
         onSpawned?.(persona);
       } catch (e) {
         console.error("[SpawnApprovalTray] approve failed:", e);
+      } finally {
+        setApprovingIds((prev) => {
+          const next = new Set(prev);
+          next.delete(proposal.id);
+          return next;
+        });
       }
     },
     [onSpawned],
   );
 
-  const handleReject = useCallback(async (proposal: SpawnProposalRecord) => {
+  const handleVeto = useCallback(async (proposal: SpawnProposalRecord) => {
+    setVetoingIds((prev) => new Set(prev).add(proposal.id));
     try {
       await invoke("dismiss_spawn_proposal", { id: proposal.id });
       await invoke("bus_publish", {
-        eventType: "spawn_proposal_rejected",
+        eventType: "persona.spawn.vetoed",
         payload: {
           proposal_id: proposal.id,
-          reason: "user_rejected",
-          rejected_at_ms: Date.now(),
+          vetoed_at_ms: Date.now(),
         },
       });
       setProposals((prev) => prev.filter((p) => p.id !== proposal.id));
     } catch (e) {
-      console.error("[SpawnApprovalTray] reject failed:", e);
+      console.error("[SpawnApprovalTray] veto failed:", e);
+    } finally {
+      setVetoingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(proposal.id);
+        return next;
+      });
     }
   }, []);
 
@@ -277,15 +297,19 @@ export function SpawnApprovalTray({ onModify, onSpawned }: SpawnApprovalTrayProp
       }}
     >
       <div style={{ marginBottom: 8 }}>
-        <Eyebrow color="gold">⏱ Pending Approvals</Eyebrow>
+        <Eyebrow color="gold">
+          {proposals.length > 1 ? `⏱ ${proposals.length} Pending Approvals` : "⏱ Pending Approval"}
+        </Eyebrow>
       </div>
       {proposals.map((p) => (
         <ProposalCard
           key={p.id}
           proposal={p}
           onApprove={handleApprove}
-          onReject={handleReject}
+          onVeto={handleVeto}
           onModify={handleModify}
+          isVetoing={vetoingIds.has(p.id)}
+          isApproving={approvingIds.has(p.id)}
         />
       ))}
     </div>
