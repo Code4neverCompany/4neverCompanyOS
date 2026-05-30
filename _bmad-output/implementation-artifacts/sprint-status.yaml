@@ -30,7 +30,7 @@
 #   functionally clean.
 
 generated: 2026-05-28
-last_updated: 2026-05-30T23:55:00Z
+last_updated: 2026-05-31T00:15:00Z
 project: c4n-4neverCompanyOS
 project_key: C4N
 tracking_system: file-system
@@ -116,7 +116,7 @@ development_status:
   5-4-m5-github-sync-push-configs-artifacts-skills-personas: done # 2b4fdc4 — c4n-github-sync Rust crate; github_sync_push/pull/init/status Tauri commands; GithubSettings UI panel; FR-33 sync policy implemented
   5-5-m5-cross-machine-continuity-pull-on-second-machine-resume: done # 699c7f0 — pickAndOpen auto-pulls from GitHub after open_project; cross-machine continuity UX wired into project-open flow
   5-6-m5-per-persona-token-budgets: backlog
-  5-7-m5-project-level-kill-switch: backlog
+  5-7-m5-project-level-kill-switch: done # c1c8521 — DynamicPersonaRegistry tracks active sessions; kill_all_project_personas command kills all personas for a project; Kill all personas danger button in ProjectCard
   5-8-m5-basic-docs-site: backlog
   5-9-m5-macos-installer-dmg: backlog
   5-10-m5-linux-installer-appimage: backlog
