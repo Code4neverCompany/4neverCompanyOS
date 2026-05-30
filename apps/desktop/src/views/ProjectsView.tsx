@@ -89,6 +89,18 @@ export function ProjectsView() {
       if (typeof picked === "string") {
         const info = await invoke<ProjectInfo>("open_project", { path: picked });
         setProject(info);
+
+        // Story 5.5: cross-machine continuity — auto-pull from GitHub after opening
+        // the vault, so state synced from another machine is available immediately.
+        const syncStatus = await invoke<{
+          is_repo: boolean;
+          remote_configured: boolean;
+          ahead: number;
+          behind: number;
+        }>("github_sync_status").catch(() => null);
+        if (syncStatus?.is_repo && syncStatus?.remote_configured) {
+          await invoke("github_sync_pull").catch(() => {});
+        }
       }
     } catch (e) {
       setError(String(e));
