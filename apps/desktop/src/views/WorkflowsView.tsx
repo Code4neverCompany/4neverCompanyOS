@@ -189,6 +189,78 @@ function PhaseStatusSidebar({
   );
 }
 
+// ── Resume workflow prompt ─────────────────────────────────────────────
+
+function ResumePrompt({
+  run,
+  onResume,
+  onDismiss,
+}: {
+  run: ActiveRunDisplay;
+  onResume: () => void;
+  onDismiss: () => void;
+}) {
+  const started = new Date(run.created_at_ms).toLocaleDateString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  return (
+    <HUDFrame
+      style={{
+        padding: 28,
+        border: "1px solid var(--fn-gold)",
+        boxShadow: "0 0 30px rgba(255,200,0,0.1)",
+      }}
+    >
+      <div style={{ marginBottom: 16 }}>
+        <Eyebrow color="gold">⏸ Paused workflow found</Eyebrow>
+        <h2
+          style={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 800,
+            fontSize: 20,
+            color: "var(--fn-white)",
+            margin: "6px 0 0",
+          }}
+        >
+          Resume "{run.project_name}"?
+        </h2>
+      </div>
+
+      <div
+        style={{
+          fontFamily: "var(--font-mono)",
+          fontSize: 12,
+          color: "var(--fg-2)",
+          marginBottom: 20,
+          lineHeight: 1.6,
+        }}
+      >
+        <p style={{ margin: "0 0 8px" }}>
+          This workflow was in progress — paused on{" "}
+          <strong style={{ color: "var(--fn-white)" }}>{started}</strong>.
+        </p>
+        <p style={{ margin: 0 }}>
+          Workflow: <strong style={{ color: "var(--fn-cyan)" }}>{run.workflow_name}</strong>
+          {" · "}
+          Phase: <Badge color="muted">{run.current_phase}</Badge>
+        </p>
+      </div>
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <Btn variant="ghost" onClick={onDismiss}>
+          Dismiss
+        </Btn>
+        <Btn variant="purple" onClick={onResume}>
+          Resume workflow →
+        </Btn>
+      </div>
+    </HUDFrame>
+  );
+}
+
 // ── Approval gate overlay ───────────────────────────────────────────────
 
 function ApprovalGate({
@@ -711,6 +783,27 @@ export function WorkflowsView() {
     const displayRun = activeRun as ActiveRunDisplay;
     return (
       <ViewShell eyebrow="Workflows" title="BMAD" titleAccent="Engine">
+        {displayRun.status === "paused" && !workflowEngine.getRun() && (
+          <ResumePrompt
+            run={displayRun}
+            onResume={async () => {
+              const vaultDir = displayRun.vault_dir;
+              const projectId =
+                displayRun.project_id ?? vaultDir.split(/[/\\]/).pop() ?? displayRun.project_name;
+              await workflowEngine.startRun(
+                displayRun.workflow_id,
+                displayRun.project_name,
+                projectId,
+                vaultDir,
+                displayRun.idea,
+              );
+            }}
+            onDismiss={async () => {
+              await invoke("dismiss_workflow_run");
+              setActiveRun(null);
+            }}
+          />
+        )}
         {displayRun.status === "approval_pending" && (
           <ApprovalGate
             run={displayRun}

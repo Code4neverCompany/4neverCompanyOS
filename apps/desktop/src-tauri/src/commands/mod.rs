@@ -2563,27 +2563,138 @@ const WORKFLOW_CATALOG: &[(&str, &str, &str)] = &[
 /// A BMAD workflow run tracked by the desktop shell.
 ///
 /// The `phase` field holds the current BMAD phase name. The `status` field
-/// is one of: "running" | "paused" | "done".
-/// Full run state (phase history, decisions log) is written to the vault
-/// in Story 4-4 (pause/resume across restart).
+/// is one of: "running" | "paused" | "approval_pending" | "waiting_for_artifact" | "done".
+///
+/// Persisted to `<vault>/workflows/<project_slug>/.workflow-state.json` on every
+/// state mutation so the run survives app restarts (Story 4-4).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowRun {
     pub id: String,
     pub workflow_id: String,
     pub workflow_name: String,
     pub project_name: String,
+    pub project_id: String,
     pub idea: String,
     pub phase: String,
+    pub phase_index: usize,
     pub status: String,
     pub vault_dir: String,
+    pub active_personas: Vec<String>,
     pub created_at_ms: u64,
 }
 
+/// The full state file written to disk for cross-restart persistence.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct WorkflowStateFile {
+    run: WorkflowRun,
+    /// The root workflows directory — stored in the file so we can find the
+    /// state file again on restart without re-reading workspace config.
+    workflows_root: String,
+}
+
 /// Shared in-memory store for the single active workflow run.
-/// `manage`d in `lib.rs` alongside `PendingProposalsStore` etc.
+/// `manage`d in `lib.rs`; attempts to load a persisted run from
+/// `<vault>/workflows/*/.workflow-state.json` on startup (Story 4-4).
 #[derive(Default)]
 pub struct WorkflowRunStore {
     run: StdMutex<Option<WorkflowRun>>,
+    workflows_root: StdMutex<Option<PathBuf>>,
+}
+
+impl WorkflowRunStore {
+    /// Attempt to load a persisted workflow run from disk.
+    /// Scans `<vault>/workflows/*/.workflow-state.json` for a run that is
+    /// not "done". Returns the loaded run and sets the workflows_root.
+    /// If no run is found or the vault path can't be determined, returns None
+    /// and the store behaves as empty.
+    pub fn load_or_default() -> Self {
+        let config = match read_workspace_config() {
+            Ok(c) => c,
+            Err(_) => return Self::default(),
+        };
+        let vault_path = PathBuf::from(&config.vault_path);
+        let workflows_root = vault_path.join("workflows");
+
+        let dir = match std::fs::read_dir(&workflows_root) {
+            Ok(d) => d,
+            Err(_) => return Self::default(),
+        };
+
+        for entry in dir.flatten() {
+            let state_path = entry.path().join(".workflow-state.json");
+            if !state_path.exists() {
+                continue;
+            }
+            let content = match std::fs::read_to_string(&state_path) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+            let state: WorkflowStateFile = match serde_json::from_str(&content) {
+                Ok(s) => s,
+                Err(_) => continue,
+            };
+            // Skip completed runs.
+            if state.run.status == "done" {
+                let _ = std::fs::remove_file(&state_path);
+                continue;
+            }
+            let mut store = Self::default();
+            {
+                let mut guard = store.run.lock().expect("workflow run mutex poisoned");
+                *guard = Some(state.run);
+            }
+            {
+                let mut root = store.workflows_root.lock().expect("workflows root mutex poisoned");
+                *root = Some(workflows_root);
+            }
+            return store;
+        }
+
+        Self::default()
+    }
+
+    /// Persist the current run to `<workflows_root>/<project_slug>/.workflow-state.json`.
+    /// Idempotent: if the run is None, removes the state file.
+    fn persist(&self) {
+        let guard = self.run.lock().expect("workflow run mutex poisoned");
+        let root_guard = self.workflows_root.lock().expect("workflows root mutex poisoned");
+
+        let (Some(run), Some(root)) = (guard.as_ref(), root_guard.as_ref()) else {
+            return;
+        };
+
+        let project_slug = slugify_name(&run.project_name);
+        let state_dir = root.join(&project_slug);
+        let state_file = state_dir.join(".workflow-state.json");
+
+        let state = WorkflowStateFile {
+            run: run.clone(),
+            workflows_root: root.to_string_lossy().into_owned(),
+        };
+
+        if std::fs::create_dir_all(&state_dir).is_err() {
+            return;
+        }
+        let json = match serde_json::to_string_pretty(&state) {
+            Ok(j) => j,
+            Err(_) => return,
+        };
+        let _ = std::fs::write(&state_file, json);
+    }
+
+    /// Clear the persisted state file. Called when the run completes or is dismissed.
+    fn clear_persisted(&self) {
+        let guard = self.run.lock().expect("workflow run mutex poisoned");
+        let root_guard = self.workflows_root.lock().expect("workflows root mutex poisoned");
+
+        let (Some(run), Some(root)) = (guard.as_ref(), root_guard.as_ref()) else {
+            return;
+        };
+
+        let project_slug = slugify_name(&run.project_name);
+        let state_file = root.join(&project_slug).join(".workflow-state.json");
+        let _ = std::fs::remove_file(&state_file);
+    }
 }
 
 #[tauri::command]
@@ -2606,8 +2717,9 @@ pub struct WorkflowMetadata {
 }
 
 /// Start a new workflow run. Creates a vault project directory under
-/// `<vault_root>/workflows/<project_name>/` and a `.workflow-run.json`
-/// marker inside it so Story 4-4 can resume on restart.
+/// Start a new workflow run. Creates a vault project directory under
+/// `<vault_root>/workflows/<project_name>/` and persists the full run state
+/// to `.workflow-state.json` so it survives app restarts (Story 4-4).
 ///
 /// Returns the new run record. Fails if a run is already active.
 #[tauri::command]
@@ -2655,40 +2767,35 @@ pub fn start_workflow_run(
     std::fs::create_dir_all(&project_vault_dir)
         .map_err(|e| format!("could not create vault directory: {e}"))?;
 
-    // Write run marker so Story 4-4 can find it for resume.
-    let marker = WorkflowRunMarker {
+    let run = WorkflowRun {
         id: run_id.clone(),
         workflow_id: workflow_id.clone(),
+        workflow_name: workflow_name.to_string(),
         project_name: project_name.clone(),
+        project_id: project_slug.clone(),
         idea: idea.clone(),
-        phase: "start".to_string(),
+        phase: "brief".to_string(),
+        phase_index: 0,
+        status: "running".to_string(),
+        vault_dir: project_vault_dir.to_string_lossy().into_owned(),
+        active_personas: vec![],
         created_at_ms: SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("clock went backwards")
             .as_millis() as u64,
-    };
-    let marker_path = project_vault_dir.join(".workflow-run.json");
-    let marker_json =
-        serde_json::to_string_pretty(&marker).map_err(|e| format!("serialize run marker: {e}"))?;
-    std::fs::write(&marker_path, marker_json)
-        .map_err(|e| format!("write run marker: {e}"))?;
-
-    let run = WorkflowRun {
-        id: run_id,
-        workflow_id: workflow_id.clone(),
-        workflow_name: workflow_name.to_string(),
-        project_name: project_name.clone(),
-        idea,
-        phase: "start".to_string(),
-        status: "running".to_string(),
-        vault_dir: project_vault_dir.to_string_lossy().into_owned(),
-        created_at_ms: marker.created_at_ms,
     };
 
     {
         let mut guard = store.run.lock().expect("workflow run mutex poisoned");
         *guard = Some(run.clone());
     }
+    {
+        let mut root = store.workflows_root.lock().expect("workflows root mutex poisoned");
+        *root = Some(vault_workflow_root.clone());
+    }
+
+    // Persist to disk for cross-restart survival (Story 4-4).
+    store.persist();
 
     Ok(run)
 }
@@ -2714,6 +2821,8 @@ pub fn pause_workflow_run(store: State<'_, WorkflowRunStore>) -> Result<(), Stri
     match guard.as_mut() {
         Some(run) if run.status == "running" => {
             run.status = "paused".to_string();
+            drop(guard);
+            store.persist();
             Ok(())
         }
         Some(_) => Err("workflow is not running".to_string()),
@@ -2727,6 +2836,8 @@ pub fn resume_workflow_run(store: State<'_, WorkflowRunStore>) -> Result<(), Str
     match guard.as_mut() {
         Some(run) if run.status == "paused" => {
             run.status = "running".to_string();
+            drop(guard);
+            store.persist();
             Ok(())
         }
         Some(_) => Err("workflow is not paused".to_string()),
@@ -2734,25 +2845,46 @@ pub fn resume_workflow_run(store: State<'_, WorkflowRunStore>) -> Result<(), Str
     }
 }
 
-/// Advance the active workflow run to a new phase.
+/// Advance the active workflow run to a new phase and persist the updated state.
 ///
 /// Called by the workflow engine (TypeScript) when the current phase's
-/// artifact has been detected in the vault. Posts a `workflow.phase.advanced`
-/// bus message and updates the stored run phase.
-///
-/// Returns the updated run record.
+/// artifact has been detected in the vault and approved. Updates phase,
+/// phase_index, active_personas, and status, then persists to disk.
 #[tauri::command]
 pub fn advance_workflow_phase(
     to_phase: String,
+    to_phase_index: usize,
+    active_personas: Vec<String>,
     store: State<'_, WorkflowRunStore>,
 ) -> Result<WorkflowRun, String> {
     let mut guard = store.run.lock().expect("workflow run mutex poisoned");
     let run = guard.as_mut().ok_or("no active workflow run")?;
 
-    let _from_phase = run.phase.clone();
     run.phase = to_phase.clone();
+    run.phase_index = to_phase_index;
+    run.active_personas = active_personas;
+    // If advancing to "done", clear active_personas
+    if to_phase == "done" {
+        run.active_personas = vec![];
+        run.status = "done".to_string();
+    }
 
-    Ok(run.clone())
+    let result = run.clone();
+    drop(guard);
+    store.persist();
+
+    Ok(result)
+}
+
+/// Dismiss the persisted workflow run without resuming it.
+/// Clears the in-memory store and deletes the `.workflow-state.json` file.
+/// Called when the user closes the resume prompt without resuming.
+#[tauri::command]
+pub fn dismiss_workflow_run(store: State<'_, WorkflowRunStore>) -> Result<(), String> {
+    store.clear_persisted();
+    let mut guard = store.run.lock().expect("workflow run mutex poisoned");
+    *guard = None;
+    Ok(())
 }
 
 /// Check whether a vault artifact path exists. Used by the workflow engine

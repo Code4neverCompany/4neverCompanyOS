@@ -320,7 +320,11 @@ export class WorkflowEngine {
       run.current_phase = "";
 
       await this.postPhaseAdvanced(run, completedPhase.id, "", true);
-      await invoke<WorkflowRunState>("advance_workflow_phase", { toPhase: "done" });
+      await invoke<WorkflowRunState>("advance_workflow_phase", {
+        toPhase: "done",
+        toPhaseIndex: nextIndex,
+        activePersonas: [],
+      });
       return;
     }
 
@@ -330,6 +334,8 @@ export class WorkflowEngine {
 
     const updated = await invoke<WorkflowRunState>("advance_workflow_phase", {
       toPhase: nextPhase.id,
+      toPhaseIndex: nextIndex,
+      activePersonas: run.active_personas,
     });
 
     run.phase_index = nextIndex;

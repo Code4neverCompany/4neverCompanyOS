@@ -39,8 +39,8 @@ pub fn run() {
         // Shared store read by the approval UI (Story 3.8 / NEVAAA-34).
         .manage(commands::PendingProposalsStore::default())
         // Story 4.1 (Epic 4): BMAD workflow entry point. Tracks the active
-        // workflow run in-memory; vault dir + SQLite persistence land in Story 4-4.
-        .manage(commands::WorkflowRunStore::default())
+        // workflow run in-memory; vault dir + persistence land in Story 4-4.
+        .manage(commands::WorkflowRunStore::load_or_default())
         // Story 2.9 (NEVAAA-29): bus relay → UI bridge. One BusRelayState
         // (the IPC fan-out hub + per-subscription handles) for the whole app
         // so every `bus_subscribe` shares the same upstream event stream.
