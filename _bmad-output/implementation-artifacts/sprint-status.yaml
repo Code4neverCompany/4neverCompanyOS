@@ -30,7 +30,7 @@
 #   functionally clean.
 
 generated: 2026-05-28
-last_updated: 2026-05-30T22:40:00Z
+last_updated: 2026-05-30T23:05:00Z
 project: c4n-4neverCompanyOS
 project_key: C4N
 tracking_system: file-system
@@ -111,7 +111,7 @@ development_status:
   # ── Epic 5: Memory, Multi-Machine, Cross-Platform Distribution (M5) ──
   epic-5: in-progress
   5-1-m5-project-wide-vault-formalized: done # b9f3673 — resolveVaultArtifactPath() ensures artifacts land at vault/projects/<id>/bmad/ per vault-layout spec; WorkflowRun.vault_dir fix; Story 5.1 done in same session as 4.7
-  5-2-m5-supermemory-integration-opt-in-per-content-category: backlog
+  5-2-m5-supermemory-integration-opt-in-per-content-category: done # dd7106e — SupermemorySettings component + get/save_supermemory_categories Rust commands; 5 category toggles (decisions ON, architecture ON, code-review-notes OFF, personal-notes OFF, secrets NEVER); integrated in SettingsView
   5-3-m5-memory-tier-precedence-read-resolver: done # 9260f49 — docs/memory-precedence.md finalized; MemoryResolver class in packages/memory-resolver; 8 vitest tests; 4-tier precedence (persona→project→hermes→supermemory)
   5-4-m5-github-sync-push-configs-artifacts-skills-personas: backlog
   5-5-m5-cross-machine-continuity-pull-on-second-machine-resume: backlog
