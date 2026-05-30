@@ -55,11 +55,20 @@ const LIFECYCLE_OPTIONS: ReadonlyArray<{
   },
 ];
 
+export interface BmbAddAgentPanelDefaultValues {
+  name?: string;
+  backingCli?: string;
+  lifecycle?: Lifecycle;
+  taskPrompt?: string;
+}
+
 interface BmbAddAgentPanelProps {
   /** Called with the spawned persona info so the parent can refresh its list. */
   onSpawned?: (persona: DynamicPersonaInfo) => void;
   /** Called when a persona is authored (Story 3.10). */
   onAuthored?: (persona: AuthoredPersonaInfo) => void;
+  /** Pre-fill the spawn form with these values (e.g., from a proposal modify action). */
+  defaultValues?: BmbAddAgentPanelDefaultValues;
 }
 
 // Re-export so callers can import AuthoredPersonaInfo from this entry file.
@@ -67,7 +76,7 @@ export type { AuthoredPersonaInfo } from "./PersonaAuthorForm";
 
 type PanelTab = "spawn" | "author";
 
-export function BmbAddAgentPanel({ onSpawned, onAuthored }: BmbAddAgentPanelProps) {
+export function BmbAddAgentPanel({ onSpawned, onAuthored, defaultValues }: BmbAddAgentPanelProps) {
   const [tab, setTab] = useState<PanelTab>("spawn");
 
   return (
@@ -82,9 +91,12 @@ export function BmbAddAgentPanel({ onSpawned, onAuthored }: BmbAddAgentPanelProp
         </TabButton>
       </div>
       {tab === "spawn" ? (
-        <SpawnPanel onSpawned={onSpawned} />
+        <SpawnPanel
+          {...(onSpawned ? { onSpawned } : {})}
+          {...(defaultValues ? { defaultValues } : {})}
+        />
       ) : (
-        <PersonaAuthorForm onAuthored={onAuthored} />
+        <PersonaAuthorForm {...(onAuthored ? { onAuthored } : {})} />
       )}
     </div>
   );
@@ -110,7 +122,9 @@ function TabButton({
         textTransform: "uppercase",
         padding: "8px 16px",
         border: "1px solid var(--border-neutral)",
-        borderBottom: active ? "1px solid var(--bg-panel, #0c0d14)" : "1px solid var(--border-neutral)",
+        borderBottom: active
+          ? "1px solid var(--bg-panel, #0c0d14)"
+          : "1px solid var(--border-neutral)",
         borderRadius: "2px 2px 0 0",
         background: active ? "rgba(255,255,255,0.04)" : "transparent",
         color: active ? "var(--fn-gold)" : "var(--fg-3)",
@@ -127,14 +141,22 @@ function TabButton({
 
 interface SpawnPanelProps {
   onSpawned?: (persona: DynamicPersonaInfo) => void;
+  defaultValues?: BmbAddAgentPanelDefaultValues;
 }
 
-function SpawnPanel({ onSpawned }: SpawnPanelProps) {
-  const [name, setName] = useState("");
-  const [cli, setCli] = useState<BackingCli>("claude");
+function SpawnPanel({ onSpawned, defaultValues }: SpawnPanelProps) {
+  const dv = defaultValues;
+  const [name, setName] = useState(dv?.name ?? "");
+  const [cli, setCli] = useState<BackingCli>(() => {
+    if (!dv?.backingCli) return "claude";
+    if (dv.backingCli === "claude" || dv.backingCli === "agy" || dv.backingCli === "hermes") {
+      return dv.backingCli;
+    }
+    return "custom";
+  });
   const [customBin, setCustomBin] = useState("");
-  const [lifecycle, setLifecycle] = useState<Lifecycle>("persistent");
-  const [taskPrompt, setTaskPrompt] = useState("");
+  const [lifecycle, setLifecycle] = useState<Lifecycle>(dv?.lifecycle ?? "persistent");
+  const [taskPrompt, setTaskPrompt] = useState(dv?.taskPrompt ?? "");
   const [spawning, setSpawning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastSpawned, setLastSpawned] = useState<DynamicPersonaInfo | null>(null);

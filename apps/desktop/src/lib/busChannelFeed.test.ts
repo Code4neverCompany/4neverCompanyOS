@@ -12,6 +12,7 @@ import type { BusEnvelope } from "@c4n/core";
 import {
   appendCapped,
   collectAgents,
+  connectionStatus,
   eventMatchesFilter,
   formatTimestamp,
   payloadPreview,
@@ -126,9 +127,9 @@ describe("eventMatchesFilter", () => {
       true,
     );
     expect(eventMatchesFilter(message, { agent: "dev", type: "agent.message" })).toBe(false);
-    expect(eventMatchesFilter(message, { agent: "frontend-designer", type: "stall.detected" })).toBe(
-      false,
-    );
+    expect(
+      eventMatchesFilter(message, { agent: "frontend-designer", type: "stall.detected" }),
+    ).toBe(false);
   });
 });
 
@@ -146,6 +147,29 @@ describe("collectAgents", () => {
 
   it("returns an empty array for an empty feed", () => {
     expect(collectAgents([])).toEqual([]);
+  });
+});
+
+// ── connectionStatus (Story 2.11) ─────────────────────────────────────
+
+describe("connectionStatus", () => {
+  it("renders the live feed when connected", () => {
+    expect(connectionStatus({ state: "connected" })).toEqual({
+      label: "live",
+      badge: "online",
+      dot: "#6BFF8C",
+    });
+  });
+
+  it("shows the reconnect attempt count while reconnecting", () => {
+    const status = connectionStatus({ state: "reconnecting", attempt: 2, delayMs: 2000 });
+    expect(status.label).toBe("reconnecting… (attempt 2)");
+    expect(status.badge).toBe("warn");
+  });
+
+  it("shows connecting before the first link-up", () => {
+    expect(connectionStatus({ state: "connecting" }).label).toBe("connecting…");
+    expect(connectionStatus({ state: "connecting" }).badge).toBe("muted");
   });
 });
 

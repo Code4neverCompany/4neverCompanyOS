@@ -19,7 +19,15 @@ import { SummaryStep } from "./steps/SummaryStep";
 import { DoneStep } from "./steps/DoneStep";
 import type { WizardState } from "./state";
 
-const STEPS = ["welcome", "vault", "anthropic", "claude", "antigravity", "summary", "done"] as const;
+const STEPS = [
+  "welcome",
+  "vault",
+  "anthropic",
+  "claude",
+  "antigravity",
+  "summary",
+  "done",
+] as const;
 type StepName = (typeof STEPS)[number];
 
 export function Wizard() {

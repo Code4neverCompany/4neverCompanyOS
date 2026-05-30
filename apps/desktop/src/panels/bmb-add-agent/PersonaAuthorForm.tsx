@@ -18,7 +18,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
 import { Badge, Btn, Eyebrow, HUDFrame } from "@c4n/ui-tokens";
-import type { DynamicPersonaInfo } from "./BmbAddAgentPanel";
 
 // ── Types ────────────────────────────────────────────────────────────
 
@@ -66,7 +65,8 @@ export function validateAuthorForm(fields: {
   vaultScope: VaultScope;
 }): string | null {
   if (!fields.name.trim()) return "Enter a persona name.";
-  if (slugifyName(fields.name).length === 0) return "Name must contain at least one alphanumeric character.";
+  if (slugifyName(fields.name).length === 0)
+    return "Name must contain at least one alphanumeric character.";
   if (!fields.roleDescription.trim()) return "Enter a role description.";
   if (fields.cli === "custom" && !fields.customBin.trim()) return "Enter a custom binary name.";
   return null;
@@ -103,9 +103,7 @@ export function PersonaAuthorForm({ onAuthored }: PersonaAuthorFormProps) {
   const effectiveCli = cli === "custom" ? customBin.trim() : cli;
 
   function toggleSkill(id: string) {
-    setSelectedSkills((prev) =>
-      prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
-    );
+    setSelectedSkills((prev) => (prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id]));
   }
 
   async function handleSave() {
@@ -187,7 +185,14 @@ export function PersonaAuthorForm({ onAuthored }: PersonaAuthorFormProps) {
             autoFocus
           />
           {slug && (
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--fg-3)", marginTop: 3 }}>
+            <div
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 10,
+                color: "var(--fg-3)",
+                marginTop: 3,
+              }}
+            >
               slug: <span style={{ color: "var(--fn-cyan)" }}>{slug}</span>
             </div>
           )}
@@ -215,7 +220,14 @@ export function PersonaAuthorForm({ onAuthored }: PersonaAuthorFormProps) {
                 style={{ ...chipStyle, ...(lifecycle === lc ? chipActiveStyle : {}), flex: 1 }}
               >
                 <div style={{ fontWeight: 600 }}>{lc.charAt(0).toUpperCase() + lc.slice(1)}</div>
-                <div style={{ fontSize: 10, color: lifecycle === lc ? "rgba(255,196,0,0.7)" : "var(--fg-3)", fontWeight: 400, marginTop: 2 }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: lifecycle === lc ? "rgba(255,196,0,0.7)" : "var(--fg-3)",
+                    fontWeight: 400,
+                    marginTop: 2,
+                  }}
+                >
                   {lc === "persistent"
                     ? "Survives restarts — session stays alive."
                     : "One-shot — exits when task is done."}
@@ -236,7 +248,14 @@ export function PersonaAuthorForm({ onAuthored }: PersonaAuthorFormProps) {
                 style={{ ...chipStyle, ...(vaultScope === sc ? chipActiveStyle : {}), flex: 1 }}
               >
                 <div style={{ fontWeight: 600 }}>{sc.charAt(0).toUpperCase() + sc.slice(1)}</div>
-                <div style={{ fontSize: 10, color: vaultScope === sc ? "rgba(255,196,0,0.7)" : "var(--fg-3)", fontWeight: 400, marginTop: 2 }}>
+                <div
+                  style={{
+                    fontSize: 10,
+                    color: vaultScope === sc ? "rgba(255,196,0,0.7)" : "var(--fg-3)",
+                    fontWeight: 400,
+                    marginTop: 2,
+                  }}
+                >
                   {sc === "shared"
                     ? "Full vault read access (default)."
                     : "Scoped to personas/<slug>/ only."}
@@ -281,7 +300,14 @@ export function PersonaAuthorForm({ onAuthored }: PersonaAuthorFormProps) {
         {/* Skills multi-select */}
         <AuthorField label={`Skills (${selectedSkills.length} selected)`}>
           {availableSkills.length === 0 ? (
-            <p style={{ color: "var(--fg-3)", fontSize: 12, margin: 0, fontFamily: "var(--font-mono)" }}>
+            <p
+              style={{
+                color: "var(--fg-3)",
+                fontSize: 12,
+                margin: 0,
+                fontFamily: "var(--font-mono)",
+              }}
+            >
               Loading skill list…
             </p>
           ) : (
@@ -397,7 +423,14 @@ function SkillPicker({
           );
         })}
         {visible.length === 0 && (
-          <p style={{ color: "var(--fg-3)", fontSize: 11, margin: 0, fontFamily: "var(--font-mono)" }}>
+          <p
+            style={{
+              color: "var(--fg-3)",
+              fontSize: 11,
+              margin: 0,
+              fontFamily: "var(--font-mono)",
+            }}
+          >
             No skills match "{filter}"
           </p>
         )}
@@ -405,9 +438,28 @@ function SkillPicker({
       {selected.length > 0 && (
         <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 4 }}>
           {selected.map((id) => (
-            <Badge key={id} color="gold" style={{ cursor: "pointer" }} onClick={() => onToggle(id)}>
+            <button
+              key={id}
+              type="button"
+              onClick={() => onToggle(id)}
+              style={{
+                fontFamily: "var(--font-display)",
+                fontWeight: 700,
+                fontSize: 10,
+                letterSpacing: "0.16em",
+                textTransform: "uppercase",
+                padding: "4px 10px",
+                borderRadius: 2,
+                border: "1px solid rgba(255,196,0,0.45)",
+                background: "rgba(255,196,0,0.08)",
+                color: "var(--fn-gold)",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+              }}
+            >
               {id} ✕
-            </Badge>
+            </button>
           ))}
         </div>
       )}
@@ -458,10 +510,24 @@ function AuthoredConfirmation({
       }}
     >
       <div>
-        <div style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 14, color: "var(--fn-white)" }}>
+        <div
+          style={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 700,
+            fontSize: 14,
+            color: "var(--fn-white)",
+          }}
+        >
           {persona.name}
         </div>
-        <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--fn-cyan)", marginTop: 2 }}>
+        <div
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 10,
+            color: "var(--fn-cyan)",
+            marginTop: 2,
+          }}
+        >
           {persona.agents_md_path}
         </div>
         <div style={{ marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -498,7 +564,15 @@ function ErrorLine({ text, onDismiss }: { text: string; onDismiss: () => void })
       <button
         type="button"
         onClick={onDismiss}
-        style={{ background: "none", border: "none", color: "#FF8FA3", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: 10, padding: "2px 6px" }}
+        style={{
+          background: "none",
+          border: "none",
+          color: "#FF8FA3",
+          cursor: "pointer",
+          fontFamily: "var(--font-mono)",
+          fontSize: 10,
+          padding: "2px 6px",
+        }}
       >
         ✕
       </button>

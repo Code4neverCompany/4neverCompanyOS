@@ -84,8 +84,8 @@ export function AntigravityStep({ state, onNext, onBack }: Props) {
       </div>
 
       <p className="body-copy">
-        The Frontend Designer persona is backed by Google&apos;s Antigravity CLI
-        (<span className="chip-code">agy</span>). This step signs you in through Google OAuth in your
+        The Frontend Designer persona is backed by Google&apos;s Antigravity CLI (
+        <span className="chip-code">agy</span>). This step signs you in through Google OAuth in your
         system browser. Antigravity stores the credentials in its own secure store — the workspace
         never sees your Google token.
       </p>

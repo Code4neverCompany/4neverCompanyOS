@@ -78,9 +78,7 @@ describe("spawn_proposal — valid proposals accepted", () => {
   });
 
   it("accepts a proposal with budget_estimate below the limit", () => {
-    const result = SpawnProposalEnvelopeSchema.safeParse(
-      validPayload({ budget_estimate: 9.99 }),
-    );
+    const result = SpawnProposalEnvelopeSchema.safeParse(validPayload({ budget_estimate: 9.99 }));
     expect(result.success).toBe(true);
     if (result.success) {
       expect(result.data.payload.budget_estimate).toBe(9.99);
@@ -89,17 +87,13 @@ describe("spawn_proposal — valid proposals accepted", () => {
 
   it("accepts all valid persona_types (BACKING_CLIS)", () => {
     for (const pt of ["claude-code", "agy", "agent"] as const) {
-      const result = SpawnProposalEnvelopeSchema.safeParse(
-        validPayload({ persona_type: pt }),
-      );
+      const result = SpawnProposalEnvelopeSchema.safeParse(validPayload({ persona_type: pt }));
       expect(result.success, `persona_type "${pt}" should be valid`).toBe(true);
     }
   });
 
   it("accepts persistent lifecycle", () => {
-    const result = SpawnProposalEnvelopeSchema.safeParse(
-      validPayload({ lifecycle: "persistent" }),
-    );
+    const result = SpawnProposalEnvelopeSchema.safeParse(validPayload({ lifecycle: "persistent" }));
     expect(result.success).toBe(true);
   });
 
@@ -157,9 +151,7 @@ describe("spawn_proposal — invalid payload rejected", () => {
   });
 
   it("rejects when payload.lifecycle is missing", () => {
-    const result = SpawnProposalEnvelopeSchema.safeParse(
-      validPayload({ lifecycle: undefined }),
-    );
+    const result = SpawnProposalEnvelopeSchema.safeParse(validPayload({ lifecycle: undefined }));
     expect(result.success).toBe(false);
   });
 });
@@ -179,9 +171,7 @@ describe("spawn_proposal — enum validation errors", () => {
   });
 
   it("rejects an unknown lifecycle value", () => {
-    const result = SpawnProposalEnvelopeSchema.safeParse(
-      validPayload({ lifecycle: "transient" }),
-    );
+    const result = SpawnProposalEnvelopeSchema.safeParse(validPayload({ lifecycle: "transient" }));
     expect(result.success).toBe(false);
   });
 });
@@ -201,16 +191,12 @@ describe("spawn_proposal — budget limit enforcement", () => {
   });
 
   it("rejects negative budget_estimate", () => {
-    const result = SpawnProposalEnvelopeSchema.safeParse(
-      validPayload({ budget_estimate: -1 }),
-    );
+    const result = SpawnProposalEnvelopeSchema.safeParse(validPayload({ budget_estimate: -1 }));
     expect(result.success).toBe(false);
   });
 
   it("rejects non-numeric budget_estimate", () => {
-    const result = SpawnProposalEnvelopeSchema.safeParse(
-      validPayload({ budget_estimate: "ten" }),
-    );
+    const result = SpawnProposalEnvelopeSchema.safeParse(validPayload({ budget_estimate: "ten" }));
     expect(result.success).toBe(false);
   });
 });

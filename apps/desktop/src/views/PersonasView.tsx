@@ -18,9 +18,14 @@ import { useEffect, useState } from "react";
 import { Badge, Btn, Eyebrow, HUDFrame, StatusDot } from "@c4n/ui-tokens";
 import {
   BmbAddAgentPanel,
+  type BmbAddAgentPanelDefaultValues,
   type DynamicPersonaInfo,
   type AuthoredPersonaInfo,
 } from "../panels/bmb-add-agent/BmbAddAgentPanel";
+import {
+  SpawnApprovalTray,
+  type SpawnProposalRecord,
+} from "../panels/spawn-approval/SpawnApprovalTray";
 
 interface ProjectInfo {
   id: string;
@@ -167,6 +172,10 @@ export function PersonasView() {
   const [noteConfirm, setNoteConfirm] = useState<string | null>(null);
   // Story 3.5: configurable surfacing of the scope-violation pane badge.
   const [scopeBadgesEnabled, setScopeBadgesEnabled] = useState(loadScopeBadgePref);
+  // Story 3.8: pre-fill values for the spawn form when user clicks Modify on a proposal.
+  const [spawnDefaultValues, setSpawnDefaultValues] = useState<
+    BmbAddAgentPanelDefaultValues | undefined
+  >();
 
   function toggleScopeBadges() {
     setScopeBadgesEnabled((v) => {
@@ -293,12 +302,27 @@ export function PersonasView() {
 
   const eyebrowText = project ? `Personas · ${project.name}` : "Personas · 2 fixed";
 
+  function handleModifyProposal(proposal: SpawnProposalRecord) {
+    setSpawnDefaultValues({
+      name: proposal.name,
+      backingCli: proposal.persona_type,
+      lifecycle: proposal.lifecycle as "persistent" | "ephemeral",
+      taskPrompt: proposal.task_description,
+    });
+  }
+
   return (
     <ViewShell eyebrow={eyebrowText} title="The Two" titleAccent="Personas">
       {error && <ErrorAlert text={error} onDismiss={() => setError(null)} />}
 
       {/* Vault context status bar */}
       <VaultContextBar summary={vaultSummary} onRefresh={refreshVault} />
+
+      {/* Story 3.8: Hermes spawn proposal approval tray */}
+      <SpawnApprovalTray
+        onModify={handleModifyProposal}
+        onSpawned={(p) => setDynamicPersonas((prev) => [p, ...prev])}
+      />
 
       {!project && <NoProjectState />}
 
@@ -348,7 +372,10 @@ export function PersonasView() {
           {/* BMad Builder — Add Agent / Author Persona panel (Stories 3.1 + 3.10) */}
           <BmbAddAgentPanel
             onSpawned={(p) => setDynamicPersonas((prev) => [p, ...prev])}
-            onAuthored={(p) => setAuthoredPersonas((prev) => [p, ...prev.filter((a) => a.slug !== p.slug)])}
+            onAuthored={(p) =>
+              setAuthoredPersonas((prev) => [p, ...prev.filter((a) => a.slug !== p.slug)])
+            }
+            {...(spawnDefaultValues ? { defaultValues: spawnDefaultValues } : {})}
           />
 
           {/* Authored persona list (Story 3.10) */}
@@ -392,9 +419,7 @@ function ScopeViolationBadge({ summary }: { summary: ScopeViolationSummary | nul
     : `${summary.count} out-of-scope write${summary.count === 1 ? "" : "s"}`;
   return (
     <span title={title} style={{ display: "inline-flex" }}>
-      <Badge color="warn">
-        ⚠ {summary.count} out-of-scope
-      </Badge>
+      <Badge color="warn">⚠ {summary.count} out-of-scope</Badge>
     </span>
   );
 }
@@ -1030,7 +1055,8 @@ function AuthoredPersonaRow({
           }}
         >
           {persona.backing_cli} · {persona.vault_scope} scope
-          {persona.skills.length > 0 && ` · ${persona.skills.length} skill${persona.skills.length === 1 ? "" : "s"}`}
+          {persona.skills.length > 0 &&
+            ` · ${persona.skills.length} skill${persona.skills.length === 1 ? "" : "s"}`}
         </div>
         {persona.role_description && (
           <div
@@ -1048,7 +1074,9 @@ function AuthoredPersonaRow({
           </div>
         )}
         {spawnError && (
-          <div style={{ fontSize: 10, color: "#FF8FA3", fontFamily: "var(--font-mono)", marginTop: 4 }}>
+          <div
+            style={{ fontSize: 10, color: "#FF8FA3", fontFamily: "var(--font-mono)", marginTop: 4 }}
+          >
             {spawnError}
           </div>
         )}

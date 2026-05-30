@@ -121,19 +121,19 @@ Story 2.5 closes the loop on the product's "two fixed personas" promise: **both*
 
 No new runtime code path was needed — `spawn_designer_persona` (`apps/desktop/src-tauri/src/commands/mod.rs`) was already built on the same five-link chain as Dev:
 
-| Link | Dev (Story 1.15) | Frontend Designer (Story 2.5) |
-| ---- | ---------------- | ----------------------------- |
-| 1. On-disk active-project pointer | `read_active_project()` | shared — same pointer |
-| 2. Zellij daemon outlives desktop | `dev-<id>` session | `designer-<id>` session |
-| 3. Supervisor `close_on_exit: false` | `spawn_dev_persona` | `spawn_designer_persona` |
-| 4. Session-reuse branch | `if already_running { Running }` | identical branch in `spawn_designer_persona` |
-| 5. UI auto-reflects on launch | `ProjectsView` polls `dev_persona_status` | `PersonasView` polls `designer_persona_status` every 3s |
+| Link                                 | Dev (Story 1.15)                          | Frontend Designer (Story 2.5)                           |
+| ------------------------------------ | ----------------------------------------- | ------------------------------------------------------- |
+| 1. On-disk active-project pointer    | `read_active_project()`                   | shared — same pointer                                   |
+| 2. Zellij daemon outlives desktop    | `dev-<id>` session                        | `designer-<id>` session                                 |
+| 3. Supervisor `close_on_exit: false` | `spawn_dev_persona`                       | `spawn_designer_persona`                                |
+| 4. Session-reuse branch              | `if already_running { Running }`          | identical branch in `spawn_designer_persona`            |
+| 5. UI auto-reflects on launch        | `ProjectsView` polls `dev_persona_status` | `PersonasView` polls `designer_persona_status` every 3s |
 
 ### The `agy`-vs-Claude-Code session-persistence concern
 
 The story flags a real-looking risk: "`agy` session persistence vs Claude Code session persistence differ." It turns out to be a non-issue for OS-level restart survival, and it's worth spelling out why so nobody re-litigates it:
 
-**Restart survival never restarts either CLI.** Zellij owns the PTY and parents the supervisor + CLI; closing the desktop merely drops a Zellij *client*. The `claude` and `agy` processes keep running, untouched, with all of their in-memory state intact. Because neither process is ever killed-and-relaunched on a desktop restart, neither one's *own* on-disk session-resume mechanism is exercised — so any difference between how `agy` and Claude Code persist their sessions is irrelevant here. The guarantee is identical for both, and it's stronger than relying on either CLI's resume: the live process simply never goes away.
+**Restart survival never restarts either CLI.** Zellij owns the PTY and parents the supervisor + CLI; closing the desktop merely drops a Zellij _client_. The `claude` and `agy` processes keep running, untouched, with all of their in-memory state intact. Because neither process is ever killed-and-relaunched on a desktop restart, neither one's _own_ on-disk session-resume mechanism is exercised — so any difference between how `agy` and Claude Code persist their sessions is irrelevant here. The guarantee is identical for both, and it's stronger than relying on either CLI's resume: the live process simply never goes away.
 
 ### Scrollback ≥ 1000 lines
 

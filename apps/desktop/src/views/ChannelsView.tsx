@@ -16,6 +16,7 @@ import { Badge, Btn, Eyebrow, HUDFrame, StatusDot } from "@c4n/ui-tokens";
 import { BUS_EVENT_TYPES, type BusEventType } from "@c4n/core";
 import {
   collectAgents,
+  connectionStatus,
   eventMatchesFilter,
   formatTimestamp,
   payloadPreview,
@@ -42,7 +43,8 @@ export function ChannelsView() {
     busChannelStore.ensureStarted();
   }, []);
 
-  const { events, paused, filter, connected } = state;
+  const { events, paused, filter, connection } = state;
+  const status = connectionStatus(connection);
 
   const agents = useMemo(() => collectAgents(events.map((e) => e.envelope)), [events]);
   const visible = useMemo(
@@ -66,7 +68,14 @@ export function ChannelsView() {
         minHeight: 0,
       }}
     >
-      <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          gap: 16,
+        }}
+      >
         <div>
           <Eyebrow>Bus · live traffic</Eyebrow>
           <h1
@@ -83,10 +92,8 @@ export function ChannelsView() {
           </h1>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <StatusDot color={connected ? "#6BFF8C" : "var(--fg-3)"} />
-          <Badge color={connected ? "online" : "muted"}>
-            {connected ? "subscribed" : "connecting…"}
-          </Badge>
+          <StatusDot color={status.dot} />
+          <Badge color={status.badge}>{status.label}</Badge>
         </div>
       </div>
 
@@ -252,11 +259,7 @@ function Feed({
         onScroll={onScroll}
         style={{ flex: 1, overflow: "auto", padding: "4px 0" }}
       >
-        {events.length === 0 ? (
-          <EmptyFeed />
-        ) : (
-          events.map((e) => <FeedRow key={e.seq} event={e} />)
-        )}
+        {events.length === 0 ? <EmptyFeed /> : events.map((e) => <FeedRow key={e.seq} event={e} />)}
       </div>
     </HUDFrame>
   );
@@ -278,11 +281,25 @@ function FeedRow({ event }: { event: import("../lib/busChannelStore").FeedEvent 
       }}
     >
       <span style={{ color: "var(--fg-3)" }}>{formatTimestamp(envelope.ts)}</span>
-      <span style={{ color: "var(--fn-white)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <span
+        style={{
+          color: "var(--fn-white)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
         {envelope.source}
       </span>
       <span style={{ color: TYPE_COLOR[envelope.type] ?? "var(--fg-2)" }}>{envelope.type}</span>
-      <span style={{ color: "var(--fg-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+      <span
+        style={{
+          color: "var(--fg-2)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
         {payloadPreview(envelope)}
       </span>
     </div>

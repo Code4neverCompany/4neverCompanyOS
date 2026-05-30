@@ -58,12 +58,8 @@ describe("validateAuthorForm", () => {
   });
 
   it("rejects empty name", () => {
-    expect(validateAuthorForm({ ...VALID_BASE, name: "" })).toBe(
-      "Enter a persona name.",
-    );
-    expect(validateAuthorForm({ ...VALID_BASE, name: "   " })).toBe(
-      "Enter a persona name.",
-    );
+    expect(validateAuthorForm({ ...VALID_BASE, name: "" })).toBe("Enter a persona name.");
+    expect(validateAuthorForm({ ...VALID_BASE, name: "   " })).toBe("Enter a persona name.");
   });
 
   it("rejects name that slugifies to empty string", () => {
@@ -74,27 +70,25 @@ describe("validateAuthorForm", () => {
   });
 
   it("rejects empty role description", () => {
-    expect(
-      validateAuthorForm({ ...VALID_BASE, roleDescription: "" }),
-    ).toBe("Enter a role description.");
-    expect(
-      validateAuthorForm({ ...VALID_BASE, roleDescription: "   " }),
-    ).toBe("Enter a role description.");
+    expect(validateAuthorForm({ ...VALID_BASE, roleDescription: "" })).toBe(
+      "Enter a role description.",
+    );
+    expect(validateAuthorForm({ ...VALID_BASE, roleDescription: "   " })).toBe(
+      "Enter a role description.",
+    );
   });
 
   it("rejects custom CLI without a binary name", () => {
-    expect(
-      validateAuthorForm({ ...VALID_BASE, cli: "custom", customBin: "" }),
-    ).toBe("Enter a custom binary name.");
-    expect(
-      validateAuthorForm({ ...VALID_BASE, cli: "custom", customBin: "   " }),
-    ).toBe("Enter a custom binary name.");
+    expect(validateAuthorForm({ ...VALID_BASE, cli: "custom", customBin: "" })).toBe(
+      "Enter a custom binary name.",
+    );
+    expect(validateAuthorForm({ ...VALID_BASE, cli: "custom", customBin: "   " })).toBe(
+      "Enter a custom binary name.",
+    );
   });
 
   it("accepts custom CLI with a binary name", () => {
-    expect(
-      validateAuthorForm({ ...VALID_BASE, cli: "custom", customBin: "gemini" }),
-    ).toBeNull();
+    expect(validateAuthorForm({ ...VALID_BASE, cli: "custom", customBin: "gemini" })).toBeNull();
   });
 
   it("accepts all CLI variants when binary is not needed", () => {
@@ -104,20 +98,12 @@ describe("validateAuthorForm", () => {
   });
 
   it("accepts both lifecycle variants", () => {
-    expect(
-      validateAuthorForm({ ...VALID_BASE, lifecycle: "ephemeral" }),
-    ).toBeNull();
-    expect(
-      validateAuthorForm({ ...VALID_BASE, lifecycle: "persistent" }),
-    ).toBeNull();
+    expect(validateAuthorForm({ ...VALID_BASE, lifecycle: "ephemeral" })).toBeNull();
+    expect(validateAuthorForm({ ...VALID_BASE, lifecycle: "persistent" })).toBeNull();
   });
 
   it("accepts both vault scope variants", () => {
-    expect(
-      validateAuthorForm({ ...VALID_BASE, vaultScope: "isolated" }),
-    ).toBeNull();
-    expect(
-      validateAuthorForm({ ...VALID_BASE, vaultScope: "shared" }),
-    ).toBeNull();
+    expect(validateAuthorForm({ ...VALID_BASE, vaultScope: "isolated" })).toBeNull();
+    expect(validateAuthorForm({ ...VALID_BASE, vaultScope: "shared" })).toBeNull();
   });
 });

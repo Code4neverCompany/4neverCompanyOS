@@ -70,8 +70,7 @@ export class BusSubscription {
     this.validate = opts.validate ?? true;
     this.onInvalid =
       opts.onInvalid ??
-      ((raw, error) =>
-        console.warn("[BusSubscription] dropped invalid bus envelope", error, raw));
+      ((raw, error) => console.warn("[BusSubscription] dropped invalid bus envelope", error, raw));
   }
 
   /**
