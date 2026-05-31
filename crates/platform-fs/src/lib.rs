@@ -36,13 +36,17 @@ const MAX_SCAN_DEPTH: usize = 4;
 pub fn recent_vault_entries(dir: &Path, limit: usize) -> std::io::Result<Vec<VaultEntry>> {
     let mut candidates: Vec<(SystemTime, PathBuf)> = Vec::new();
     collect_md_files(dir, 0, &mut candidates)?;
-    candidates.sort_by(|a, b| b.0.cmp(&a.0));
+    candidates.sort_by_key(|b| std::cmp::Reverse(b.0));
     candidates.truncate(limit);
 
     let mut entries = Vec::with_capacity(candidates.len());
     for (modified, path) in candidates {
         match read_truncated(&path) {
-            Ok(content) => entries.push(VaultEntry { path, content, modified }),
+            Ok(content) => entries.push(VaultEntry {
+                path,
+                content,
+                modified,
+            }),
             Err(_) => continue,
         }
     }
@@ -148,7 +152,9 @@ fn current_unix_ms() -> u64 {
 }
 
 fn extract_story_slug(path: &Path) -> Option<String> {
-    path.file_stem().and_then(|s| s.to_str()).map(|s| s.to_string())
+    path.file_stem()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_string())
 }
 
 fn parse_frontmatter_status(content: &str) -> Option<String> {
@@ -222,17 +228,18 @@ pub fn watch_story_states(
     let (notify_tx, mut notify_rx) = tokio::sync::mpsc::channel(64);
     let notify_tx_arc = Arc::new(notify_tx);
 
-    let mut watcher: RecommendedWatcher = notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
-        if let Ok(event) = res {
-            if matches!(
-                event.kind,
-                notify::EventKind::Modify(_) | notify::EventKind::Create(_)
-            ) {
-                let _ = notify_tx_arc.blocking_send(event);
+    let mut watcher: RecommendedWatcher =
+        notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+            if let Ok(event) = res {
+                if matches!(
+                    event.kind,
+                    notify::EventKind::Modify(_) | notify::EventKind::Create(_)
+                ) {
+                    let _ = notify_tx_arc.blocking_send(event);
+                }
             }
-        }
-    })
-    .map_err(|e| anyhow::anyhow!("failed to create watcher: {}", e))?;
+        })
+        .map_err(|e| anyhow::anyhow!("failed to create watcher: {}", e))?;
 
     watcher
         .watch(&projects_dir, RecursiveMode::Recursive)
@@ -291,25 +298,19 @@ mod tests {
 
     #[test]
     fn recent_vault_entries_returns_empty_on_missing_dir() {
-        let result =
-            recent_vault_entries(Path::new("/nonexistent/vault/path"), 10).unwrap();
+        let result = recent_vault_entries(Path::new("/nonexistent/vault/path"), 10).unwrap();
         assert!(result.is_empty());
     }
 
     #[test]
     fn recent_vault_entries_reads_md_files() {
-        let tmp =
-            std::env::temp_dir().join(format!("c4n-vault-test-{}", std::process::id()));
+        let tmp = std::env::temp_dir().join(format!("c4n-vault-test-{}", std::process::id()));
         std::fs::create_dir_all(&tmp).unwrap();
         std::fs::write(tmp.join("note-a.md"), "# Note A\nHello").unwrap();
         std::fs::write(tmp.join("not-md.txt"), "ignored").unwrap();
 
         let entries = recent_vault_entries(&tmp, 10).unwrap();
-        assert_eq!(
-            entries.len(),
-            1,
-            "only .md files should be included"
-        );
+        assert_eq!(entries.len(), 1, "only .md files should be included");
         assert!(
             entries[0].content.contains("Hello"),
             "file content should be read"
