@@ -137,6 +137,14 @@ pub fn run() {
             commands::get_workflow_run,
             commands::pause_workflow_run,
             commands::resume_workflow_run,
+            // Story 4.2 (NEVAAA-51): BMAD workflow engine — phase execution.
+            // Called by the TypeScript WorkflowEngine; advance_workflow_phase
+            // updates phase state, check_vault_artifact_exists polls for completion,
+            // log_workflow_decision records approvals to vault, dismiss clears state.
+            commands::advance_workflow_phase,
+            commands::check_vault_artifact_exists,
+            commands::log_workflow_decision,
+            commands::dismiss_workflow_run,
             // Story 5.2 (FR-31): Supermemory opt-in settings.
             commands::get_supermemory_categories,
             commands::save_supermemory_categories,
