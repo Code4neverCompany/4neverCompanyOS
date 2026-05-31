@@ -61,7 +61,7 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: --bundles dmg
-          assetNamePattern: "{name} Setup_{version}_{arch}.dmg"
+          assetNamePattern: "{name}_{version}_{arch}.dmg"
 
   # ─── Linux AppImage ─────────────────────────────────────────────────
   build-appimage:
@@ -117,7 +117,7 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: --bundles appimage
-          assetNamePattern: "{name} Setup_{version}_{arch}.AppImage"
+          assetNamePattern: "{name}_{version}_{arch}.AppImage"
 
   # ─── Windows NSIS ──────────────────────────────────────────────────
   build-nsis:
@@ -163,4 +163,4 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: --bundles nsis
-          assetNamePattern: "{name} Setup_{version}_{arch}.exe"
+          assetNamePattern: "{name}_{version}_{arch}.exe"
