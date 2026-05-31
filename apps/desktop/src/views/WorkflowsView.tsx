@@ -762,7 +762,9 @@ export function WorkflowsView() {
         if (!rustRun) {
           setActiveRun(null);
         }
-      } catch {}
+      } catch {
+        // intentionally silent — polling retry will recover on next tick
+      }
     }, 2000);
     return () => clearInterval(id);
   }, [activeRun]);
