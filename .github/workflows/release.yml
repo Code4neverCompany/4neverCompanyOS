@@ -54,8 +54,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "4neverCompany OS ${{ github.ref_name }}"
+          tagName: ${{ github.event.inputs.version || github.ref_name }}
+          releaseName: "4neverCompany OS ${{ github.event.inputs.version || github.ref_name }}"
           releaseBody: |
             See https://github.com/Code4neverCompany/4neverCompanyOS/releases
           releaseDraft: true
@@ -110,8 +110,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "4neverCompany OS ${{ github.ref_name }}"
+          tagName: ${{ github.event.inputs.version || github.ref_name }}
+          releaseName: "4neverCompany OS ${{ github.event.inputs.version || github.ref_name }}"
           releaseBody: |
             See https://github.com/Code4neverCompany/4neverCompanyOS/releases
           releaseDraft: true
@@ -156,8 +156,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "4neverCompany OS ${{ github.ref_name }}"
+          tagName: ${{ github.event.inputs.version || github.ref_name }}
+          releaseName: "4neverCompany OS ${{ github.event.inputs.version || github.ref_name }}"
           releaseBody: |
             See https://github.com/Code4neverCompany/4neverCompanyOS/releases
           releaseDraft: true
