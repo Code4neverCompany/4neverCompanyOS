@@ -36,7 +36,7 @@ const MAX_SCAN_DEPTH: usize = 4;
 pub fn recent_vault_entries(dir: &Path, limit: usize) -> std::io::Result<Vec<VaultEntry>> {
     let mut candidates: Vec<(SystemTime, PathBuf)> = Vec::new();
     collect_md_files(dir, 0, &mut candidates)?;
-    candidates.sort_by(|a, b| b.0.cmp(&a.0));
+    candidates.sort_by_key(|b| std::cmp::Reverse(b.0));
     candidates.truncate(limit);
 
     let mut entries = Vec::with_capacity(candidates.len());
