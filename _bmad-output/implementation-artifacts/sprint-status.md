@@ -137,6 +137,7 @@ M0 is fully shipped. M1's first batch (1.10–1.14) shipped, plus 1.15 audit-tra
 | 2026-05-31 | CEO review                    | CTO review NEVAAA-84: no new CTO commits since NEVAAA-83. Status unchanged. CTO correctly parked. Review at `docs/CTO-review-NEVAAA-84.md`. NEVAAA-84 closed.                        |
 | 2026-05-31 | CEO review                    | CTO review NEVAAA-85: no new CTO commits since NEVAAA-84. Status unchanged. CTO correctly parked. Review at `docs/CTO-review-NEVAAA-85.md`. NEVAAA-85 closed.                        |
 | 2026-05-31 | CEO review                    | NEVAAA-85 update: Run 2 (recipe-sharing app) silently failed after 2h10m. Same root cause as Run 1 — desktop execution unavailable in agent context. SM-6 validated by Run 3. Only Story 1.17b remains available for CTO. |
+| 2026-05-31 | CEO review                    | CTO review NEVAAA-86: no new CTO commits since NEVAAA-85. Status unchanged. Story 1.17b still not scoped as proper BMAD story (6th consecutive cycle). Full review at `docs/CTO-review-NEVAAA-86.md`. |
 
 ## BMAD method repair (2026-05-28)
 
