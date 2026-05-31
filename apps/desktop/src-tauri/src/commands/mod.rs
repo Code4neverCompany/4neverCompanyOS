@@ -3055,6 +3055,7 @@ pub struct WorkflowRun {
     pub project_name: String,
     pub project_id: String,
     pub idea: String,
+    pub project_path: String,
     pub phase: String,
     pub phase_index: usize,
     pub status: String,
@@ -3236,6 +3237,7 @@ pub fn start_workflow_run(
     workflow_id: String,
     project_name: String,
     idea: String,
+    project_path: String,
     store: State<'_, WorkflowRunStore>,
 ) -> Result<WorkflowRun, String> {
     let catalog = WORKFLOW_CATALOG
@@ -3244,6 +3246,10 @@ pub fn start_workflow_run(
         .ok_or_else(|| format!("unknown workflow id: {workflow_id}"))?;
 
     let (_, workflow_name, _) = catalog;
+
+    if workflow_id == "brownfield" && project_path.trim().is_empty() {
+        return Err("project path is required for brownfield workflows".to_string());
+    }
 
     // Guard: only one run at a time.
     {
@@ -3283,6 +3289,7 @@ pub fn start_workflow_run(
         project_name: project_name.clone(),
         project_id: project_slug.clone(),
         idea: idea.clone(),
+        project_path: project_path.clone(),
         phase: "brief".to_string(),
         phase_index: 0,
         status: "running".to_string(),

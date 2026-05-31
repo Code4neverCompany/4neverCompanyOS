@@ -50,6 +50,7 @@ export interface WorkflowRunState {
   project_id: string;
   project_name: string;
   idea: string;
+  project_path: string;
   current_phase: string;
   phase_index: number;
   status: "idle" | "running" | "waiting_for_artifact" | "approval_pending" | "paused" | "done";
@@ -250,7 +251,7 @@ export class WorkflowEngine {
               backing_cli: "claude",
               lifecycle: "ephemeral",
               task_prompt:
-                "You are the Analyst persona. Your job is to ingest an existing codebase. Scan the repository at the provided project path, catalog its structure (languages, frameworks, key files, directory layout), and produce a summary at vault/projects/{project_id}/bmad/01-ingest.md. Be thorough — identify the tech stack, entry points, and overall architecture.",
+                "You are the Analyst persona. Your job is to ingest an existing codebase. Scan the repository at {project_path}, catalog its structure (languages, frameworks, key files, directory layout), and produce a summary at vault/projects/{project_id}/bmad/01-ingest.md. Be thorough — identify the tech stack, entry points, and overall architecture.",
             },
           ],
           artifact: {
@@ -309,6 +310,7 @@ export class WorkflowEngine {
     projectId: string,
     vaultDir: string,
     idea: string,
+    projectPath: string = "",
   ): Promise<WorkflowRunState> {
     const workflow = await this.loadWorkflow(workflowId);
     this.currentWorkflow = workflow;
@@ -318,6 +320,7 @@ export class WorkflowEngine {
       workflowId,
       projectName,
       idea,
+      projectPath,
     });
 
     const run: WorkflowRunState = {
@@ -327,6 +330,7 @@ export class WorkflowEngine {
       project_id: projectId,
       project_name: projectName,
       idea,
+      project_path: projectPath,
       current_phase: firstPhase?.id ?? "",
       phase_index: 0,
       status: "running",
@@ -352,7 +356,8 @@ export class WorkflowEngine {
       try {
         const resolvedTask = persona.task_prompt
           .replace(/\{project_id\}/g, run.project_id)
-          .replace(/\{project_name\}/g, run.project_name);
+          .replace(/\{project_name\}/g, run.project_name)
+          .replace(/\{project_path\}/g, run.project_path);
 
         await invoke("spawn_dynamic_persona", {
           name: persona.name,

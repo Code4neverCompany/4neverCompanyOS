@@ -26,6 +26,7 @@ interface WorkflowRun {
   workflow_name: string;
   project_name: string;
   idea: string;
+  project_path: string;
   phase: string;
   status: string;
   vault_dir: string;
@@ -38,6 +39,7 @@ interface ActiveRunDisplay {
   workflow_name: string;
   project_name: string;
   idea: string;
+  project_path: string;
   current_phase: string;
   phase_index: number;
   status: string;
@@ -463,6 +465,66 @@ function ApprovalGate({
           <p style={{ margin: "12px 0 0" }}>
             Next: <strong style={{ color: "var(--fn-purple)" }}>{nextLabel}</strong>
           </p>
+
+          {run.workflow_id === "brownfield" && phase.id === "analyze" && (
+            <div
+              style={{
+                marginTop: 16,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid var(--border-neutral)",
+                borderRadius: 2,
+                padding: "10px 14px",
+              }}
+            >
+              <span style={{ color: "var(--fn-gold)", fontSize: 10, fontFamily: "var(--font-mono)" }}>
+                PROPOSED REFACTOR WORKFLOW
+              </span>
+              <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                {["ingest", "analyze", "refactor-plan"].map((phaseId, idx) => {
+                  const phaseLabels: Record<string, string> = {
+                    ingest: "Ingest — scan codebase",
+                    analyze: "Analyze — identify issues",
+                    "refactor-plan": "Refactor Plan — prioritized action items",
+                  };
+                  const isDone = idx < 2;
+                  return (
+                    <div
+                      key={phaseId}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        fontFamily: "var(--font-mono)",
+                        fontSize: 11,
+                        color: isDone ? "var(--fg-3)" : "var(--fn-white)",
+                        textDecoration: isDone ? "line-through" : "none",
+                      }}
+                    >
+                      <span style={{ color: isDone ? "var(--fn-green)" : "var(--fn-purple)" }}>
+                        {isDone ? "✓" : "○"}
+                      </span>
+                      {phaseLabels[phaseId] ?? phaseId}
+                    </div>
+                  );
+                })}
+              </div>
+              <div
+                style={{
+                  marginTop: 12,
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 10,
+                  color: "var(--fg-3)",
+                  lineHeight: 1.5,
+                }}
+              >
+                Based on the analysis, the recommended BMAD workflow is shown above.
+                The refactor plan will be written to{" "}
+                <span style={{ color: "var(--fn-cyan)" }}>
+                  vault/projects/&#123;project_id&#125;/bmad/03-refactor-plan.md
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {showFeedback && (
@@ -699,8 +761,10 @@ function SetupForm({
 }) {
   const [projectName, setProjectName] = useState("");
   const [idea, setIdea] = useState("");
+  const [projectPath, setProjectPath] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const isBrownfield = workflowId === "brownfield";
 
   async function handleStart() {
     setBusy(true);
@@ -710,6 +774,7 @@ function SetupForm({
         workflowId,
         projectName: projectName.trim(),
         idea: idea.trim(),
+        projectPath: projectPath.trim(),
       });
       onStarted(run);
     } catch (e) {
@@ -719,7 +784,9 @@ function SetupForm({
     }
   }
 
-  const valid = projectName.trim().length > 0 && idea.trim().length > 0 && !busy;
+  const valid = isBrownfield
+    ? projectName.trim().length > 0 && projectPath.trim().length > 0 && !busy
+    : projectName.trim().length > 0 && idea.trim().length > 0 && !busy;
 
   return (
     <HUDFrame style={{ padding: 24 }}>
@@ -761,6 +828,19 @@ function SetupForm({
             style={{ ...inputStyle, resize: "vertical", fontFamily: "var(--font-mono)" }}
           />
         </label>
+
+        {isBrownfield && (
+          <label style={labelStyle}>
+            <span style={labelSpanStyle}>Existing project path *</span>
+            <input
+              type="text"
+              placeholder="e.g. C:\Projects\my-api or /home/user/projects/my-api"
+              value={projectPath}
+              onChange={(e) => setProjectPath(e.target.value)}
+              style={inputStyle}
+            />
+          </label>
+        )}
 
         {error && (
           <div
@@ -911,6 +991,7 @@ export function WorkflowsView() {
                 projectId,
                 vaultDir,
                 displayRun.idea,
+                displayRun.project_path,
               );
             }}
             onDismiss={async () => {
@@ -992,6 +1073,7 @@ export function WorkflowsView() {
               projectId,
               vaultDir,
               run.idea,
+              run.project_path,
             );
             setActiveRun({
               id: run.id,
@@ -999,6 +1081,7 @@ export function WorkflowsView() {
               workflow_name: run.workflow_name,
               project_name: run.project_name,
               idea: run.idea,
+              project_path: run.project_path,
               current_phase: run.phase,
               phase_index: 0,
               status: run.status,
