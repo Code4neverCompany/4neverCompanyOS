@@ -12,15 +12,16 @@ The headline v1 workflow. Runs from a blank project idea to a working code skele
 Analyst → PM → Architect → SM → Dev/QA
 ```
 
-| Phase | Persona | Output |
-|---|---|---|
-| Analyst | Analyst | Brief — problem space, goals, constraints |
-| PM | PM | PRD — product requirements document |
-| Architect | Architect | Architecture doc — system design |
-| SM | Scrum Master | Story file set — stories with ACs |
-| Dev/QA | Dev + QA | Working code skeleton + QA reports |
+| Phase     | Persona      | Output                                    |
+| --------- | ------------ | ----------------------------------------- |
+| Analyst   | Analyst      | Brief — problem space, goals, constraints |
+| PM        | PM           | PRD — product requirements document       |
+| Architect | Architect    | Architecture doc — system design          |
+| SM        | Scrum Master | Story file set — stories with ACs         |
+| Dev/QA    | Dev + QA     | Working code skeleton + QA reports        |
 
 At each phase boundary, an **approval gate** appears:
+
 - **Approve and continue** (Enter key) — advance to next phase
 - **Request changes** — opens a dialog to send the persona back with feedback
 - **Pause workflow** — suspend the workflow; resume later
@@ -28,6 +29,7 @@ At each phase boundary, an **approval gate** appears:
 ### Approval Gate
 
 The gate shows:
+
 - Current phase output (artifact preview)
 - Proposed next phase
 - The three action buttons
@@ -48,11 +50,11 @@ Ingests an existing codebase and produces a `refactor-plan.md`.
 Ingest → Analyze → Propose Refactor Plan
 ```
 
-| Phase | Persona | Output |
-|---|---|---|
-| Ingest | Analyst | Codebase snapshot and structure summary |
-| Analyze | Architect | Dependency graph, pain points, risks |
-| Propose | Architect | `refactor-plan.md` artifact |
+| Phase   | Persona   | Output                                  |
+| ------- | --------- | --------------------------------------- |
+| Ingest  | Analyst   | Codebase snapshot and structure summary |
+| Analyze | Architect | Dependency graph, pain points, risks    |
+| Propose | Architect | `refactor-plan.md` artifact             |
 
 ## Workflow State
 
@@ -79,6 +81,7 @@ status: open
 ```
 
 Valid transitions:
+
 - `open → in-progress` — when a persona picks up the story
 - `in-progress → review` — when the implementation is ready for QA
 - `review → done` — when QA approves

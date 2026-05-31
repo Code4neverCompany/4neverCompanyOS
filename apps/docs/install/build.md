@@ -6,13 +6,13 @@ This page covers building 4neverCompany OS from source when you are not using a 
 
 ### Required Tools
 
-| Tool | Version | Purpose |
-|---|---|---|
-| Node.js | ≥ 22.13 | Package manager + build tooling |
-| pnpm | ≥ 11.3 | Package manager |
-| Rust | latest stable | Desktop shell (Tauri) |
-| Go | latest stable | Antigravity CLI runtime |
-| Python | 3.10+ | Hermes Agent |
+| Tool    | Version       | Purpose                         |
+| ------- | ------------- | ------------------------------- |
+| Node.js | ≥ 22.13       | Package manager + build tooling |
+| pnpm    | ≥ 11.3        | Package manager                 |
+| Rust    | latest stable | Desktop shell (Tauri)           |
+| Go      | latest stable | Antigravity CLI runtime         |
+| Python  | 3.10+         | Hermes Agent                    |
 
 Install Node and pnpm first:
 

@@ -105,13 +105,7 @@ const PHASE_LABELS: Record<string, string> = {
   qa: "QA",
 };
 
-function PhaseStatusSidebar({
-  currentPhase,
-  status,
-}: {
-  currentPhase: string;
-  status: string;
-}) {
+function PhaseStatusSidebar({ currentPhase, status }: { currentPhase: string; status: string }) {
   const currentIdx = PHASE_ORDER.indexOf(currentPhase);
 
   return (
@@ -161,8 +155,7 @@ function PhaseStatusSidebar({
                             ? "var(--fn-gold)"
                             : "var(--fn-purple)",
                       display: "block",
-                      animation:
-                        status === "waiting_for_artifact" ? "pulse 1.5s infinite" : "none",
+                      animation: status === "waiting_for_artifact" ? "pulse 1.5s infinite" : "none",
                     }}
                   />
                 ) : null}
@@ -171,11 +164,7 @@ function PhaseStatusSidebar({
                 style={{
                   fontFamily: "var(--font-mono)",
                   fontSize: 12,
-                  color: isDone
-                    ? "var(--fn-green)"
-                    : isCurrent
-                      ? "var(--fn-white)"
-                      : "var(--fg-3)",
+                  color: isDone ? "var(--fn-green)" : isCurrent ? "var(--fn-white)" : "var(--fg-3)",
                   fontWeight: isCurrent ? 600 : 400,
                 }}
               >
@@ -278,7 +267,8 @@ function ApprovalGate({
 
   const pendingPhase = workflowEngine.getPendingApprovalPhase();
   const currentLabel = PHASE_LABELS[pendingPhase?.id ?? run.current_phase] ?? run.current_phase;
-  const nextPhaseId = PHASE_ORDER[PHASE_ORDER.indexOf(pendingPhase?.id ?? run.current_phase ?? "") + 1];
+  const nextPhaseId =
+    PHASE_ORDER[PHASE_ORDER.indexOf(pendingPhase?.id ?? run.current_phase ?? "") + 1];
   const nextLabel = PHASE_LABELS[nextPhaseId] ?? nextPhaseId ?? "Done";
 
   function handleApprove() {
@@ -395,11 +385,7 @@ function ApprovalGate({
         <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
           {showFeedback ? (
             <>
-              <Btn
-                variant="ghost"
-                onClick={() => setShowFeedback(false)}
-                disabled={busy}
-              >
+              <Btn variant="ghost" onClick={() => setShowFeedback(false)} disabled={busy}>
                 Cancel
               </Btn>
               <Btn
@@ -418,11 +404,7 @@ function ApprovalGate({
               <Btn variant="ghost" onClick={onPause} disabled={busy}>
                 Pause workflow
               </Btn>
-              <Btn
-                variant="ghost"
-                onClick={() => setShowFeedback(true)}
-                disabled={busy}
-              >
+              <Btn variant="ghost" onClick={() => setShowFeedback(true)} disabled={busy}>
                 Request changes
               </Btn>
               <Btn variant="purple" onClick={handleApprove} disabled={busy}>
@@ -851,10 +833,7 @@ export function WorkflowsView() {
               Vault: <code style={{ color: "var(--fn-cyan)" }}>{displayRun.vault_dir}</code>
             </p>
           </div>
-          <PhaseStatusSidebar
-            currentPhase={displayRun.current_phase}
-            status={displayRun.status}
-          />
+          <PhaseStatusSidebar currentPhase={displayRun.current_phase} status={displayRun.status} />
         </div>
       </ViewShell>
     );

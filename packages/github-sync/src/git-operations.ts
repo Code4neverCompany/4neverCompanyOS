@@ -17,10 +17,7 @@ async function git(
   return stdout.trim();
 }
 
-async function gitWithToken(
-  cwd: string,
-  args: string[],
-): Promise<string> {
+async function gitWithToken(cwd: string, args: string[]): Promise<string> {
   const env = { ...process.env, GIT_ASKPASS: "echo", GIT_TERMINAL_PROMPT: "0" };
   return git(cwd, args, { env });
 }
@@ -48,10 +45,7 @@ export async function getCurrentBranch(vaultRoot: string): Promise<string | null
 
 // ─── Remote ─────────────────────────────────────────────────────────────────
 
-export async function getRemoteUrl(
-  vaultRoot: string,
-  remote: string,
-): Promise<string | null> {
+export async function getRemoteUrl(vaultRoot: string, remote: string): Promise<string | null> {
   try {
     return await git(vaultRoot, ["remote", "get-url", remote]);
   } catch {
@@ -59,11 +53,7 @@ export async function getRemoteUrl(
   }
 }
 
-export async function addRemote(
-  vaultRoot: string,
-  remote: string,
-  url: string,
-): Promise<void> {
+export async function addRemote(vaultRoot: string, remote: string, url: string): Promise<void> {
   const existing = await getRemoteUrl(vaultRoot, remote);
   if (existing) {
     await git(vaultRoot, ["remote", "set-url", remote, url]);
@@ -118,47 +108,27 @@ function scanDir(root: string, dir: string, out: string[]): void {
 
 // ─── Staging ────────────────────────────────────────────────────────────────
 
-export async function stageFiles(
-  vaultRoot: string,
-  files: string[],
-): Promise<void> {
+export async function stageFiles(vaultRoot: string, files: string[]): Promise<void> {
   if (files.length === 0) return;
   await git(vaultRoot, ["add", "--force", ...files]);
 }
 
 // ─── Commit ─────────────────────────────────────────────────────────────────
 
-export async function commit(
-  vaultRoot: string,
-  message: string,
-): Promise<void> {
+export async function commit(vaultRoot: string, message: string): Promise<void> {
   await git(vaultRoot, ["commit", "-m", message]);
 }
 
 // ─── Push ────────────────────────────────────────────────────────────────────
 
-export async function push(
-  vaultRoot: string,
-  remote: string,
-  _token: string,
-): Promise<void> {
-  await gitWithToken(
-    vaultRoot,
-    ["push", remote, "HEAD", "--force"],
-  );
+export async function push(vaultRoot: string, remote: string, _token: string): Promise<void> {
+  await gitWithToken(vaultRoot, ["push", remote, "HEAD", "--force"]);
 }
 
 // ─── Pull ────────────────────────────────────────────────────────────────────
 
-export async function pull(
-  vaultRoot: string,
-  remote: string,
-  _token: string,
-): Promise<void> {
-  await gitWithToken(
-    vaultRoot,
-    ["pull", "--rebase", remote, "HEAD"],
-  );
+export async function pull(vaultRoot: string, remote: string, _token: string): Promise<void> {
+  await gitWithToken(vaultRoot, ["pull", "--rebase", remote, "HEAD"]);
 }
 
 // ─── Ahead/behind ───────────────────────────────────────────────────────────

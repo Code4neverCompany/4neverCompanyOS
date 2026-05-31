@@ -6,10 +6,10 @@ A **persona** is one AI agent with a defined role — Dev, Architect, PM, Analys
 
 These are always-on from the moment a project opens:
 
-| Persona | Backing CLI | Model | Default Role |
-|---|---|---|---|
-| **Dev** | Claude Code | Claude Opus 4.6 (Thinking) | Engineering |
-| **Frontend Designer** | Antigravity CLI (`agy`) | Gemini 3.1 Pro (High) | UX / visual work |
+| Persona               | Backing CLI             | Model                      | Default Role     |
+| --------------------- | ----------------------- | -------------------------- | ---------------- |
+| **Dev**               | Claude Code             | Claude Opus 4.6 (Thinking) | Engineering      |
+| **Frontend Designer** | Antigravity CLI (`agy`) | Gemini 3.1 Pro (High)      | UX / visual work |
 
 Fixed personas cannot be dismissed. They survive desktop-app restarts.
 

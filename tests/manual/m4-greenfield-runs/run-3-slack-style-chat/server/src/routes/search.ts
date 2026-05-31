@@ -14,7 +14,9 @@ router.get("/", async (req, res) => {
   const params: unknown[] = [];
   const conditions: string[] = ["m.is_deleted = FALSE"];
   params.push(q as string);
-  conditions.push(`to_tsvector('english', m.content) @@ plainto_tsquery('english', $${params.length})`);
+  conditions.push(
+    `to_tsvector('english', m.content) @@ plainto_tsquery('english', $${params.length})`,
+  );
   if (channel) {
     params.push(channel);
     conditions.push(`m.channel_id = $${params.length}`);
@@ -42,7 +44,7 @@ router.get("/", async (req, res) => {
      ORDER BY ts_rank(to_tsvector('english', m.content), plainto_tsquery('english', $1)) DESC,
               m.created_at DESC
      LIMIT 20`,
-    params
+    params,
   );
   res.json({ data: rows });
 });

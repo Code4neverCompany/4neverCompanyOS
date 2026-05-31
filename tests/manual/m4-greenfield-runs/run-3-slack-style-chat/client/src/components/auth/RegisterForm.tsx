@@ -50,7 +50,10 @@ export function RegisterForm({ onSwitch }: { onSwitch: () => void }) {
       />
       <button type="submit">Register</button>
       <p>
-        Already have an account? <button type="button" onClick={onSwitch}>Sign in</button>
+        Already have an account?{" "}
+        <button type="button" onClick={onSwitch}>
+          Sign in
+        </button>
       </p>
     </form>
   );

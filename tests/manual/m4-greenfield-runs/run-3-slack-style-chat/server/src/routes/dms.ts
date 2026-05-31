@@ -15,7 +15,7 @@ router.get("/", async (req, res) => {
      JOIN users u ON u.id = CASE WHEN dm.sender_id = $1 THEN dm.recipient_id ELSE dm.sender_id END
      WHERE dm.sender_id = $1 OR dm.recipient_id = $1
      ORDER BY dm.id, dm.created_at DESC`,
-    [req.userId]
+    [req.userId],
   );
   res.json({ data: rows });
 });
@@ -29,7 +29,7 @@ router.get("/:userId", async (req, res) => {
      WHERE (dm.sender_id = $1 AND dm.recipient_id = $2)
         OR (dm.sender_id = $2 AND dm.recipient_id = $1)
      ORDER BY dm.created_at ASC`,
-    [req.userId, userId]
+    [req.userId, userId],
   );
   res.json({ data: rows });
 });
@@ -42,7 +42,7 @@ router.post("/", async (req, res) => {
   }
   const dm = await query(
     "INSERT INTO direct_messages (sender_id, recipient_id, content) VALUES ($1, $2, $3) RETURNING *",
-    [req.userId, recipientId, content.trim()]
+    [req.userId, recipientId, content.trim()],
   );
   res.status(201).json({ data: dm.rows[0] });
 });

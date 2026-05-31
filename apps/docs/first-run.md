@@ -60,8 +60,8 @@ If you need to reconfigure credentials after the first run, open **Settings → 
 
 If the wizard fails on a step, it preserves your progress and lets you retry. Common fixes:
 
-| Problem | Fix |
-|---|---|
+| Problem                | Fix                                                                         |
+| ---------------------- | --------------------------------------------------------------------------- |
 | Anthropic key rejected | Double-check the key at [Anthropic console](https://console.anthropic.com/) |
-| OAuth callback failed | Ensure pop-ups are allowed for the browser |
-| Vault location invalid | Pick a directory on a local drive (not a network share) |
+| OAuth callback failed  | Ensure pop-ups are allowed for the browser                                  |
+| Vault location invalid | Pick a directory on a local drive (not a network share)                     |

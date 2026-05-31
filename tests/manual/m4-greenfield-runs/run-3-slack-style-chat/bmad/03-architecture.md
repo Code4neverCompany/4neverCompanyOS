@@ -12,6 +12,7 @@
 SlackChat is a full-stack real-time chat application built with React (frontend), Node.js/Express (backend), Socket.io (real-time), and PostgreSQL (persistence).
 
 ### 1.1 Architecture Pattern
+
 - **Frontend:** Single Page Application (SPA) with React 18, Vite build
 - **Backend:** REST API + WebSocket server on Node.js
 - **Database:** PostgreSQL with connection pooling via `pg` library
@@ -141,42 +142,43 @@ CREATE TABLE files (
 
 ### 3.1 REST Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | /api/auth/register | Register new user |
-| POST | /api/auth/login | Login, get tokens |
-| POST | /api/auth/refresh | Refresh access token |
-| POST | /api/auth/logout | Logout, clear cookie |
-| GET | /api/users/me | Current user |
-| PATCH | /api/users/me | Update profile |
-| GET | /api/users/:id | Get user by ID |
-| GET | /api/channels | List user's channels |
-| POST | /api/channels | Create channel |
-| GET | /api/channels/:id | Get channel details |
-| PATCH | /api/channels/:id | Update channel |
-| DELETE | /api/channels/:id | Archive channel |
-| POST | /api/channels/:id/join | Join channel |
-| POST | /api/channels/:id/leave | Leave channel |
-| GET | /api/channels/:id/messages | Get messages (paginated) |
-| POST | /api/channels/:id/messages | Send message |
-| PATCH | /api/messages/:id | Edit message |
-| DELETE | /api/messages/:id | Delete message |
-| GET | /api/messages/:id/thread | Get thread replies |
-| POST | /api/messages/:id/reply | Reply in thread |
-| POST | /api/messages/:id/reactions | Add reaction |
-| DELETE | /api/messages/:id/reactions/:emoji | Remove reaction |
-| POST | /api/channels/:id/files | Upload file |
-| GET | /api/files/:id | Download file |
-| GET | /api/search | Search messages |
-| GET | /api/presence | Get all presence |
-| POST | /api/presence/status | Update own status |
-| GET | /api/dms | List DMs |
-| POST | /api/dms | Send DM |
-| GET | /api/dms/:userId | Get DM thread |
+| Method | Path                               | Description              |
+| ------ | ---------------------------------- | ------------------------ |
+| POST   | /api/auth/register                 | Register new user        |
+| POST   | /api/auth/login                    | Login, get tokens        |
+| POST   | /api/auth/refresh                  | Refresh access token     |
+| POST   | /api/auth/logout                   | Logout, clear cookie     |
+| GET    | /api/users/me                      | Current user             |
+| PATCH  | /api/users/me                      | Update profile           |
+| GET    | /api/users/:id                     | Get user by ID           |
+| GET    | /api/channels                      | List user's channels     |
+| POST   | /api/channels                      | Create channel           |
+| GET    | /api/channels/:id                  | Get channel details      |
+| PATCH  | /api/channels/:id                  | Update channel           |
+| DELETE | /api/channels/:id                  | Archive channel          |
+| POST   | /api/channels/:id/join             | Join channel             |
+| POST   | /api/channels/:id/leave            | Leave channel            |
+| GET    | /api/channels/:id/messages         | Get messages (paginated) |
+| POST   | /api/channels/:id/messages         | Send message             |
+| PATCH  | /api/messages/:id                  | Edit message             |
+| DELETE | /api/messages/:id                  | Delete message           |
+| GET    | /api/messages/:id/thread           | Get thread replies       |
+| POST   | /api/messages/:id/reply            | Reply in thread          |
+| POST   | /api/messages/:id/reactions        | Add reaction             |
+| DELETE | /api/messages/:id/reactions/:emoji | Remove reaction          |
+| POST   | /api/channels/:id/files            | Upload file              |
+| GET    | /api/files/:id                     | Download file            |
+| GET    | /api/search                        | Search messages          |
+| GET    | /api/presence                      | Get all presence         |
+| POST   | /api/presence/status               | Update own status        |
+| GET    | /api/dms                           | List DMs                 |
+| POST   | /api/dms                           | Send DM                  |
+| GET    | /api/dms/:userId                   | Get DM thread            |
 
 ### 3.2 WebSocket Events
 
 **Client → Server:**
+
 - `message:send` — `{ channelId, content }`
 - `message:edit` — `{ messageId, content }`
 - `message:delete` — `{ messageId }`
@@ -188,6 +190,7 @@ CREATE TABLE files (
 - `channel:leave` — `{ channelId }`
 
 **Server → Client:**
+
 - `message:new` — `{ message }`
 - `message:edited` — `{ messageId, content }`
 - `message:deleted` — `{ messageId }`
@@ -202,12 +205,14 @@ CREATE TABLE files (
 ## 4. Key Technical Decisions
 
 ### 4.1 JWT Auth Strategy
+
 - Access token: 15min expiry, stored in React state (memory)
 - Refresh token: 7 day expiry, httpOnly cookie
 - Refresh flow: React API interceptor catches 401, calls /auth/refresh
 - On refresh failure: redirect to login
 
 ### 4.2 Real-Time Architecture
+
 - Socket.io namespace `/chat`
 - Authentication via cookie (Socket.io middleware validates JWT)
 - Room per channel: `channel:{channelId}`
@@ -215,18 +220,21 @@ CREATE TABLE files (
 - Redis adapter for horizontal scaling (future)
 
 ### 4.3 Message Pagination
+
 - Initial load: latest 50 messages
 - "Load more" button fetches older messages
 - Cursor-based pagination using `created_at`
 - Threads: fetch all replies on open (expected < 100)
 
 ### 4.4 File Upload
+
 - Client sends multipart/form-data to `/api/channels/:id/files`
 - Server generates UUID filename, stores in `uploads/`
 - Original name and MIME stored in `files` table
 - Client requests via `/api/files/:id` which serves with Content-Disposition
 
 ### 4.5 Full-Text Search
+
 - PostgreSQL `to_tsvector('english', content)` indexed with GIN
 - `ts_rank` for relevance scoring
 - Results include channel name and timestamp
@@ -236,11 +244,13 @@ CREATE TABLE files (
 ## 5. Non-Functional Requirements
 
 ### 5.1 Performance
+
 - Message delivery: p99 < 500ms
 - Search response: p95 < 1s for 100k messages
 - Page load: < 2s on 3G
 
 ### 5.2 Security
+
 - bcrypt cost factor 12 for password hashing
 - JWT signed with HS256, secret in env
 - express-validator for input sanitization
@@ -248,6 +258,7 @@ CREATE TABLE files (
 - CORS restricted to frontend origin
 
 ### 5.3 Scalability
+
 - Connection pooling: 20 PostgreSQL connections
 - Socket.io rooms for efficient broadcasting
 - Database indexes on hot paths

@@ -31,6 +31,7 @@ On first run, the workspace launches and the first-run wizard appears.
 ## Dependencies
 
 The AppImage is self-contained but requires:
+
 - A desktop environment (X11 or Wayland)
 - D-Bus session bus (standard on desktop Ubuntu)
 

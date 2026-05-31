@@ -110,9 +110,9 @@ export function BudgetSettings() {
       </div>
 
       <p style={{ color: "var(--fg-3)", fontSize: 13, margin: "0 0 16px", maxWidth: 560 }}>
-        Set monthly spending limits (USD) per persona. When a persona exceeds its
-        limit, it is automatically paused. Budget resets are tracked separately — use
-        the reset button to clear spend counters after a billing cycle.
+        Set monthly spending limits (USD) per persona. When a persona exceeds its limit, it is
+        automatically paused. Budget resets are tracked separately — use the reset button to clear
+        spend counters after a billing cycle.
       </p>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 16 }}>
@@ -213,8 +213,8 @@ function PersonaBudgetRow({
         background: overLimit
           ? "rgba(255,50,50,0.05)"
           : paused
-          ? "rgba(255,196,0,0.05)"
-          : "rgba(255,255,255,0.02)",
+            ? "rgba(255,196,0,0.05)"
+            : "rgba(255,255,255,0.02)",
         opacity: paused && !overLimit ? 0.8 : 1,
       }}
     >
@@ -267,7 +267,8 @@ function PersonaBudgetRow({
                 style={{
                   width: `${Math.min(pct, 100)}%`,
                   height: "100%",
-                  background: pct > 90 ? "var(--fn-red)" : pct > 75 ? "var(--fn-gold)" : "var(--fn-purple)",
+                  background:
+                    pct > 90 ? "var(--fn-red)" : pct > 75 ? "var(--fn-gold)" : "var(--fn-purple)",
                   transition: "width 300ms",
                 }}
               />

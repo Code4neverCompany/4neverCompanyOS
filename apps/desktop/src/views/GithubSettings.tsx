@@ -57,22 +57,65 @@ interface CategoryDef {
 }
 
 const CATEGORIES: CategoryDef[] = [
-  { id: "persona-files", label: "Persona definitions", description: "persona.md for each persona", vaultTier: "persona" },
-  { id: "persona-skills", label: "Persona skills", description: "Skills markdown files", vaultTier: "persona" },
-  { id: "persona-memory", label: "Persona memory notes", description: "Notes and observations in persona memory dirs", vaultTier: "persona" },
-  { id: "persona-meta", label: "Persona metadata", description: ".persona-meta.json for re-spawning", vaultTier: "persona" },
-  { id: "bmad-artifacts", label: "BMAD artifacts", description: "All files under projects/*/bmad/", vaultTier: "project" },
-  { id: "project-personas", label: "Project personas", description: "Project-specific persona overlays", vaultTier: "project" },
-  { id: "project-reviews", label: "Review outputs", description: "Ephemeral agent review outputs", vaultTier: "project" },
-  { id: "project-context", label: "Project context", description: ".project-context.md", vaultTier: "project" },
-  { id: "decision-log", label: "Decision log", description: ".decision-log.md across all projects", vaultTier: "project" },
+  {
+    id: "persona-files",
+    label: "Persona definitions",
+    description: "persona.md for each persona",
+    vaultTier: "persona",
+  },
+  {
+    id: "persona-skills",
+    label: "Persona skills",
+    description: "Skills markdown files",
+    vaultTier: "persona",
+  },
+  {
+    id: "persona-memory",
+    label: "Persona memory notes",
+    description: "Notes and observations in persona memory dirs",
+    vaultTier: "persona",
+  },
+  {
+    id: "persona-meta",
+    label: "Persona metadata",
+    description: ".persona-meta.json for re-spawning",
+    vaultTier: "persona",
+  },
+  {
+    id: "bmad-artifacts",
+    label: "BMAD artifacts",
+    description: "All files under projects/*/bmad/",
+    vaultTier: "project",
+  },
+  {
+    id: "project-personas",
+    label: "Project personas",
+    description: "Project-specific persona overlays",
+    vaultTier: "project",
+  },
+  {
+    id: "project-reviews",
+    label: "Review outputs",
+    description: "Ephemeral agent review outputs",
+    vaultTier: "project",
+  },
+  {
+    id: "project-context",
+    label: "Project context",
+    description: ".project-context.md",
+    vaultTier: "project",
+  },
+  {
+    id: "decision-log",
+    label: "Decision log",
+    description: ".decision-log.md across all projects",
+    vaultTier: "project",
+  },
 ];
 
 export function GithubSettings() {
   const [status, setStatus] = useState<SyncStatus | null>(null);
-  const [categories, setCategories] = useState<Record<SyncCategory, boolean>>(
-    DEFAULT_CATEGORIES,
-  );
+  const [categories, setCategories] = useState<Record<SyncCategory, boolean>>(DEFAULT_CATEGORIES);
   const [apiKeyStatus, setApiKeyStatus] = useState<"checking" | "configured" | "missing">(
     "checking",
   );
@@ -162,8 +205,8 @@ export function GithubSettings() {
       </div>
 
       <p style={{ color: "var(--fg-3)", fontSize: 13, margin: "0 0 16px", maxWidth: 560 }}>
-        Sync your vault to a personal GitHub repo for cross-machine continuity
-        and team collaboration. Credentials are stored in your OS keychain.
+        Sync your vault to a personal GitHub repo for cross-machine continuity and team
+        collaboration. Credentials are stored in your OS keychain.
       </p>
 
       <ApiKeyStatus status={apiKeyStatus} />
@@ -216,9 +259,7 @@ export function GithubSettings() {
             </button>
           </div>
 
-          {lastResult && (
-            <ResultPanel result={lastResult} />
-          )}
+          {lastResult && <ResultPanel result={lastResult} />}
 
           <div style={{ marginTop: 20 }}>
             <div
@@ -290,9 +331,7 @@ function ApiKeyStatus({ status }: { status: "checking" | "configured" | "missing
       {status === "configured" && (
         <>
           <Badge color="online">Configured</Badge>
-          <span style={{ fontSize: 11, color: "var(--fg-3)" }}>
-            Stored in OS keychain
-          </span>
+          <span style={{ fontSize: 11, color: "var(--fg-3)" }}>Stored in OS keychain</span>
         </>
       )}
       {status === "missing" && (
@@ -363,13 +402,9 @@ function SyncStatusPanel({ status }: { status: SyncStatus | null }) {
         {status.remote_configured ? "Remote configured" : "No remote"}
       </Badge>
       {status.current_branch && (
-        <span style={{ color: "var(--fn-cyan)" }}>
-          branch: {status.current_branch}
-        </span>
+        <span style={{ color: "var(--fn-cyan)" }}>branch: {status.current_branch}</span>
       )}
-      {status.ahead > 0 && (
-        <span style={{ color: "var(--fn-gold)" }}>▲ {status.ahead} ahead</span>
-      )}
+      {status.ahead > 0 && <span style={{ color: "var(--fn-gold)" }}>▲ {status.ahead} ahead</span>}
       {status.behind > 0 && (
         <span style={{ color: "var(--fn-purple)" }}>▼ {status.behind} behind</span>
       )}
@@ -458,18 +493,13 @@ function CategoryToggleRow({
             style={{
               fontFamily: "var(--font-mono)",
               fontSize: 10,
-              color:
-                category.vaultTier === "project"
-                  ? "var(--fn-cyan)"
-                  : "var(--fn-purple)",
+              color: category.vaultTier === "project" ? "var(--fn-cyan)" : "var(--fn-purple)",
             }}
           >
             {category.vaultTier}
           </span>
         </div>
-        <p style={{ margin: 0, fontSize: 11, color: "var(--fg-3)" }}>
-          {category.description}
-        </p>
+        <p style={{ margin: 0, fontSize: 11, color: "var(--fg-3)" }}>{category.description}</p>
       </div>
     </div>
   );

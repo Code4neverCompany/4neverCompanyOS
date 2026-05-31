@@ -188,7 +188,8 @@ export class WorkflowEngine {
         {
           id: "implementation",
           label: "Implementation",
-          description: "Dev and Frontend Designer implement the code skeleton from approved stories.",
+          description:
+            "Dev and Frontend Designer implement the code skeleton from approved stories.",
           personas: [
             {
               name: "Dev",
@@ -397,7 +398,10 @@ export class WorkflowEngine {
     });
   }
 
-  private async advanceToNextPhase(run: WorkflowRunState, completedPhase: WorkflowPhase): Promise<void> {
+  private async advanceToNextPhase(
+    run: WorkflowRunState,
+    completedPhase: WorkflowPhase,
+  ): Promise<void> {
     if (!this.currentWorkflow) return;
     const nextIndex = run.phase_index + 1;
 
@@ -460,8 +464,8 @@ export class WorkflowEngine {
     const run = this.currentRun;
     if (!this.currentWorkflow) return;
 
-    const phaseToAdvance = this.pendingApprovalPhase
-      ?? this.currentWorkflow.phases[run.phase_index];
+    const phaseToAdvance =
+      this.pendingApprovalPhase ?? this.currentWorkflow.phases[run.phase_index];
 
     this.pendingApprovalPhase = null;
 
@@ -486,8 +490,7 @@ export class WorkflowEngine {
     const run = this.currentRun;
     if (!this.currentWorkflow) return;
 
-    const phase = this.pendingApprovalPhase
-      ?? this.currentWorkflow.phases[run.phase_index];
+    const phase = this.pendingApprovalPhase ?? this.currentWorkflow.phases[run.phase_index];
 
     this.pendingApprovalPhase = null;
     run.status = "paused";

@@ -10,60 +10,70 @@
 ## 1. Story Refinement
 
 ### Story 01: User Registration
+
 - **Effort:** XS
 - **Dependencies:** None
 - **Acceptance Criteria:** Reviewed and confirmed
 - **Notes:** Straightforward auth endpoint, bcrypt hashing
 
 ### Story 02: User Login
+
 - **Effort:** S
 - **Dependencies:** Story 01 (registration must exist)
 - **Acceptance Criteria:** Reviewed — JWT strategy confirmed
 - **Notes:** Need middleware for protected routes
 
 ### Story 03: Channel Creation
+
 - **Effort:** S
 - **Dependencies:** Story 02 (need auth)
 - **Acceptance Criteria:** Reviewed
 - **Notes:** Channel slug generation from name
 
 ### Story 04: Send Message
+
 - **Effort:** M
 - **Dependencies:** Story 03 (need channels)
 - **Acceptance Criteria:** Reviewed
 - **Notes:** WebSocket flow is the critical path
 
 ### Story 05: Real-Time Presence
+
 - **Effort:** M
 - **Dependencies:** Story 02 (need auth)
 - **Acceptance Criteria:** Reviewed
 - **Notes:** Redis would be ideal but Map<> works for single instance
 
 ### Story 06: Message Search
+
 - **Effort:** M
 - **Dependencies:** Story 04 (need messages)
 - **Acceptance Criteria:** Reviewed — PostgreSQL GIN index confirmed
 - **Notes:** Search should exclude deleted messages
 
 ### Story 07: File Attachments
+
 - **Effort:** M
 - **Dependencies:** Story 04 (need messages)
 - **Acceptance Criteria:** Reviewed
 - **Notes:** Multer for multipart handling, uuid for filenames
 
 ### Story 08: Threaded Replies
+
 - **Effort:** M
 - **Dependencies:** Story 04 (need messages)
 - **Acceptance Criteria:** Reviewed
 - **Notes:** parent_id self-reference, thread panel UI complexity
 
 ### Story 09: Message Reactions
+
 - **Effort:** S
 - **Dependencies:** Story 04 (need messages)
 - **Acceptance Criteria:** Reviewed
 - **Notes:** Unique constraint prevents duplicate reactions
 
 ### Story 10: Direct Messages
+
 - **Effort:** M
 - **Dependencies:** Story 02 (need auth)
 - **Acceptance Criteria:** Reviewed
@@ -82,6 +92,7 @@ Stories 01 → 02 → 03 → 04 → 06, 07, 08, 09
 ```
 
 **Parallelizable:**
+
 - Stories 05, 06, 07, 08, 09, 10 all depend only on Story 04 (or Story 02 for presence/DM)
 - Can implement in parallel after core messaging (Story 04) is done
 
@@ -90,16 +101,19 @@ Stories 01 → 02 → 03 → 04 → 06, 07, 08, 09
 ## 3. Implementation Order
 
 ### Phase 1: Foundation (Stories 01, 02)
+
 1. Database schema setup
 2. User registration + login
 3. JWT middleware
 
 ### Phase 2: Core Chat (Stories 03, 04)
+
 4. Channel CRUD
 5. Message sending + WebSocket
 6. Message list + pagination
 
 ### Phase 3: Features (parallel after Phase 2)
+
 7. Presence (05) — independent
 8. Search (06) — needs messages
 9. Files (07) — needs messages
@@ -111,12 +125,12 @@ Stories 01 → 02 → 03 → 04 → 06, 07, 08, 09
 
 ## 4. Risk Assessment
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| WebSocket scaling | Medium | High | Design for Redis adapter from start |
-| Search performance at scale | Low | Medium | GIN index + pagination |
-| File upload memory | Medium | Low | Stream uploads, limit size |
-| Concurrent reactions | Low | Low | Unique constraint handles race |
+| Risk                        | Likelihood | Impact | Mitigation                          |
+| --------------------------- | ---------- | ------ | ----------------------------------- |
+| WebSocket scaling           | Medium     | High   | Design for Redis adapter from start |
+| Search performance at scale | Low        | Medium | GIN index + pagination              |
+| File upload memory          | Medium     | Low    | Stream uploads, limit size          |
+| Concurrent reactions        | Low        | Low    | Unique constraint handles race      |
 
 ---
 
@@ -128,6 +142,7 @@ Stories 01 → 02 → 03 → 04 → 06, 07, 08, 09
 - WebSocket tests: Mock socket.io client
 
 ### Critical Paths to Test
+
 1. Register → Login → Send message → Receive via WebSocket
 2. Create channel → Join → Send message → Search message
 3. Upload file → Download file
@@ -138,10 +153,10 @@ Stories 01 → 02 → 03 → 04 → 06, 07, 08, 09
 
 ## 6. Effort Estimation
 
-| Phase | Stories | Estimated Effort |
-|-------|---------|-----------------|
-| Foundation | 01, 02 | 2 days |
-| Core Chat | 03, 04 | 3 days |
-| Features | 05, 06, 07, 08, 09, 10 | 4 days |
-| Polish + Testing | All | 2 days |
-| **Total** | **10** | **~11 days** |
+| Phase            | Stories                | Estimated Effort |
+| ---------------- | ---------------------- | ---------------- |
+| Foundation       | 01, 02                 | 2 days           |
+| Core Chat        | 03, 04                 | 3 days           |
+| Features         | 05, 06, 07, 08, 09, 10 | 4 days           |
+| Polish + Testing | All                    | 2 days           |
+| **Total**        | **10**                 | **~11 days**     |

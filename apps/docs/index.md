@@ -19,13 +19,13 @@
 
 ## Key Concepts
 
-| Concept | Description |
-|---|---|
-| **Persona** | One AI agent with a defined role (Dev, Architect, PM, etc.) |
-| **Fixed Persona** | Always-on from project start (Dev, Frontend Designer) |
-| **Dynamic Persona** | Spawned on demand, persistent or ephemeral |
-| **BMAD** | Bundled development methodology; `greenfield-fullstack` and `brownfield` workflows included |
-| **Hermes** | Main orchestrator — watches the bus for progress, intervenes on stalls |
+| Concept             | Description                                                                                 |
+| ------------------- | ------------------------------------------------------------------------------------------- |
+| **Persona**         | One AI agent with a defined role (Dev, Architect, PM, etc.)                                 |
+| **Fixed Persona**   | Always-on from project start (Dev, Frontend Designer)                                       |
+| **Dynamic Persona** | Spawned on demand, persistent or ephemeral                                                  |
+| **BMAD**            | Bundled development methodology; `greenfield-fullstack` and `brownfield` workflows included |
+| **Hermes**          | Main orchestrator — watches the bus for progress, intervenes on stalls                      |
 
 ## System Requirements
 

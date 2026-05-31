@@ -19,15 +19,15 @@ export const GITHUB_ACCOUNT = "pat" as const;
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type SyncCategory =
-  | "persona-files"       // personas/*/persona.md
-  | "persona-skills"      // personas/*/skills/*.md
-  | "persona-memory"      // personas/*/memory/*.md  (opt-out)
-  | "persona-meta"        // personas/*/.persona-meta.json
-  | "bmad-artifacts"     // projects/*/bmad/**
-  | "project-personas"    // projects/*/personas/**
-  | "project-reviews"     // projects/*/reviews/**
-  | "project-context"     // projects/*/.project-context.md
-  | "decision-log";       // projects/*/.decision-log.md
+  | "persona-files" // personas/*/persona.md
+  | "persona-skills" // personas/*/skills/*.md
+  | "persona-memory" // personas/*/memory/*.md  (opt-out)
+  | "persona-meta" // personas/*/.persona-meta.json
+  | "bmad-artifacts" // projects/*/bmad/**
+  | "project-personas" // projects/*/personas/**
+  | "project-reviews" // projects/*/reviews/**
+  | "project-context" // projects/*/.project-context.md
+  | "decision-log"; // projects/*/.decision-log.md
 
 export const DEFAULT_SYNC_CATEGORIES: SyncCategory[] = [
   "persona-files",
@@ -68,15 +68,15 @@ export interface SyncResult {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const PATTERNS: Record<SyncCategory, string[]> = {
-  "persona-files":  ["personas/*/persona.md"],
+  "persona-files": ["personas/*/persona.md"],
   "persona-skills": ["personas/*/skills/*.md"],
-  "persona-memory":  ["personas/*/memory/*.md"],
-  "persona-meta":    ["personas/*/.persona-meta.json"],
+  "persona-memory": ["personas/*/memory/*.md"],
+  "persona-meta": ["personas/*/.persona-meta.json"],
   "bmad-artifacts": ["projects/*/bmad/**"],
-  "project-personas":["projects/*/personas/**"],
+  "project-personas": ["projects/*/personas/**"],
   "project-reviews": ["projects/*/reviews/**"],
   "project-context": ["projects/*/.project-context.md"],
-  "decision-log":    ["projects/*/.decision-log.md"],
+  "decision-log": ["projects/*/.decision-log.md"],
 };
 
 const NEVER_SYNC = [
@@ -160,13 +160,14 @@ export class GithubSyncService {
    * Stage and push tracked files matching the sync policy to the configured
    * GitHub remote. Creates the commit automatically with a generated message.
    */
-  async push(
-    githubToken: string,
-    remote = "origin",
-    policy: SyncPolicy,
-  ): Promise<SyncResult> {
-    const { getTrackedFiles, stageFiles, commit, push: gitPush, getRemoteUrl } =
-      await import("./git-operations");
+  async push(githubToken: string, remote = "origin", policy: SyncPolicy): Promise<SyncResult> {
+    const {
+      getTrackedFiles,
+      stageFiles,
+      commit,
+      push: gitPush,
+      getRemoteUrl,
+    } = await import("./git-operations");
 
     const remoteUrl = await getRemoteUrl(this.vaultRoot, remote);
     if (!remoteUrl) {
@@ -193,7 +194,9 @@ export class GithubSyncService {
     await stageFiles(this.vaultRoot, toStage);
 
     const timestamp = new Date().toISOString();
-    const commitMsg = `4neverCompany OS sync ${timestamp}\n\nCategories: ${Object.entries(policy.categories)
+    const commitMsg = `4neverCompany OS sync ${timestamp}\n\nCategories: ${Object.entries(
+      policy.categories,
+    )
       .filter(([, on]) => on)
       .map(([cat]) => cat)
       .join(", ")}`;
@@ -304,7 +307,10 @@ function matchGlob(filePath: string, pattern: string): boolean {
       pi += 1;
       continue;
     }
-    if (pp === "*") { pi++; continue; }
+    if (pp === "*") {
+      pi++;
+      continue;
+    }
     if (pp !== part) return false;
     pi++;
   }

@@ -9,7 +9,13 @@ interface Channel {
   role: string;
 }
 
-export function ChannelList({ selectedId, onSelect }: { selectedId?: string; onSelect: (id: string) => void }) {
+export function ChannelList({
+  selectedId,
+  onSelect,
+}: {
+  selectedId?: string;
+  onSelect: (id: string) => void;
+}) {
   const [channels, setChannels] = useState<Channel[]>([]);
 
   useEffect(() => {

@@ -20,6 +20,7 @@ The persona spawns and appears in the multi-terminal view.
 ## Persistent Personas
 
 A persistent persona:
+
 - Gets its own Zellij pane, labeled with the persona type
 - Gets a vault directory at `vault/personas/<persona-id>/`
 - Has a bus identity (`agent:<persona-type>:<uuid>`) and can post/subscribe
@@ -29,6 +30,7 @@ A persistent persona:
 ## Ephemeral Personas
 
 An ephemeral persona:
+
 - Runs immediately without allocating a pane (unless you watch it in the channel view)
 - Writes its output as an artifact in `vault/projects/<project-id>/reviews/`
 - Posts a final `task complete` message to the bus
@@ -39,6 +41,7 @@ An ephemeral persona:
 During a BMAD workflow, Hermes may propose spawning a persona mid-project. For example, a code change touching `auth/` might trigger a proposal to spawn a Security Reviewer.
 
 When Hermes proposes a spawn:
+
 - An approval prompt appears in the UI
 - You can **Approve**, **Override** (change CLI/lifecycle/persona type), or **Veto** the proposal
 - No persona spawns until you approve

@@ -24,7 +24,11 @@ router.post("/register", async (req, res) => {
   try {
     const { email, password, name } = req.body;
     if (!email || !password || !name) {
-      res.status(400).json({ error: { code: "VALIDATION_ERROR", message: "email, password, and name are required" } });
+      res
+        .status(400)
+        .json({
+          error: { code: "VALIDATION_ERROR", message: "email, password, and name are required" },
+        });
       return;
     }
     const existing = await queryOne("SELECT id FROM users WHERE email = $1", [email]);
@@ -35,7 +39,7 @@ router.post("/register", async (req, res) => {
     const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
     const user = await queryOne(
       "INSERT INTO users (email, password_hash, name) VALUES ($1, $2, $3) RETURNING id, email, name",
-      [email, passwordHash, name]
+      [email, passwordHash, name],
     );
     res.status(201).json({ user, message: "Registration successful" });
   } catch (err) {
@@ -49,10 +53,12 @@ router.post("/login", async (req, res) => {
     const { email, password } = req.body;
     const user = await queryOne<{ id: string; email: string; name: string; password_hash: string }>(
       "SELECT id, email, name, password_hash FROM users WHERE email = $1",
-      [email]
+      [email],
     );
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
-      res.status(401).json({ error: { code: "AUTH_FAILED", message: "Invalid email or password" } });
+      res
+        .status(401)
+        .json({ error: { code: "AUTH_FAILED", message: "Invalid email or password" } });
       return;
     }
     const accessToken = signAccess(user.id);
@@ -63,7 +69,10 @@ router.post("/login", async (req, res) => {
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    res.json({ access_token: accessToken, user: { id: user.id, email: user.email, name: user.name } });
+    res.json({
+      access_token: accessToken,
+      user: { id: user.id, email: user.email, name: user.name },
+    });
   } catch (err) {
     console.error("[auth/login]", err);
     res.status(500).json({ error: { code: "INTERNAL_ERROR", message: "Login failed" } });
@@ -81,7 +90,9 @@ router.post("/refresh", async (req, res) => {
     const accessToken = signAccess(payload.sub);
     res.json({ access_token: accessToken });
   } catch {
-    res.status(401).json({ error: { code: "INVALID_TOKEN", message: "Invalid or expired refresh token" } });
+    res
+      .status(401)
+      .json({ error: { code: "INVALID_TOKEN", message: "Invalid or expired refresh token" } });
   }
 });
 

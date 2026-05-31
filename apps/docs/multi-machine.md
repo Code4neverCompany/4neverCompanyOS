@@ -17,6 +17,7 @@
 ## What Is Synced
 
 The synced set (per `docs/sync-policy.md`) includes:
+
 - `vault/personas/<persona-id>/` — canonical persona files
 - `vault/projects/<project-id>/bmad/` — all BMAD artifacts
 - `_bmad/custom/` — custom persona modules
@@ -25,6 +26,7 @@ The synced set (per `docs/sync-policy.md`) includes:
 ## What Is NOT Synced
 
 These stay local to each machine:
+
 - API keys and credentials (stored in OS keychain)
 - Workspace SQLite (contains ephemeral runtime state)
 - Supermemory index (opt-in, privacy-sensitive)
@@ -42,6 +44,7 @@ The initial sync pushes all configured content. Subsequent syncs are incremental
 ## Round-Trip Continuity Test
 
 The M5 exit criterion includes:
+
 - **Win → GitHub → Mac → Linux** round-trip
 - Each leg: clone, open project, verify fixed personas spawn, verify persistent dynamic personas offered for respawn
 

@@ -6,15 +6,15 @@
 
 ## Artifacts
 
-| Artifact | Present | Size | Notes |
-|----------|---------|------|-------|
-| 01-brief.md | YES | 4517 chars | ✅ > 200 |
-| 02-prd.md | YES | 8942 chars | ✅ > 500 |
-| 03-architecture.md | YES | 9507 chars | ✅ > 500 |
-| 04-solutioning.md | YES | 4188 chars | ✅ > 300 |
-| 05-implementation.md | YES | 4205 chars | ✅ > 200 |
-| qa-report.md | YES | 4895 chars | ✅ > 200 |
-| stories/*.md | YES | 10 files | 01–10 complete |
+| Artifact             | Present | Size       | Notes          |
+| -------------------- | ------- | ---------- | -------------- |
+| 01-brief.md          | YES     | 4517 chars | ✅ > 200       |
+| 02-prd.md            | YES     | 8942 chars | ✅ > 500       |
+| 03-architecture.md   | YES     | 9507 chars | ✅ > 500       |
+| 04-solutioning.md    | YES     | 4188 chars | ✅ > 300       |
+| 05-implementation.md | YES     | 4205 chars | ✅ > 200       |
+| qa-report.md         | YES     | 4895 chars | ✅ > 200       |
+| stories/\*.md        | YES     | 10 files   | 01–10 complete |
 
 ## Code Produced
 

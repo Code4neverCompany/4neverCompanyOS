@@ -34,6 +34,7 @@ Teams lack a fast, reliable, and feature-rich chat platform that combines real-t
 ## 4. Core Features
 
 ### 4.1 Messaging
+
 - Persistent channels (public and private)
 - Direct messages (DMs) between users
 - Real-time message delivery via WebSockets
@@ -42,35 +43,41 @@ Teams lack a fast, reliable, and feature-rich chat platform that combines real-t
 - Code snippet sharing with syntax highlighting
 
 ### 4.2 Organization
+
 - Channel creation, archiving, and deletion
 - Channel categories (e.g., Engineering, Design, General)
 - User roles (admin, member)
 - Channel membership management
 
 ### 4.3 Presence
+
 - Online/offline status indicators
 - Last seen timestamps
 - Do not disturb (DND) status
 - Custom status messages
 
 ### 4.4 Rich Media
+
 - File attachments (images, documents, PDFs)
 - Image previews in chat
 - Drag-and-drop upload
 - File size limits (configurable)
 
 ### 4.5 Search & Discovery
+
 - Full-text message search
 - Search within channels
 - Filter by user, date range, file type
 - Jump to message functionality
 
 ### 4.6 Threads
+
 - Threaded replies to messages
 - Thread previews in channel view
 - Thread notifications
 
 ### 4.7 Reactions
+
 - Emoji reactions to messages
 - Reaction counts
 - Add/remove reactions
@@ -80,17 +87,20 @@ Teams lack a fast, reliable, and feature-rich chat platform that combines real-t
 ## 5. User Interactions & Flows
 
 ### 5.1 Authentication
+
 - Email/password registration and login
 - Session management with JWT
 - Logout functionality
 
 ### 5.2 Channel Navigation
+
 - Sidebar with channel list
 - Channel categories collapsible
 - Unread message indicators
 - Quick channel switcher (Cmd/Ctrl+K)
 
 ### 5.3 Messaging Flow
+
 - Type message in input box
 - Send on Enter (Shift+Enter for newline)
 - Messages appear instantly via WebSocket
@@ -98,6 +108,7 @@ Teams lack a fast, reliable, and feature-rich chat platform that combines real-t
 - Reply in thread via context menu
 
 ### 5.4 File Sharing Flow
+
 - Drag file into chat or click attach button
 - Upload progress indicator
 - File appears as attachment card
@@ -117,15 +128,15 @@ Teams lack a fast, reliable, and feature-rich chat platform that combines real-t
 
 ## 7. Technology Stack
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 18, TypeScript, Vite |
-| Backend | Node.js, Express |
-| Real-time | Socket.io |
-| Database | PostgreSQL |
-| Auth | JWT (access + refresh tokens) |
-| File Storage | Local filesystem (uploads/) |
-| Styling | CSS Modules or Tailwind CSS |
+| Layer        | Technology                    |
+| ------------ | ----------------------------- |
+| Frontend     | React 18, TypeScript, Vite    |
+| Backend      | Node.js, Express              |
+| Real-time    | Socket.io                     |
+| Database     | PostgreSQL                    |
+| Auth         | JWT (access + refresh tokens) |
+| File Storage | Local filesystem (uploads/)   |
+| Styling      | CSS Modules or Tailwind CSS   |
 
 ---
 

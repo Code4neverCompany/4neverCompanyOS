@@ -43,49 +43,49 @@ slack-chat/
 
 #### Server-Side
 
-| File | Status | Notes |
-|------|--------|-------|
-| `server/src/index.ts` | ✅ Skeleton | Express + Socket.io setup |
-| `server/src/db/client.ts` | ✅ Skeleton | PostgreSQL connection pool |
-| `server/src/db/schema.sql` | ✅ Complete | Full DDL from architecture |
-| `server/src/routes/auth.ts` | ✅ Skeleton | Register/login/refresh/logout |
-| `server/src/routes/channels.ts` | ✅ Skeleton | CRUD + join/leave |
-| `server/src/routes/messages.ts` | ✅ Skeleton | Send/edit/delete/list |
-| `server/src/routes/files.ts` | ✅ Skeleton | Upload/download |
-| `server/src/routes/search.ts` | ✅ Skeleton | Full-text search |
-| `server/src/middleware/auth.ts` | ✅ Skeleton | JWT validation |
-| `server/src/socket/handlers.ts` | ✅ Skeleton | Socket.io event handlers |
+| File                            | Status      | Notes                         |
+| ------------------------------- | ----------- | ----------------------------- |
+| `server/src/index.ts`           | ✅ Skeleton | Express + Socket.io setup     |
+| `server/src/db/client.ts`       | ✅ Skeleton | PostgreSQL connection pool    |
+| `server/src/db/schema.sql`      | ✅ Complete | Full DDL from architecture    |
+| `server/src/routes/auth.ts`     | ✅ Skeleton | Register/login/refresh/logout |
+| `server/src/routes/channels.ts` | ✅ Skeleton | CRUD + join/leave             |
+| `server/src/routes/messages.ts` | ✅ Skeleton | Send/edit/delete/list         |
+| `server/src/routes/files.ts`    | ✅ Skeleton | Upload/download               |
+| `server/src/routes/search.ts`   | ✅ Skeleton | Full-text search              |
+| `server/src/middleware/auth.ts` | ✅ Skeleton | JWT validation                |
+| `server/src/socket/handlers.ts` | ✅ Skeleton | Socket.io event handlers      |
 
 #### Client-Side
 
-| File | Status | Notes |
-|------|--------|-------|
-| `client/src/App.tsx` | ✅ Skeleton | Router + context providers |
-| `client/src/context/AuthContext.tsx` | ✅ Skeleton | Auth state + login/logout |
-| `client/src/context/SocketContext.tsx` | ✅ Skeleton | Socket.io connection |
-| `client/src/components/auth/LoginForm.tsx` | ✅ Skeleton | Login form component |
-| `client/src/components/auth/RegisterForm.tsx` | ✅ Skeleton | Registration form |
-| `client/src/components/channels/ChannelList.tsx` | ✅ Skeleton | Channel sidebar list |
-| `client/src/components/messages/MessageList.tsx` | ✅ Skeleton | Scrollable message view |
-| `client/src/components/messages/MessageInput.tsx` | ✅ Skeleton | Input with emoji support |
-| `client/src/services/api.ts` | ✅ Skeleton | Axios-based API client |
+| File                                              | Status      | Notes                      |
+| ------------------------------------------------- | ----------- | -------------------------- |
+| `client/src/App.tsx`                              | ✅ Skeleton | Router + context providers |
+| `client/src/context/AuthContext.tsx`              | ✅ Skeleton | Auth state + login/logout  |
+| `client/src/context/SocketContext.tsx`            | ✅ Skeleton | Socket.io connection       |
+| `client/src/components/auth/LoginForm.tsx`        | ✅ Skeleton | Login form component       |
+| `client/src/components/auth/RegisterForm.tsx`     | ✅ Skeleton | Registration form          |
+| `client/src/components/channels/ChannelList.tsx`  | ✅ Skeleton | Channel sidebar list       |
+| `client/src/components/messages/MessageList.tsx`  | ✅ Skeleton | Scrollable message view    |
+| `client/src/components/messages/MessageInput.tsx` | ✅ Skeleton | Input with emoji support   |
+| `client/src/services/api.ts`                      | ✅ Skeleton | Axios-based API client     |
 
 ---
 
 ## 2. Story Implementation Status
 
-| Story | ID | Status | Owner |
-|-------|-----|--------|-------|
-| User Registration | slack-chat-001 | ✅ Skeleton | Dev |
-| User Login | slack-chat-002 | ✅ Skeleton | Dev |
-| Channel Creation | slack-chat-003 | ✅ Skeleton | Dev |
-| Send Message | slack-chat-004 | ✅ Skeleton | Dev |
-| Real-Time Presence | slack-chat-005 | ⏳ Pending | — |
-| Message Search | slack-chat-006 | ⏳ Pending | — |
-| File Attachments | slack-chat-007 | ⏳ Pending | — |
-| Threaded Replies | slack-chat-008 | ⏳ Pending | — |
-| Message Reactions | slack-chat-009 | ⏳ Pending | — |
-| Direct Messages | slack-chat-010 | ⏳ Pending | — |
+| Story              | ID             | Status      | Owner |
+| ------------------ | -------------- | ----------- | ----- |
+| User Registration  | slack-chat-001 | ✅ Skeleton | Dev   |
+| User Login         | slack-chat-002 | ✅ Skeleton | Dev   |
+| Channel Creation   | slack-chat-003 | ✅ Skeleton | Dev   |
+| Send Message       | slack-chat-004 | ✅ Skeleton | Dev   |
+| Real-Time Presence | slack-chat-005 | ⏳ Pending  | —     |
+| Message Search     | slack-chat-006 | ⏳ Pending  | —     |
+| File Attachments   | slack-chat-007 | ⏳ Pending  | —     |
+| Threaded Replies   | slack-chat-008 | ⏳ Pending  | —     |
+| Message Reactions  | slack-chat-009 | ⏳ Pending  | —     |
+| Direct Messages    | slack-chat-010 | ⏳ Pending  | —     |
 
 ---
 
@@ -110,10 +110,10 @@ slack-chat/
 
 ## 5. Commit Log
 
-| Date | Commit | Description |
-|------|--------|-------------|
+| Date       | Commit     | Description              |
+| ---------- | ---------- | ------------------------ |
 | 2026-05-31 | (skeleton) | Initial project scaffold |
 
 ---
 
-*Implementation is at skeleton stage. Full feature implementation pending subsequent development sessions.*
+_Implementation is at skeleton stage. Full feature implementation pending subsequent development sessions._

@@ -54,6 +54,7 @@ agy --version
 ```
 
 If not found, reinstall:
+
 - Claude Code: `npm install -g @anthropic/claude-code`
 - Antigravity CLI: `go install github.com/antigravity/cli/cmd/agy@latest`
 
@@ -72,6 +73,7 @@ Hermes may have detected a stall. Look for the stall-detection prompt in the UI.
 ### Cannot resume paused workflow
 
 On app reopen, the **Resume workflow?** prompt should appear automatically. If it does not:
+
 1. Open the project in the desktop UI
 2. Go to **Settings → Workflows**
 3. Find the paused workflow and click **Resume**

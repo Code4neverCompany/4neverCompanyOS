@@ -71,7 +71,9 @@ const CATEGORIES: Category[] = [
 
 export function SupermemorySettings() {
   const [categories, setCategories] = useState<Record<string, boolean>>({});
-  const [apiKeyStatus, setApiKeyStatus] = useState<"checking" | "configured" | "missing">("checking");
+  const [apiKeyStatus, setApiKeyStatus] = useState<"checking" | "configured" | "missing">(
+    "checking",
+  );
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -126,9 +128,9 @@ export function SupermemorySettings() {
       </div>
 
       <p style={{ color: "var(--fg-3)", fontSize: 13, margin: "0 0 16px", maxWidth: 560 }}>
-        Supermemory is a cross-project semantic memory layer. Choose which categories
-        to index — only opted-in content is sent to the Supermemory cloud. Credentials
-        are stored in your OS keychain.
+        Supermemory is a cross-project semantic memory layer. Choose which categories to index —
+        only opted-in content is sent to the Supermemory cloud. Credentials are stored in your OS
+        keychain.
       </p>
 
       <ApiKeyStatus status={apiKeyStatus} />
@@ -170,12 +172,11 @@ export function SupermemorySettings() {
           fontFamily: "var(--font-mono)",
         }}
       >
-        Category paths:{" "}
-        <span style={{ color: "var(--fn-cyan)" }}>project vault</span> ={" "}
+        Category paths: <span style={{ color: "var(--fn-cyan)" }}>project vault</span> ={" "}
         vault/projects/&lt;id&gt;/bmad/ ·{" "}
         <span style={{ color: "var(--fn-cyan)" }}>persona memory</span> ={" "}
-        vault/personas/&lt;id&gt;/memory/ ·{" "}
-        <span style={{ color: "var(--fn-red)" }}>never</span> = not indexed
+        vault/personas/&lt;id&gt;/memory/ · <span style={{ color: "var(--fn-red)" }}>never</span> =
+        not indexed
       </div>
     </HUDFrame>
   );
@@ -203,14 +204,12 @@ function ApiKeyStatus({ status }: { status: "checking" | "configured" | "missing
       {status === "checking" && (
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--fg-3)" }}>
           checking…
-          </span>
+        </span>
       )}
       {status === "configured" && (
         <>
           <Badge color="online">Configured</Badge>
-          <span style={{ fontSize: 11, color: "var(--fg-3)" }}>
-            Stored in OS keychain
-          </span>
+          <span style={{ fontSize: 11, color: "var(--fg-3)" }}>Stored in OS keychain</span>
         </>
       )}
       {status === "missing" && (
@@ -283,21 +282,19 @@ function CategoryRow({
                   category.vaultTier === "project"
                     ? "var(--fn-cyan)"
                     : category.vaultTier === "persona"
-                    ? "var(--fn-purple)"
-                    : "var(--fn-red)",
+                      ? "var(--fn-purple)"
+                      : "var(--fn-red)",
               }}
             >
               {category.vaultTier === "project"
                 ? "project vault"
                 : category.vaultTier === "persona"
-                ? "persona memory"
-                : "never"}
+                  ? "persona memory"
+                  : "never"}
             </span>
           )}
         </div>
-        <p style={{ margin: 0, fontSize: 12, color: "var(--fg-3)" }}>
-          {category.description}
-        </p>
+        <p style={{ margin: 0, fontSize: 12, color: "var(--fg-3)" }}>{category.description}</p>
       </div>
     </div>
   );
@@ -321,8 +318,8 @@ function ToggleSwitch({
         background: locked
           ? "var(--border-neutral)"
           : on
-          ? "var(--fn-purple)"
-          : "rgba(255,255,255,0.08)",
+            ? "var(--fn-purple)"
+            : "rgba(255,255,255,0.08)",
         border: `1px solid ${locked ? "var(--border-neutral)" : on ? "var(--fn-purple)" : "var(--border-neutral)"}`,
         position: "relative",
         cursor: locked ? "not-allowed" : disabled ? "not-allowed" : "pointer",

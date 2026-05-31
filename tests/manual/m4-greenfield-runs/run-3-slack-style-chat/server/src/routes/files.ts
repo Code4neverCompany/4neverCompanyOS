@@ -18,7 +18,10 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = [
-      "image/jpeg", "image/png", "image/gif", "image/webp",
+      "image/jpeg",
+      "image/png",
+      "image/gif",
+      "image/webp",
       "application/pdf",
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
@@ -36,7 +39,7 @@ router.post("/channels/:channelId/files", upload.single("file"), async (req, res
   const { channelId } = req.params;
   const member = await query(
     "SELECT 1 FROM channel_members WHERE channel_id = $1 AND user_id = $2",
-    [channelId, req.userId]
+    [channelId, req.userId],
   );
   if (!member.rows.length) {
     res.status(403).json({ error: { code: "FORBIDDEN", message: "Not a member" } });
@@ -45,7 +48,7 @@ router.post("/channels/:channelId/files", upload.single("file"), async (req, res
   const fileRecord = await query(
     `INSERT INTO files (message_id, user_id, filename, original_name, mime_type, size)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [null, req.userId, req.file.filename, req.file.originalname, req.file.mimetype, req.file.size]
+    [null, req.userId, req.file.filename, req.file.originalname, req.file.mimetype, req.file.size],
   );
   res.status(201).json({ data: fileRecord.rows[0] });
 });

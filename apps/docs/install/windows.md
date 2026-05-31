@@ -20,6 +20,7 @@ Download the latest `.exe` installer from the [ releases page](https://github.co
 4. On completion, **4neverCompany OS** launches automatically
 
 The installer sets up:
+
 - Paperclip (control plane + embedded Postgres)
 - Hermes Agent
 - BMAD Method

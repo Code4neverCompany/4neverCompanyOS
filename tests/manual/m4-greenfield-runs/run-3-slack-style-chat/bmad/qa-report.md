@@ -13,12 +13,12 @@ This is a greenfield project in skeleton stage. QA review was performed on the p
 
 ### 1.1 Test Coverage
 
-| Category | Coverage | Status |
-|----------|----------|--------|
-| Unit Tests | 0% | Skeleton only |
-| Integration Tests | 0% | Skeleton only |
-| E2E Tests | 0% | Skeleton only |
-| API Contract Tests | 0% | Skeleton only |
+| Category           | Coverage | Status        |
+| ------------------ | -------- | ------------- |
+| Unit Tests         | 0%       | Skeleton only |
+| Integration Tests  | 0%       | Skeleton only |
+| E2E Tests          | 0%       | Skeleton only |
+| API Contract Tests | 0%       | Skeleton only |
 
 **Verdict:** Project is in early scaffold stage. No testable features yet.
 
@@ -27,6 +27,7 @@ This is a greenfield project in skeleton stage. QA review was performed on the p
 ## 2. Architecture Review
 
 ### 2.1 Strengths
+
 - PostgreSQL full-text search with GIN index is the right approach for message search
 - JWT + httpOnly cookie for refresh tokens follows security best practices
 - Socket.io room-based broadcasting is scalable
@@ -35,13 +36,13 @@ This is a greenfield project in skeleton stage. QA review was performed on the p
 
 ### 2.2 Concerns
 
-| Issue | Severity | Description |
-|-------|----------|-------------|
-| In-memory presence | Medium | Won't work with multiple server instances |
-| Local file storage | Medium | Files lost on server restart/migration |
-| No rate limiting | High | API and WebSocket vulnerable to spam/abuse |
-| No input sanitization | High | XSS possible in message content |
-| No pagination on search results | Low | Will be slow with large datasets |
+| Issue                           | Severity | Description                                |
+| ------------------------------- | -------- | ------------------------------------------ |
+| In-memory presence              | Medium   | Won't work with multiple server instances  |
+| Local file storage              | Medium   | Files lost on server restart/migration     |
+| No rate limiting                | High     | API and WebSocket vulnerable to spam/abuse |
+| No input sanitization           | High     | XSS possible in message content            |
+| No pagination on search results | Low      | Will be slow with large datasets           |
 
 ### 2.3 Recommendations
 
@@ -56,24 +57,25 @@ This is a greenfield project in skeleton stage. QA review was performed on the p
 
 Since the project is at skeleton stage, no acceptance criteria can be tested. The following will be tested when implementation is complete:
 
-| Story | AC Count | Tested | Pass |
-|-------|----------|--------|------|
-| User Registration | 6 | 0 | — |
-| User Login | 5 | 0 | — |
-| Channel Creation | 6 | 0 | — |
-| Send Message | 7 | 0 | — |
-| Real-Time Presence | 5 | 0 | — |
-| Message Search | 7 | 0 | — |
-| File Attachments | 7 | 0 | — |
-| Threaded Replies | 6 | 0 | — |
-| Message Reactions | 7 | 0 | — |
-| Direct Messages | 6 | 0 | — |
+| Story              | AC Count | Tested | Pass |
+| ------------------ | -------- | ------ | ---- |
+| User Registration  | 6        | 0      | —    |
+| User Login         | 5        | 0      | —    |
+| Channel Creation   | 6        | 0      | —    |
+| Send Message       | 7        | 0      | —    |
+| Real-Time Presence | 5        | 0      | —    |
+| Message Search     | 7        | 0      | —    |
+| File Attachments   | 7        | 0      | —    |
+| Threaded Replies   | 6        | 0      | —    |
+| Message Reactions  | 7        | 0      | —    |
+| Direct Messages    | 6        | 0      | —    |
 
 ---
 
 ## 4. Security Considerations
 
 ### 4.1 Auth Security
+
 - ✅ bcrypt with cost factor 12 (appropriate)
 - ✅ JWT access token in memory (not localStorage)
 - ✅ httpOnly cookie for refresh token
@@ -81,11 +83,13 @@ Since the project is at skeleton stage, no acceptance criteria can be tested. Th
 - ⚠️ No brute-force protection on login
 
 ### 4.2 Input Validation
+
 - ⚠️ express-validator mentioned but not verified in code
 - ❌ No DOMPurify/sanitize-html for message content
 - ❌ File type validation not verified (MIME sniffing possible)
 
 ### 4.3 Database
+
 - ✅ Parameterized queries (prevents SQL injection)
 - ✅ Indexes on hot paths
 - ⚠️ No row-level security for DMs
@@ -106,23 +110,27 @@ Since the project is at skeleton stage, no acceptance criteria can be tested. Th
 When features are implemented, the following test cases should be executed:
 
 ### TC-001: User Registration
+
 1. Submit valid registration → account created, redirect to login
 2. Submit duplicate email → error "Email already in use"
 3. Submit short password → error "Password must be at least 8 characters"
 4. Submit invalid email → error "Invalid email format"
 
 ### TC-002: User Login
+
 1. Submit valid credentials → JWT received, redirect to dashboard
 2. Submit wrong password → 401 "Invalid email or password"
 3. Submit unregistered email → 401 "Invalid email or password"
 4. Access protected route without token → 401 Unauthorized
 
 ### TC-003: Send Message
+
 1. Send message in channel → appears for all members within 500ms
 2. Send empty message → rejected with validation error
 3. Send message while disconnected → queued, sent on reconnect
 
 ### TC-004: Message Search
+
 1. Search for existing message → found with context
 2. Search with channel filter → only that channel's results
 3. Search with date filter → only results in date range
@@ -132,15 +140,15 @@ When features are implemented, the following test cases should be executed:
 
 ## 7. Overall Verdict
 
-| Criteria | Status |
-|----------|--------|
-| Architecture Sound | ✅ Pass |
-| Security Controls | ⚠️ Needs review before prod |
-| Test Coverage | ❌ Not yet applicable |
-| Acceptance Criteria Met | ❌ Not yet testable |
+| Criteria                | Status                      |
+| ----------------------- | --------------------------- |
+| Architecture Sound      | ✅ Pass                     |
+| Security Controls       | ⚠️ Needs review before prod |
+| Test Coverage           | ❌ Not yet applicable       |
+| Acceptance Criteria Met | ❌ Not yet testable         |
 
 **Recommendation:** Proceed with implementation. Address security concerns (rate limiting, XSS sanitization) before production deployment. Add unit tests as each story is completed.
 
 ---
 
-*QA report produced at skeleton stage. Full testing to commence when feature implementation reaches testable state.*
+_QA report produced at skeleton stage. Full testing to commence when feature implementation reaches testable state._

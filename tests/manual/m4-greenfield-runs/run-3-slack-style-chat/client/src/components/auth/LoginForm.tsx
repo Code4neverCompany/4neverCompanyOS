@@ -37,7 +37,10 @@ export function LoginForm({ onSwitch }: { onSwitch: () => void }) {
       />
       <button type="submit">Sign In</button>
       <p>
-        Don't have an account? <button type="button" onClick={onSwitch}>Register</button>
+        Don't have an account?{" "}
+        <button type="button" onClick={onSwitch}>
+          Register
+        </button>
       </p>
     </form>
   );

@@ -16,7 +16,14 @@ import { ChannelsView } from "../views/ChannelsView";
 import { SettingsView } from "../views/SettingsView";
 import { WorkflowsView } from "../views/WorkflowsView";
 
-type RailItem = "projects" | "personas" | "channels" | "vault" | "memory" | "settings" | "workflows";
+type RailItem =
+  | "projects"
+  | "personas"
+  | "channels"
+  | "vault"
+  | "memory"
+  | "settings"
+  | "workflows";
 
 const RAIL_ITEMS: ReadonlyArray<{ id: RailItem; label: string; icon: string }> = [
   { id: "projects", label: "Projects", icon: "▣" },
