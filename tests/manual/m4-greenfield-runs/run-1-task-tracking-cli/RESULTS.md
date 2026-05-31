@@ -56,3 +56,39 @@ Test scaffolding verified 2026-05-31. Actual test run is a manual step requiring
 **Session clean (no crash):** PENDING
 **Pause/resume tested:** PENDING (Story 4.4 verified separately)
 **Overall:** PENDING
+
+## Test Execution Log
+
+| Date | Agent | Action | Result |
+|------|-------|--------|--------|
+| 2026-05-31 | CTO (run 5106e267) | Fix: empty `catch {}` in WorkflowsView.tsx:765 | ✅ ESLint no-empty resolved |
+| 2026-05-31 | CTO (run 5106e267) | `pnpm typecheck` (15 workspace projects) | ✅ All pass |
+| 2026-05-31 | CTO (run 5106e267) | `pnpm lint` | ✅ Clean (post-fix) |
+| 2026-05-31 | CTO (run 5106e267) | `pnpm test` | ✅ 49 core + 8 stall-detector + 11 supermemory + 42 desktop = 110 tests green |
+| 2026-05-31 | CTO (run 5106e267) | Verify greenfield-fullstack.yaml phases | ✅ 6 phases confirmed |
+| 2026-05-31 | CTO (run 5106e267) | Verify WorkflowEngine phase wiring | ✅ All phases wired |
+| 2026-05-31 | CTO (run 5106e267) | Update RESULTS.md with scaffolding status | ✅ Done |
+| 2026-05-31 | CTO (current) | Verify Tauri dry-run | ❌ `--dry-run` not supported by Tauri CLI |
+
+## Manual Test Run Steps (blocked — requires desktop environment)
+
+The actual E2E execution requires all prerequisites above plus a human at a desktop:
+
+1. [ ] Launch 4neverCompany OS desktop app (Tauri dev or release build)
+2. [ ] Complete wizard (vault path + Anthropic API key configured)
+3. [ ] Open Workflows rail → select `greenfield-fullstack`
+4. [ ] Enter project name: `task-tracker` / idea: *(see Project Idea above)*
+5. [ ] Click Start — Brief phase begins
+6. [ ] Wait for `vault/projects/<id>/bmad/01-brief.md` artifact
+7. [ ] Read 01-brief.md → click Approve (or Request Changes)
+8. [ ] Repeat for: Plan → Architecture → Solutioning → Implementation → QA
+9. [ ] Implementation phase: Dev + Frontend Designer personas spawn, produce code
+10. [ ] QA phase: QA persona reviews and produces `qa-report.md`
+11. [ ] Copy `vault/projects/<id>/bmad/` tree → `tests/manual/m4-greenfield-runs/run-1-task-tracking-cli/`
+12. [ ] Fill in artifacts table above with ✅/❌ per artifact
+13. [ ] Fill in Code Produced section
+14. [ ] Fill in Issues / Observations
+15. [ ] Mark SM-6 Pass / Fail
+
+**Owner:** Human tester (Maurice or delegated)
+**Blocker:** No desktop app running + no live API keys in this environment
