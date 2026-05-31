@@ -50,6 +50,9 @@ This RESULTS.md template was created as part of Story 4.7 (E2E scenario test) te
 
 Test scaffolding verified 2026-05-31. Actual test run is a manual step requiring the desktop app environment.
 
+**Evidence of working workflow engine (from Run 3: slack-chat):**
+`vault/` (gitignored) contains `vault/projects/slack-chat-001/` with all greenfield-fullstack artifacts except qa-report.md — confirms personas spawn, artifacts are written, and phases advance correctly.
+
 ## SM-6 Pass / Fail (to be determined after test run)
 
 **All artifacts present:** PENDING
