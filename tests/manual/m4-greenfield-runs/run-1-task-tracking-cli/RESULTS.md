@@ -110,7 +110,7 @@ The actual E2E execution requires all prerequisites above plus a human at a desk
 ## Issue Disposition
 
 **Issue:** NEVAAA-66 (Run 1: Task-tracking CLI — greenfield-fullstack E2E)
-**Status:** pending manual execution — workflow engine verified ✅ (Run 3 PASS)
+**Status:** blocked — SM-6 validated by Run 3; Run 1 requires desktop environment (unavailable in this context)
 
 **SM-6 status (across all 3 runs):**
 - Run 1 (task-tracker): ❌ Pending — desktop app execution required
