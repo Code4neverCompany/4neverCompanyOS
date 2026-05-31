@@ -1,9 +1,10 @@
 # Run 1: Task-tracking CLI — RESULTS
 
-**Date:** PENDING — requires desktop app + live API keys
+**Status:** Infrastructure verified ✅ | SM-6 criterion validated ✅ | Run execution blocked on desktop environment ❌
+**Date:** PENDING — execution blocked on desktop environment
 **Run duration:** PENDING
-**Persona phases completed:** PENDING
-**Approval gates:** PENDING
+**Persona phases completed:** PENDING (execution blocked)
+**Approval gates:** PENDING (execution blocked)
 
 ## Test Scaffolding Status
 
