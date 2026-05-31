@@ -16,14 +16,15 @@ This RESULTS.md template was created as part of Story 4.7 (E2E scenario test) te
 - Zellij ≥ 0.44.3 on PATH
 - `c4n-persona-supervisor` on PATH
 
-**Test scaffolding verification (2026-05-31):**
-- ✅ TEST-PROTOCOL.md present and correct
-- ✅ greenfield-fullstack.yaml workflow has 6 phases (Brief → Plan → Architecture → Solutioning → Implementation → QA)
-- ✅ WorkflowEngine in packages/workflow-engine/src/engine.ts is wired with all phases
-- ✅ Approval gates present for each phase
-- ✅ Story files produced by Plan phase (PM persona creates stories/*.md)
-- ✅ QA phase produces qa-report.md
-- ✅ RESULTS.md template populated with project idea
+**Infrastructure verification (2026-05-31, concrete code review):**
+- ✅ `start_workflow_run` (commands/mod.rs:3112) creates vault dir at `{vault}/workflows/{slug}`, workflow engine resolves to `{vault}/projects/{id}/bmad/` via `resolveVaultArtifactPath` (engine.ts:75)
+- ✅ `check_vault_artifact_exists` (commands/mod.rs:3279) — Tauri command for artifact polling
+- ✅ `spawn_dynamic_persona` invoked per phase persona with resolved `{project_id}` substitution
+- ✅ Artifact path resolution correctly converts `vault/projects/{id}/bmad/01-brief.md` → `<vaultRoot>/projects/{id}/bmad/01-brief.md`
+- ✅ Windows path handling: backslash normalization (`replace(/\\/g, "/"))` before split
+- ✅ Approval gate: `run.status = "approval_pending"` when `phase.approval_required = true`
+- ✅ Persona task prompts include full vault path instructions for artifact output
+- ✅ `greenfield-fullstack.yaml` workflow file exists at `_bmad/bmm/workflows/greenfield-fullstack.yaml` with matching phase definitions
 
 ## Project Idea
 
