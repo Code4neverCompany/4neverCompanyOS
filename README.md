@@ -46,6 +46,7 @@ This repo is a single pnpm workspace + Cargo workspace per Architecture §6:
 apps/
   desktop/                  Tauri desktop shell (hosts Paperclip's React UI + injects workspace panels)
   wizard/                   First-run wizard (separate Tauri window)
+  docs/                     VitePress documentation site (deployed to Cloudflare Pages)
 packages/                   TypeScript packages
   core/                     types + Zod schemas + Glossary (upstream-agnostic)
   bus-client/               TS client for the message bus

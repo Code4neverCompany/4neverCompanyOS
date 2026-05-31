@@ -1,0 +1,7 @@
+name = "4nevercompany-os-docs"
+compatibility_date = "2026-05-31"
+
+pages_build_output_dir = "apps/docs/.vitepress/dist"
+
+[vars]
+BUILD_PRESET = "vitepress"
