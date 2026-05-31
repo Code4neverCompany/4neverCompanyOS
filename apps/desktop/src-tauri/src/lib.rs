@@ -143,6 +143,7 @@ pub fn run() {
             // log_workflow_decision records approvals to vault, dismiss clears state.
             commands::advance_workflow_phase,
             commands::check_vault_artifact_exists,
+            commands::read_vault_artifact,
             commands::log_workflow_decision,
             commands::dismiss_workflow_run,
             // Story 4.5 (NEVAAA-55): story-state watcher — emits

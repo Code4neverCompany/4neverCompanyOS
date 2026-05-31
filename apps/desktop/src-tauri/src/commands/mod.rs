@@ -3395,6 +3395,50 @@ pub fn check_vault_artifact_exists(path: String) -> bool {
     PathBuf::from(&path).exists()
 }
 
+const VAULT_ARTIFACT_MAX_BYTES: usize = 64 * 1024;
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct VaultArtifactContent {
+    pub path: String,
+    pub content: String,
+    pub truncated: bool,
+}
+
+/// Read the content of a vault artifact file for the approval preview.
+/// Caps content at VAULT_ARTIFACT_MAX_BYTES to avoid loading large files
+/// into the UI. The UI truncates display separately.
+#[tauri::command]
+#[allow(dead_code)]
+pub fn read_vault_artifact(path: String) -> Result<VaultArtifactContent, String> {
+    let path_buf = PathBuf::from(&path);
+    if !path_buf.exists() {
+        return Err(format!("artifact file not found: {}", path));
+    }
+
+    let metadata = std::fs::metadata(&path_buf)
+        .map_err(|e| format!("could not read artifact metadata: {}", e))?;
+
+    let truncated = metadata.len() > VAULT_ARTIFACT_MAX_BYTES as u64;
+
+    use std::io::Read;
+    let mut file = std::fs::File::open(&path_buf)
+        .map_err(|e| format!("could not open artifact file: {}", e))?;
+    let mut buf = Vec::with_capacity(VAULT_ARTIFACT_MAX_BYTES + 1);
+    file.take((VAULT_ARTIFACT_MAX_BYTES + 1) as u64).read_to_end(&mut buf)
+        .map_err(|e| format!("could not read artifact file: {}", e))?;
+
+    if truncated {
+        buf.truncate(VAULT_ARTIFACT_MAX_BYTES);
+    }
+
+    let content = String::from_utf8_lossy(&buf).into_owned();
+    Ok(VaultArtifactContent {
+        path,
+        content,
+        truncated,
+    })
+}
+
 /// Log a workflow approval gate decision to the vault's decisions log.
 /// Appends a markdown entry to `vault/projects/<project_id>/bmad/.workflow-decisions.md`.
 #[tauri::command]

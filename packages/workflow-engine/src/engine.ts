@@ -84,11 +84,17 @@ function resolveVaultArtifactPath(vaultDir: string, relativePath: string): strin
   return `${vaultRoot}/${cleanRelative}`;
 }
 
+interface PendingApproval {
+  phase: WorkflowPhase;
+  resolve: () => void;
+}
+
 export class WorkflowEngine {
   private currentRun: WorkflowRunState | null = null;
   private vaultPoller: ReturnType<typeof setInterval> | null = null;
   private currentWorkflow: WorkflowMetadata | null = null;
   private pendingApprovalPhase: WorkflowPhase | null = null;
+  private pendingApprovalQueue: PendingApproval[] = [];
 
   async listWorkflows(): Promise<Array<{ id: string; name: string; description: string }>> {
     return invoke<Array<{ id: string; name: string; description: string }>>("list_workflows");
@@ -337,6 +343,8 @@ export class WorkflowEngine {
     run.status = "running";
     run.active_personas = [];
 
+    await this.waitForApprovalGate();
+
     ProgressBus.emitStoryState(run.workflow_id);
 
     for (const persona of phase.personas) {
@@ -384,7 +392,12 @@ export class WorkflowEngine {
           if (phase.approval_required) {
             run.status = "approval_pending";
             this.pendingApprovalPhase = phase;
-            resolve();
+
+            const approvalResolve = () => {
+              this.pendingApprovalQueue.shift();
+              resolve();
+            };
+            this.pendingApprovalQueue.push({ phase, resolve: approvalResolve });
             return;
           }
 
@@ -432,6 +445,7 @@ export class WorkflowEngine {
     run.current_phase = nextPhase.id;
     run.id = updated.id;
 
+    await this.waitForApprovalGate();
     await this.executePhase(run, nextPhase);
   }
 
@@ -513,6 +527,21 @@ export class WorkflowEngine {
 
   getPendingApprovalPhase(): WorkflowPhase | null {
     return this.pendingApprovalPhase;
+  }
+
+  private waitForApprovalGate(): Promise<void> {
+    return new Promise((resolve) => {
+      if (this.pendingApprovalQueue.length === 0) {
+        resolve();
+        return;
+      }
+      const current = this.pendingApprovalQueue[0];
+      const originalResolve = current.resolve;
+      current.resolve = () => {
+        originalResolve();
+        resolve();
+      };
+    });
   }
 
   pause(): void {

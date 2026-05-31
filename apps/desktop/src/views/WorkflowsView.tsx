@@ -252,6 +252,12 @@ function ResumePrompt({
 
 // ── Approval gate overlay ───────────────────────────────────────────────
 
+interface VaultArtifactContent {
+  path: string;
+  content: string;
+  truncated: boolean;
+}
+
 function ApprovalGate({
   run,
   onApprove,
@@ -264,12 +270,34 @@ function ApprovalGate({
   const [feedback, setFeedback] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [artifactContent, setArtifactContent] = useState<VaultArtifactContent | null>(null);
 
   const pendingPhase = workflowEngine.getPendingApprovalPhase();
   const currentLabel = PHASE_LABELS[pendingPhase?.id ?? run.current_phase] ?? run.current_phase;
   const nextPhaseId =
     PHASE_ORDER[PHASE_ORDER.indexOf(pendingPhase?.id ?? run.current_phase ?? "") + 1];
   const nextLabel = PHASE_LABELS[nextPhaseId] ?? nextPhaseId ?? "Done";
+
+  const resolvedArtifactPath = pendingPhase
+    ? pendingPhase.artifact.path
+        .replace(/\{project_id\}/g, run.project_id ?? "")
+        .replace(/\{project_name\}/g, run.project_name ?? "")
+    : null;
+
+  useEffect(() => {
+    if (!resolvedArtifactPath) return;
+    let cancelled = false;
+    invoke<VaultArtifactContent>("read_vault_artifact", { path: resolvedArtifactPath })
+      .then((content) => {
+        if (!cancelled) setArtifactContent(content);
+      })
+      .catch((e) => {
+        console.warn("[ApprovalGate] failed to read artifact:", e);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedArtifactPath]);
 
   function handleApprove() {
     setBusy(true);
@@ -341,15 +369,41 @@ function ApprovalGate({
                 padding: "10px 14px",
               }}
             >
-              <span style={{ color: "var(--fg-3)", fontSize: 10 }}>EXPECTED ARTIFACT</span>
+              <span style={{ color: "var(--fg-3)", fontSize: 10 }}>ARTIFACT</span>
               <br />
-              <span style={{ color: "var(--fn-cyan)" }}>
+              <span style={{ color: "var(--fn-cyan)", fontSize: 11 }}>
                 {pendingPhase!.artifact.path.replace(/\{project_id\}/g, run.project_id ?? "")}
               </span>
               <br />
               <span style={{ color: "var(--fg-3)", fontSize: 10 }}>DESCRIPTION</span>
               <br />
               {pendingPhase.artifact.description}
+              {artifactContent && (
+                <>
+                  <br />
+                  <span style={{ color: "var(--fg-3)", fontSize: 10 }}>PREVIEW</span>
+                  <div
+                    style={{
+                      marginTop: 6,
+                      maxHeight: 200,
+                      overflow: "auto",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 11,
+                      color: "var(--fg-2)",
+                      lineHeight: 1.5,
+                      whiteSpace: "pre-wrap",
+                      background: "rgba(0,0,0,0.2)",
+                      borderRadius: 2,
+                      padding: "8px 10px",
+                    }}
+                  >
+                    {artifactContent.content}
+                    {artifactContent.truncated && (
+                      <span style={{ color: "var(--fn-gold)" }}> …[truncated]</span>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
           <p style={{ margin: "12px 0 0" }}>
