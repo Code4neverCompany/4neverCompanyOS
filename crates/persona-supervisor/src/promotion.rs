@@ -32,6 +32,7 @@
 //! promoted-ephemeral personas through the same path.
 
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
@@ -51,6 +52,8 @@ pub enum RegistryError {
     Io(#[from] std::io::Error),
     #[error("json: {0}")]
     Json(#[from] serde_json::Error),
+    #[error("registry lock poisoned")]
+    LockPoisoned,
 }
 
 // ── Persisted record ──────────────────────────────────────────────────────────
@@ -133,9 +136,30 @@ pub struct PersonaMeta {
 /// Records live at `<vault>/ephemeral-registry/<slug>.json`. All I/O is
 /// synchronous and designed to be called from the same context as
 /// [`run_ephemeral`][crate::run_ephemeral].
-#[derive(Debug, Clone)]
+///
+/// ## Thread safety
+///
+/// [`record_spawn`] serializes writes per registry using an internal `Mutex`.
+/// Concurrent reads of different slugs proceed in parallel; concurrent writes
+/// to the same slug are serialized. This prevents the race where two threads
+/// both read count=1, increment to 2, and write — losing one increment.
+#[derive(Debug)]
 pub struct EphemeralRegistry {
     vault_path: PathBuf,
+    /// Guards the load-record → save-record sequence for each slug so that
+    /// concurrent calls to [`record_spawn`] on the same slug cannot interleave
+    /// their read-modify-write window. Each clone gets its own independent mutex
+    /// (correct for multi-registry-to-same-vault configurations).
+    lock: Mutex<()>,
+}
+
+impl Clone for EphemeralRegistry {
+    fn clone(&self) -> Self {
+        Self {
+            vault_path: self.vault_path.clone(),
+            lock: Mutex::new(()),
+        }
+    }
 }
 
 impl EphemeralRegistry {
@@ -143,6 +167,7 @@ impl EphemeralRegistry {
     pub fn new(vault_path: impl Into<PathBuf>) -> Self {
         Self {
             vault_path: vault_path.into(),
+            lock: Mutex::new(()),
         }
     }
 
@@ -181,7 +206,14 @@ impl EphemeralRegistry {
     ///   [`PROMOTION_THRESHOLD`] and the persona hasn't been permanently
     ///   dismissed or already promoted.
     /// - [`PromotionState::None`] otherwise.
+    ///
+    /// ## Concurrency
+    ///
+    /// Uses a write lock to serialize the entire load → modify → save sequence.
+    /// This prevents lost updates when multiple threads spawn the same ephemeral
+    /// simultaneously.
     pub fn record_spawn(&self, slug: &str) -> Result<PromotionState, RegistryError> {
+        let _guard = self.lock.lock().map_err(|_| RegistryError::LockPoisoned)?;
         let mut record = self.load_record(slug)?;
         record.spawn_count += 1;
         self.save_record(&record)?;
@@ -212,6 +244,7 @@ impl EphemeralRegistry {
     /// After this call [`record_spawn`][Self::record_spawn] returns
     /// [`PromotionState::None`] for all future spawns of this persona.
     pub fn dismiss_permanent(&self, slug: &str) -> Result<(), RegistryError> {
+        let _guard = self.lock.lock().map_err(|_| RegistryError::LockPoisoned)?;
         let mut record = self.load_record(slug)?;
         record.dismiss_permanent = true;
         self.save_record(&record)

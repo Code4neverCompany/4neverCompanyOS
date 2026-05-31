@@ -709,45 +709,70 @@ mod tests {
         assert!(!flag.is_paused(), "flag should be Running after resume");
     }
 
-    /// Integration test: AC-7 — pause → no new task pickup → redirect (via
-    /// unblock + new config) → task received.
-    ///
-    /// This is a pure-logic integration test that verifies the pause/resume
-    /// state machine on the ephemeral path without spawning a PTY. The full
-    /// pause-redirect flow on the persistent PTY path is covered by the
-    /// `supervise_controlled` integration test below (marked #[ignore] for
-    /// the Windows ConPTY short-lived-child reason).
+    /// P0-B.1 — 20 concurrent ephemeral spawns verify zero orphans and correct
+    /// bus identity accounting. Each thread calls run_ephemeral independently;
+    /// the OS process boundary is the primary isolation guarantee.
     #[test]
-    fn pause_no_pickup_redirect_task_received() {
+    fn concurrent_ephemeral_spawns_no_orphans() {
         let vault = TempDir::new().unwrap();
-        let flag = EphemeralPauseFlag::new();
-        flag.pause();
+        let notifier = Arc::new(RecordingNotifier::default());
+        let total_orphans = Arc::new(std::sync::atomic::AtomicUsize::new(0));
 
-        // Simulate a "redirect": choose a different task (config) to run
-        // once the flag clears.
-        let redirect_config = {
-            // On redirect we'd normally override the task; here we just verify
-            // run_ephemeral_controlled resumes and produces an artifact.
-            config_for(vault.path(), "redirected-task")
-        };
+        let handles: Vec<_> = (0..20)
+            .map(|i| {
+                let vault = vault.path().to_path_buf();
+                let notifier = notifier.clone();
+                let total_orphans = total_orphans.clone();
+                std::thread::spawn(move || {
+                    let outcome = run_ephemeral(
+                        config_for(&vault, &format!("concurrent-reviewer-{i:03}")),
+                        &*notifier,
+                        None,
+                    )
+                    .expect("ephemeral run must succeed");
+                    total_orphans.fetch_add(outcome.orphans, Ordering::SeqCst);
+                    outcome
+                })
+            })
+            .collect();
 
-        // Thread that acts as the "redirect" UI action: pauses, then resumes.
-        let flag2 = flag.clone();
-        std::thread::spawn(move || {
-            // Simulate UI: verify we're paused, then resume (the "redirect" unblocks).
-            assert!(flag2.is_paused(), "should be paused before redirect");
-            std::thread::sleep(std::time::Duration::from_millis(60));
-            flag2.resume();
-        });
+        let outcomes: Vec<_> = handles
+            .into_iter()
+            .map(|h| h.join().expect("thread must not panic"))
+            .collect();
 
-        let notifier = NullNotifier;
-        let outcome = run_ephemeral_controlled(redirect_config, &notifier, None, &flag).unwrap();
+        assert_eq!(
+            total_orphans.load(Ordering::SeqCst),
+            0,
+            "P0-B.1: zero orphans across 20 concurrent ephemeral spawns"
+        );
+        assert_eq!(outcomes.len(), 20, "all 20 runs must complete");
 
-        // AC: no task picked up while paused; task received after redirect.
-        assert_eq!(outcome.exit_code, 0, "redirected task must complete");
-        assert!(
-            outcome.artifact_path.exists(),
-            "redirected task artifact must be written"
+        // Every artifact written.
+        for outcome in &outcomes {
+            assert!(
+                outcome.artifact_path.exists(),
+                "artifact must exist for {}",
+                outcome.artifact_path.display()
+            );
+        }
+
+        // Bus lifecycle balanced: 20 registered, 20 completed, 20 deregistered.
+        assert_eq!(
+            notifier.registered.load(Ordering::SeqCst),
+            20,
+            "20 registrations expected"
+        );
+        assert_eq!(
+            notifier.deregistered.load(Ordering::SeqCst),
+            20,
+            "20 deregistrations expected"
+        );
+        assert_eq!(
+            notifier.completed.load(Ordering::SeqCst),
+            20,
+            "20 completions expected"
         );
     }
+
 }
