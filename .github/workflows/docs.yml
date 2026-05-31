@@ -2,54 +2,52 @@ name: Deploy Docs
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
-      - "apps/docs/**"
-      - "docs/**"
-      - ".github/workflows/docs.yml"
+      - 'apps/docs/**'
+      - '.github/workflows/docs.yml'
   workflow_dispatch:
-
-env:
-  NODE_VERSION: "22"
-  PNPM_VERSION: "11.3.0"
 
 jobs:
   deploy-docs:
-    name: Deploy VitePress → Cloudflare Pages
+    name: Deploy to Cloudflare Pages
     runs-on: ubuntu-latest
     permissions:
       contents: read
       deployments: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: ${{ env.PNPM_VERSION }}
+          version: 11.3.0
           run_install: false
 
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '22'
           cache: pnpm
+          cache-dependency-path: apps/docs/pnpm-lock.yaml
 
-      - name: Install docs dependencies
-        run: pnpm install --frozen-lockfile
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
         working-directory: apps/docs
 
       - name: Build VitePress site
-        run: pnpm build
+        run: pnpm vitepress build
         working-directory: apps/docs
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/pages-action@v1
         with:
-          api-token: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          project-name: 4nevercompany-os-docs
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: 4nevercompany-os-docs
           directory: apps/docs/.vitepress/dist
-          git-hash: ${{ github.sha }}
-          wrangler-version: ^3
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          wranglerVersion: '3'
