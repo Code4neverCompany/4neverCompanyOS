@@ -30,3 +30,9 @@ apps/*/src-tauri/binaries/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+
+# Desktop app vault directory (created at workspace root when app runs in dev mode)
+# Per vault-layout spec, vault path is configured via wizard and stored in
+# ~/.4nevercompanyos/config.toml — the on-disk vault at the workspace root
+# is a dev-time artifact that should never be committed.
+vault/
