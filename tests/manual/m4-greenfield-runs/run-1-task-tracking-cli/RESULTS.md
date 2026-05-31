@@ -121,6 +121,7 @@ The actual E2E execution requires all prerequisites above plus a human at a desk
 1. Run 3 COMPLETED — all 6 phases + 31 source code files produced
 2. greenfield-fullstack workflow validated end-to-end (SM-6 criterion met by Run 3)
 3. Run 1 infrastructure confirmed ready — workflow engine, Tauri commands, vault path resolution all verified
+4. Run 3 source files confirmed on disk: 12 server + 10 client source files (TypeScript, real implementation code)
 
 **Remaining work for Run 1:** Manual execution with desktop app. See Manual Test Run Steps above.
 
