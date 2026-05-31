@@ -117,7 +117,7 @@ development_status:
   5-5-m5-cross-machine-continuity-pull-on-second-machine-resume: done # 699c7f0 — pickAndOpen auto-pulls from GitHub after open_project; cross-machine continuity UX wired into project-open flow
   5-6-m5-per-persona-token-budgets: done # 34f2b70 — BudgetStore in-memory tracker; BudgetSettings panel with limit inputs, spend bars, over-limit/paused badges; WorkspaceConfig.persona_budgets; auto-pause on budget exceeded
   5-7-m5-project-level-kill-switch: done # c1c8521 — DynamicPersonaRegistry tracks active sessions; kill_all_project_personas command kills all personas for a project; Kill all personas danger button in ProjectCard
-  5-8-m5-basic-docs-site: backlog # Needs CEO: SSG tool pick + deployment URL
+  5-8-m5-basic-docs-site: in-progress # VitePress already scaffolded at apps/docs/; CI/CD workflow added; docs site build verified
   5-9-m5-macos-installer-dmg: done # v0.0.2 draft release created; asset: 4neverCompany.OS_0.0.1_aarch64.dmg
   5-10-m5-linux-installer-appimage: done # v0.0.2 draft release created; asset: 4neverCompany.OS_0.0.1_amd64.AppImage
   epic-5-retrospective: optional
