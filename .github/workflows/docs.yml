@@ -5,8 +5,8 @@ on:
     branches:
       - main
     paths:
-      - 'apps/docs/**'
-      - '.github/workflows/docs.yml'
+      - "apps/docs/**"
+      - ".github/workflows/docs.yml"
   workflow_dispatch:
 
 jobs:
@@ -30,7 +30,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: "22"
           cache: pnpm
           cache-dependency-path: apps/docs/pnpm-lock.yaml
 
@@ -50,4 +50,4 @@ jobs:
           projectName: 4nevercompany-os-docs
           directory: apps/docs/.vitepress/dist
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          wranglerVersion: '3'
+          wranglerVersion: "3"
