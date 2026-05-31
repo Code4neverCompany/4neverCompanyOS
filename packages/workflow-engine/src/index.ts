@@ -5,4 +5,5 @@
 // bus events via bus_publish.
 
 export * from "./engine";
+export type { WorkflowPhase, WorkflowPhasePersona, WorkflowRunState, WorkflowMetadata } from "./engine";
 export const PACKAGE_NAME = "@c4n/workflow-engine" as const;

@@ -389,11 +389,74 @@ pub(crate) struct WorkspaceConfig {
     /// A value of 0.0 means no limit.
     #[serde(default)]
     persona_budgets: std::collections::HashMap<String, f64>,
+    /// Paperclip API credentials for governance gate integration (BMAA-17).
+    /// Stored when the user authenticates with Paperclip from the desktop app.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    paperclip_api_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    paperclip_api_key: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    paperclip_company_id: Option<String>,
+    /// Skip governance gates on phase completion (Quick Dev mode).
+    /// When true, approval_required phases auto-advance without Paperclip approval.
+    #[serde(default)]
+    governance_gate_bypass: bool,
 }
 
 fn workspace_config_path() -> Result<PathBuf, String> {
     let home = dirs::home_dir().ok_or_else(|| "home directory not found".to_string())?;
     Ok(home.join(".4nevercompanyos").join("config.toml"))
+}
+
+/// BMAA-17: Store Paperclip API credentials from the desktop app's
+/// Paperclip authentication flow. Called once on first auth or when the
+/// user re-authenticates. These credentials are used for governance
+/// gate integration (creating approvals on phase completion).
+#[tauri::command]
+#[allow(dead_code)]
+pub fn set_paperclip_credentials(
+    api_url: String,
+    api_key: String,
+    company_id: String,
+) -> Result<(), String> {
+    let mut config = read_workspace_config()?;
+    config.paperclip_api_url = Some(api_url);
+    config.paperclip_api_key = Some(api_key);
+    config.paperclip_company_id = Some(company_id);
+    write_workspace_config(config)
+}
+
+/// BMAA-17: Read the stored Paperclip API credentials. Returns None if not
+/// yet configured. The frontend uses this to show the governance gate status.
+#[tauri::command]
+#[allow(dead_code)]
+pub fn get_paperclip_credentials() -> Result<PaperclipCredentials, String> {
+    let config = read_workspace_config()?;
+    Ok(PaperclipCredentials {
+        api_url: config.paperclip_api_url,
+        api_key: config.paperclip_api_key,
+        company_id: config.paperclip_company_id,
+        governance_gate_bypass: config.governance_gate_bypass,
+    })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
+pub struct PaperclipCredentials {
+    pub api_url: Option<String>,
+    pub api_key: Option<String>,
+    pub company_id: Option<String>,
+    pub governance_gate_bypass: bool,
+}
+
+/// BMAA-17: Enable or disable governance gate bypass (Quick Dev mode).
+/// When bypass is enabled, phase completion skips Paperclip approval.
+#[tauri::command]
+#[allow(dead_code)]
+pub fn set_governance_gate_bypass(enabled: bool) -> Result<(), String> {
+    let mut config = read_workspace_config()?;
+    config.governance_gate_bypass = enabled;
+    write_workspace_config(config)
 }
 
 /// Read the workspace config. Returns a clear error pointing at the
@@ -1446,6 +1509,213 @@ fn ensure_persona_vault_dir(
     Ok(meta)
 }
 
+/// Map a BMAD skill ID to its source path relative to the project root.
+/// Returns `None` if the skill ID is not recognized.
+///
+/// Skill IDs are canonical identifiers from `_bmad/_config/skill-manifest.csv`.
+/// The mapping covers all bmm and bmb skills referenced by the workflow engine.
+fn resolve_skill_source_path(project_root: &Path, skill_id: &str) -> Option<PathBuf> {
+    let skill_path = match skill_id {
+        // BMM — 1-analysis
+        "bmad-agent-analyst" => "_bmad/bmm/1-analysis/bmad-agent-analyst/SKILL.md",
+        "bmad-agent-tech-writer" => "_bmad/bmm/1-analysis/bmad-agent-tech-writer/SKILL.md",
+        "bmad-document-project" => "_bmad/bmm/1-analysis/bmad-document-project/SKILL.md",
+        "bmad-prfaq" => "_bmad/bmm/1-analysis/bmad-prfaq/SKILL.md",
+        "bmad-product-brief" => "_bmad/bmm/1-analysis/bmad-product-brief/SKILL.md",
+        "bmad-domain-research" => "_bmad/bmm/1-analysis/research/bmad-domain-research/SKILL.md",
+        "bmad-market-research" => "_bmad/bmm/1-analysis/research/bmad-market-research/SKILL.md",
+        "bmad-technical-research" => "_bmad/bmm/1-analysis/research/bmad-technical-research/SKILL.md",
+        // BMM — 2-plan-workflows
+        "bmad-agent-pm" => "_bmad/bmm/2-plan-workflows/bmad-agent-pm/SKILL.md",
+        "bmad-agent-ux-designer" => "_bmad/bmm/2-plan-workflows/bmad-agent-ux-designer/SKILL.md",
+        "bmad-create-ux-design" => "_bmad/bmm/2-plan-workflows/bmad-create-ux-design/SKILL.md",
+        "bmad-prd" => "_bmad/bmm/2-plan-workflows/bmad-prd/SKILL.md",
+        // BMM — 3-solutioning
+        "bmad-agent-architect" => "_bmad/bmm/3-solutioning/bmad-agent-architect/SKILL.md",
+        "bmad-check-implementation-readiness" =>
+            "_bmad/bmm/3-solutioning/bmad-check-implementation-readiness/SKILL.md",
+        "bmad-create-architecture" => "_bmad/bmm/3-solutioning/bmad-create-architecture/SKILL.md",
+        "bmad-create-epics-and-stories" =>
+            "_bmad/bmm/3-solutioning/bmad-create-epics-and-stories/SKILL.md",
+        "bmad-generate-project-context" =>
+            "_bmad/bmm/3-solutioning/bmad-generate-project-context/SKILL.md",
+        // BMM — 4-implementation
+        "bmad-agent-dev" => "_bmad/bmm/4-implementation/bmad-agent-dev/SKILL.md",
+        "bmad-checkpoint-preview" => "_bmad/bmm/4-implementation/bmad-checkpoint-preview/SKILL.md",
+        "bmad-code-review" => "_bmad/bmm/4-implementation/bmad-code-review/SKILL.md",
+        "bmad-correct-course" => "_bmad/bmm/4-implementation/bmad-correct-course/SKILL.md",
+        "bmad-create-story" => "_bmad/bmm/4-implementation/bmad-create-story/SKILL.md",
+        "bmad-dev-story" => "_bmad/bmm/4-implementation/bmad-dev-story/SKILL.md",
+        "bmad-investigate" => "_bmad/bmm/4-implementation/bmad-investigate/SKILL.md",
+        "bmad-qa-generate-e2e-tests" =>
+            "_bmad/bmm/4-implementation/bmad-qa-generate-e2e-tests/SKILL.md",
+        "bmad-quick-dev" => "_bmad/bmm/4-implementation/bmad-quick-dev/SKILL.md",
+        "bmad-retrospective" => "_bmad/bmm/4-implementation/bmad-retrospective/SKILL.md",
+        "bmad-sprint-planning" => "_bmad/bmm/4-implementation/bmad-sprint-planning/SKILL.md",
+        "bmad-sprint-status" => "_bmad/bmm/4-implementation/bmad-sprint-status/SKILL.md",
+        // BMB
+        "bmad-agent-builder" => "_bmad/bmb/bmad-agent-builder/SKILL.md",
+        "bmad-bmb-setup" => "_bmad/bmb/bmad-bmb-setup/SKILL.md",
+        "bmad-eval-runner" => "_bmad/bmb/bmad-eval-runner/SKILL.md",
+        "bmad-module-builder" => "_bmad/bmb/bmad-module-builder/SKILL.md",
+        "bmad-workflow-builder" => "_bmad/bmb/bmad-workflow-builder/SKILL.md",
+        // Core
+        "bmad-advanced-elicitation" => "_bmad/core/bmad-advanced-elicitation/SKILL.md",
+        "bmad-brainstorming" => "_bmad/core/bmad-brainstorming/SKILL.md",
+        "bmad-customize" => "_bmad/core/bmad-customize/SKILL.md",
+        "bmad-distillator" => "_bmad/core/bmad-distillator/SKILL.md",
+        "bmad-editorial-review-prose" => "_bmad/core/bmad-editorial-review-prose/SKILL.md",
+        "bmad-editorial-review-structure" =>
+            "_bmad/core/bmad-editorial-review-structure/SKILL.md",
+        "bmad-help" => "_bmad/core/bmad-help/SKILL.md",
+        "bmad-index-docs" => "_bmad/core/bmad-index-docs/SKILL.md",
+        "bmad-party-mode" => "_bmad/core/bmad-party-mode/SKILL.md",
+        "bmad-review-adversarial-general" =>
+            "_bmad/core/bmad-review-adversarial-general/SKILL.md",
+        "bmad-review-edge-case-hunter" => "_bmad/core/bmad-review-edge-case-hunter/SKILL.md",
+        "bmad-shard-doc" => "_bmad/core/bmad-shard-doc/SKILL.md",
+        _ => return None,
+    };
+    let path = project_root.join(skill_path);
+    if path.exists() {
+        Some(path)
+    } else {
+        None
+    }
+}
+
+/// Register BMAD skills for a persona by symlinking (persistent) or copying
+/// (ephemeral) skill files into the persona's skills directory.
+///
+/// For **persistent** personas: skills are symlinked into
+/// `<vault>/personas/<slug>/skills/<skill-id>/SKILL.md`. This is the preferred
+/// approach — the symlink survives respawns and keeps the vault in sync with the
+/// project if skills are updated.
+///
+/// For **ephemeral** personas: skills are **copied** (not symlinked) into
+/// `<vault>/projects/<project_id>/bmad/skills/<phase>/<skill-id>/SKILL.md`.
+/// Copying avoids symlink permission issues on Windows (Developer Mode required)
+/// and ensures the ephemeral has a self-contained snapshot that does not change
+/// mid-task.
+///
+/// Returns the absolute path to the registered skills directory, or `None` if
+/// no skills were registered. The caller passes this as `C4N_PHASE_SKILLS_DIR`
+/// in the persona's environment so the spawned CLI can discover them.
+fn register_phase_skills_for_persona(
+    project_root: &Path,
+    vault_path: &Path,
+    slug: &str,
+    project_id: &str,
+    is_ephemeral: bool,
+    phase_skills: &[String],
+) -> Option<PathBuf> {
+    if phase_skills.is_empty() {
+        return None;
+    }
+
+    let skills_target_dir = if is_ephemeral {
+        // Ephemeral: copy into project bmad skills area (persists across
+        // the single ephemeral run; cleaned up by the project lifecycle).
+        let target = vault_path
+            .join("projects")
+            .join(project_id)
+            .join("bmad")
+            .join("skills")
+            .join(slug);
+        std::fs::create_dir_all(&target).ok()?;
+        target
+    } else {
+        // Persistent: symlink into the persona's vault skills dir.
+        let target = vault_path.join("personas").join(slug).join("skills");
+        std::fs::create_dir_all(&target).ok()?;
+        target
+    };
+
+    let mut any_registered = false;
+    for skill_id in phase_skills {
+        let Some(source) = resolve_skill_source_path(project_root, skill_id) else {
+            tracing::debug!(skill_id = %skill_id, "skill not found in project — skipping");
+            continue;
+        };
+
+        let skill_target_dir = skills_target_dir.join(skill_id);
+        if let Err(e) = std::fs::create_dir_all(&skill_target_dir) {
+            tracing::warn!(skill_id = %skill_id, "could not create skill dir: {e}");
+            continue;
+        }
+
+        let target_file = skill_target_dir.join("SKILL.md");
+        if target_file.exists() {
+            // Already registered — skip.
+            any_registered = true;
+            continue;
+        }
+
+        if is_ephemeral {
+            // Copy: safe on all platforms, no special permissions needed.
+            match std::fs::copy(&source, &target_file) {
+                Ok(_) => {
+                    tracing::debug!(skill_id = %skill_id, "copied skill for ephemeral persona");
+                    any_registered = true;
+                }
+                Err(e) => {
+                    tracing::warn!(skill_id = %skill_id, "could not copy skill: {e}");
+                }
+            }
+        } else {
+            // Symlink: preferred for persistent personas.
+            // On Windows this requires Developer Mode or admin; fall back to copy.
+            #[cfg(unix)]
+            {
+                if let Err(e) = std::os::unix::fs::symlink(&source, &target_file) {
+                    tracing::warn!(skill_id = %skill_id, "symlink failed ({e}), falling back to copy");
+                    if let Err(copy_err) = std::fs::copy(&source, &target_file) {
+                        tracing::warn!(skill_id = %skill_id, "copy fallback also failed: {copy_err}");
+                    } else {
+                        any_registered = true;
+                    }
+                } else {
+                    tracing::debug!(skill_id = %skill_id, "symlinked skill for persistent persona");
+                    any_registered = true;
+                }
+            }
+            #[cfg(windows)]
+            {
+                // On Windows, symlink requires Developer Mode. Fall back to copy
+                // unconditionally — safer and works without special privileges.
+                match std::fs::copy(&source, &target_file) {
+                    Ok(_) => {
+                        tracing::debug!(skill_id = %skill_id, "copied skill for persistent persona (Windows copy fallback)");
+                        any_registered = true;
+                    }
+                    Err(e) => {
+                        tracing::warn!(skill_id = %skill_id, "could not copy skill: {e}");
+                    }
+                }
+            }
+            #[cfg(not(unix))]
+            {
+                // Fallback for other platforms: copy.
+                match std::fs::copy(&source, &target_file) {
+                    Ok(_) => {
+                        tracing::debug!(skill_id = %skill_id, "copied skill for persistent persona");
+                        any_registered = true;
+                    }
+                    Err(e) => {
+                        tracing::warn!(skill_id = %skill_id, "could not copy skill: {e}");
+                    }
+                }
+            }
+        }
+    }
+
+    if any_registered {
+        Some(skills_target_dir)
+    } else {
+        None
+    }
+}
+
 /// Slugify a name for use in session and directory names.
 /// "My Custom Architect" → "my-custom-architect"
 fn slugify_name(name: &str) -> String {
@@ -1545,6 +1815,11 @@ pub fn spawn_dynamic_persona(
     backing_cli: String,
     lifecycle: String,
     task_prompt: Option<String>,
+    // BMAD skill IDs to register for this phase. Each skill is resolved against
+    // the project's `_bmad/` directory and symlinked (persistent) or copied
+    // (ephemeral) into the persona's vault skills area so the spawned CLI can
+    // access them at startup.
+    phase_skills: Vec<String>,
     drift_registry: State<'_, DriftRegistry>,
     dynamic_persona_registry: State<'_, DynamicPersonaRegistry>,
 ) -> Result<DynamicPersonaInfo, String> {
@@ -1584,8 +1859,14 @@ pub fn spawn_dynamic_persona(
     //   - ephemeral (Story 3.6): NO persona vault dir (zero residue) and a
     //     TRANSIENT bus identity that is never written to disk, so nothing
     //     is retained after the ephemeral exits.
+    //
+    //   BMAA-6: ephemeral personas now get a vault path for skill registration.
+    //   Skills are copied (not written as canonical vault artifacts) so the
+    //   "zero vault residue" guarantee holds for the persona dir itself; the
+    //   skills copy is project-scoped bmad/skills/ and does not pollute the
+    //   persona's canonical vault area.
     let (bus_identity, persona_vault_dir) = if is_ephemeral {
-        (build_bus_identity(&slug), String::new())
+        (build_bus_identity(&slug), vault_path.to_string_lossy().into_owned())
     } else {
         let meta =
             ensure_persona_vault_dir(&vault_path, &slug, "dynamic", &lifecycle, &backing_cli)?;
@@ -1617,6 +1898,26 @@ pub fn spawn_dynamic_persona(
 
     let project_root = PathBuf::from(&project.path);
 
+    // BMAA-6: register BMAD phase skills for this persona.
+    // Passes the skills directory path via C4N_PHASE_SKILLS_DIR env var so the
+    // spawned CLI can discover them at startup.
+    let skills_dir = register_phase_skills_for_persona(
+        &project_root,
+        &vault_path,
+        &slug,
+        &project.id,
+        is_ephemeral,
+        &phase_skills,
+    );
+    if let Some(ref dir) = skills_dir {
+        tracing::info!(
+            persona = %slug,
+            skills_dir = %dir.display(),
+            "registered {} BMAD skills for persona",
+            phase_skills.len(),
+        );
+    }
+
     // Write the persona file into the project root (project root, not vault
     // — so it is NOT counted as vault residue for ephemerals).
     let persona_content = build_dynamic_persona_content(&name, &backing_cli, &project.name);
@@ -1637,8 +1938,22 @@ pub fn spawn_dynamic_persona(
 
     // Hand the persona its bus identity via the environment so it (and the
     // supervisor) post/subscribe under one identity.
+    // BMAA-6: also pass C4N_PHASE_SKILLS_DIR so the spawned CLI can discover
+    // registered BMAD skills at startup.
     let mut env = HashMap::new();
     env.insert(BUS_IDENTITY_ENV.to_string(), bus_identity.clone());
+    if let Some(ref skills_path) = skills_dir {
+        env.insert(
+            "C4N_PHASE_SKILLS_DIR".to_string(),
+            skills_path.to_string_lossy().into_owned(),
+        );
+    }
+    if let Some(ref skills_path) = skills_dir {
+        env.insert(
+            "C4N_PHASE_SKILLS_DIR".to_string(),
+            skills_path.to_string_lossy().into_owned(),
+        );
+    }
 
     // Build the supervisor argv. Ephemerals run through `--ephemeral` mode
     // (one-shot → artifact → exit); persistent personas run the standard
@@ -3479,6 +3794,259 @@ pub async fn start_story_state_watcher(app_handle: tauri::AppHandle) -> Result<(
 
     tracing::info!("story-state watcher started");
     Ok(())
+}
+
+// ─────────────────────────────────────────────────────────────────
+// BMAA-17: Paperclip governance gate integration
+// ─────────────────────────────────────────────────────────────────
+
+/// In-memory state for pending Paperclip approvals linked to workflow runs.
+/// Key: approval ID from Paperclip, Value: phase/run metadata.
+#[derive(Default)]
+pub struct PaperclipApprovalState {
+    approvals: StdMutex<std::collections::HashMap<String, PaperclipApprovalRecord>>,
+}
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct PaperclipApprovalRecord {
+    pub run_id: String,
+    pub phase_id: String,
+    pub phase_label: String,
+    pub project_name: String,
+    pub workflow_id: String,
+    pub created_at_ms: u64,
+}
+
+/// BMAA-17: Create a Paperclip approval request when a BMAD phase completes
+/// and requires governance gate approval. Returns the approval ID from
+/// Paperclip's API so the workflow engine can poll for its status.
+#[tauri::command]
+#[allow(dead_code)]
+pub async fn create_paperclip_approval(
+    run_id: String,
+    phase_id: String,
+    phase_label: String,
+    project_name: String,
+    workflow_id: String,
+    artifact_path: String,
+    approval_state: State<'_, PaperclipApprovalState>,
+) -> Result<String, String> {
+    let config = read_workspace_config()?;
+
+    if config.governance_gate_bypass {
+        tracing::info!(
+            "governance_gate_bypass is enabled — skipping Paperclip approval for phase {phase_id}"
+        );
+        return Err("governance_gate_bypass_enabled".to_string());
+    }
+
+    let api_url = config
+        .paperclip_api_url
+        .as_ref()
+        .ok_or_else(|| "Paperclip API credentials not configured".to_string())?;
+    let api_key = config
+        .paperclip_api_key
+        .as_ref()
+        .ok_or_else(|| "Paperclip API key not configured".to_string())?;
+    let company_id = config
+        .paperclip_company_id
+        .as_ref()
+        .ok_or_else(|| "Paperclip company ID not configured".to_string())?;
+
+    let client = reqwest::Client::new();
+    let url = format!("{api_url}/api/companies/{company_id}/approvals");
+
+    let payload = serde_json::json!({
+        "type": "bmad_phase_approval",
+        "payload": {
+            "run_id": run_id,
+            "phase_id": phase_id,
+            "phase_label": phase_label,
+            "project_name": project_name,
+            "workflow_id": workflow_id,
+            "artifact_path": artifact_path,
+            "approval_type": "phase_completion",
+        }
+    });
+
+    let response = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {api_key}"))
+        .header("Content-Type", "application/json")
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("failed to create Paperclip approval: {e}"))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!(
+            "Paperclip API error {}: {}",
+            status, body
+        ));
+    }
+
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("failed to parse Paperclip approval response: {e}"))?;
+
+    let approval_id = body
+        .get("id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| format!("Paperclip approval response missing 'id' field: {body}"))?
+        .to_string();
+
+    let created_at_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .expect("clock went backwards")
+        .as_millis() as u64;
+
+    {
+        let mut guard = approval_state
+            .approvals
+            .lock()
+            .expect("approval state mutex poisoned");
+        guard.insert(
+            approval_id.clone(),
+            PaperclipApprovalRecord {
+                run_id,
+                phase_id,
+                phase_label,
+                project_name,
+                workflow_id,
+                created_at_ms,
+            },
+        );
+    }
+
+    tracing::info!("created Paperclip approval: {approval_id}");
+    Ok(approval_id)
+}
+
+/// BMAA-17: Poll the current status of a Paperclip approval.
+/// Used by the workflow engine while in `approval_pending` state to
+/// advance the BMAD state machine when the board approves or rejects.
+#[tauri::command]
+#[allow(dead_code)]
+pub async fn get_paperclip_approval_status(
+    approval_id: String,
+) -> Result<PaperclipApprovalStatus, String> {
+    let config = read_workspace_config()?;
+
+    let api_url = config
+        .paperclip_api_url
+        .as_ref()
+        .ok_or_else(|| "Paperclip API credentials not configured".to_string())?;
+    let api_key = config
+        .paperclip_api_key
+        .as_ref()
+        .ok_or_else(|| "Paperclip API key not configured".to_string())?;
+
+    let client = reqwest::Client::new();
+    let url = format!("{api_url}/api/approvals/{approval_id}");
+
+    let response = client
+        .get(&url)
+        .header("Authorization", format!("Bearer {api_key}"))
+        .send()
+        .await
+        .map_err(|e| format!("failed to get Paperclip approval status: {e}"))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!("Paperclip API error {}: {}", status, body));
+    }
+
+    let body: serde_json::Value = response
+        .json()
+        .await
+        .map_err(|e| format!("failed to parse Paperclip approval status: {e}"))?;
+
+    let status_str = body
+        .get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("unknown");
+
+    let status = match status_str {
+        "approved" => PaperclipApprovalStatus::Approved,
+        "rejected" => {
+            let feedback = body
+                .get("rejection_reason")
+                .and_then(|v| v.as_str())
+                .unwrap_or("No reason provided")
+                .to_string();
+            PaperclipApprovalStatus::Rejected { feedback }
+        }
+        "pending" => PaperclipApprovalStatus::Pending,
+        _ => PaperclipApprovalStatus::Unknown,
+    };
+
+    Ok(status)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
+pub enum PaperclipApprovalStatus {
+    Pending,
+    Approved,
+    Rejected { feedback: String },
+    Unknown,
+}
+
+/// BMAA-17: Return a summary of governance gate status for the active workflow run.
+/// Used by the Paperclip dashboard governance summary panel.
+#[tauri::command]
+#[allow(dead_code)]
+pub fn get_governance_summary(
+    approval_state: State<'_, PaperclipApprovalState>,
+    store: State<'_, WorkflowRunStore>,
+) -> Result<GovernanceSummary, String> {
+    let config = read_workspace_config()?;
+    let run_guard = store.run.lock().expect("workflow run mutex poisoned");
+    let approval_guard = approval_state
+        .approvals
+        .lock()
+        .expect("approval state mutex poisoned");
+
+    let current_workflow_id = run_guard
+        .as_ref()
+        .map(|r| r.workflow_id.clone())
+        .unwrap_or_default();
+
+    let pending_approvals: Vec<PendingApprovalEntry> = approval_guard
+        .values()
+        .filter(|r| r.workflow_id == current_workflow_id)
+        .map(|r| PendingApprovalEntry {
+            phase_id: r.phase_id.clone(),
+            phase_label: r.phase_label.clone(),
+            project_name: r.project_name.clone(),
+        })
+        .collect();
+
+    Ok(GovernanceSummary {
+        governance_enabled: config.paperclip_api_url.is_some(),
+        governance_gate_bypass: config.governance_gate_bypass,
+        pending_approvals,
+    })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
+pub struct GovernanceSummary {
+    pub governance_enabled: bool,
+    pub governance_gate_bypass: bool,
+    pub pending_approvals: Vec<PendingApprovalEntry>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PendingApprovalEntry {
+    pub phase_id: String,
+    pub phase_label: String,
+    pub project_name: String,
 }
 
 #[cfg(test)]

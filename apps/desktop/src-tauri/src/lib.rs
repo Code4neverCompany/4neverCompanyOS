@@ -47,6 +47,9 @@ pub fn run() {
         // Story 4.1 (Epic 4): BMAD workflow entry point. Tracks the active
         // workflow run in-memory; vault dir + persistence land in Story 4-4.
         .manage(commands::WorkflowRunStore::load_or_default())
+        // BMAA-17: Paperclip governance gate state — tracks pending approvals
+        // linked to workflow runs so the workflow engine can poll status.
+        .manage(commands::PaperclipApprovalState::default())
         // Story 2.9 (NEVAAA-29): bus relay → UI bridge. One BusRelayState
         // (the IPC fan-out hub + per-subscription handles) for the whole app
         // so every `bus_subscribe` shares the same upstream event stream.
@@ -166,6 +169,14 @@ pub fn run() {
             commands::save_persona_budgets,
             commands::reset_persona_spend,
             commands::unpause_persona_budget,
+            // BMAA-17: Paperclip governance gate — credentials, approval creation,
+            // status polling, and governance summary for the dashboard.
+            commands::set_paperclip_credentials,
+            commands::get_paperclip_credentials,
+            commands::set_governance_gate_bypass,
+            commands::create_paperclip_approval,
+            commands::get_paperclip_approval_status,
+            commands::get_governance_summary,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
