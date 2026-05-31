@@ -30,7 +30,7 @@
 #   functionally clean.
 
 generated: 2026-05-28
-last_updated: 2026-05-30T20:45:00Z
+last_updated: 2026-05-31T04:00:00Z
 project: c4n-4neverCompanyOS
 project_key: C4N
 tracking_system: file-system
@@ -117,7 +117,7 @@ development_status:
   5-5-m5-cross-machine-continuity-pull-on-second-machine-resume: done # 699c7f0 — pickAndOpen auto-pulls from GitHub after open_project; cross-machine continuity UX wired into project-open flow
   5-6-m5-per-persona-token-budgets: done # 34f2b70 — BudgetStore in-memory tracker; BudgetSettings panel with limit inputs, spend bars, over-limit/paused badges; WorkspaceConfig.persona_budgets; auto-pause on budget exceeded
   5-7-m5-project-level-kill-switch: done # c1c8521 — DynamicPersonaRegistry tracks active sessions; kill_all_project_personas command kills all personas for a project; Kill all personas danger button in ProjectCard
-  5-8-m5-basic-docs-site: backlog # Needs CEO: SSG tool pick + deployment URL
-  5-9-m5-macos-installer-dmg: in-progress # Config + release.yml committed; needs macos-latest runner to produce .dmg artifact
-  5-10-m5-linux-installer-appimage: in-progress # Config + release.yml committed; needs ubuntu-latest runner to produce AppImage artifact
+  5-8-m5-basic-docs-site: backlog # Needs CEO: SSG tool pick + deployment URL (deferred pending Maurice decision)
+  5-9-m5-macos-installer-dmg: in-progress # Config + release.yml committed; needs workflow_dispatch (manual) or git tag v* to trigger macos-latest runner; Maurice must dispatch
+  5-10-m5-linux-installer-appimage: in-progress # Config + release.yml committed; needs workflow_dispatch (manual) or git tag v* to trigger ubuntu-latest runner; Maurice must dispatch
   epic-5-retrospective: optional

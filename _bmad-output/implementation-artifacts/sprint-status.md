@@ -70,7 +70,8 @@ M0 is fully shipped. M1's first batch (1.10–1.14) shipped, plus 1.15 audit-tra
 
 ## Open blockers
 
-- **GitHub Actions infrastructure incident (2026-05-26 10:57Z, status: investigating)** — silently drops workflow runs. Affects validation of commits 890ef85..b576307. Local validation gates green; CI verdict pending GitHub recovery. Not blocking development; blocking external CI signal.
+- **Stories 5.9/5.10 CI dispatch (2026-05-31, owner: Maurice)** — `release.yml` committed but cannot self-trigger from an agent worktree. Requires Maurice to either (a) manually dispatch via GitHub Actions UI, or (b) push a git tag. See `docs/CTO-review-NEVAAA-80.md` for full review.
+- **Story 4.7 Run 1 execution (owner: Maurice)** — task-tracker CLI greenfield run requires desktop environment. Infrastructure verified (code review + 110 tests). Human execution step documented in `tests/manual/m4-greenfield-runs/run-1-task-tracking-cli/RESULTS.md`. SM-6 criterion already validated by Run 3.
 - **Tauri auto-regen schema files** (`apps/*/src-tauri/gen/schemas/*.json`) churn on every cargo build and show as modified. Covered by `.gitignore` (`src-tauri/gen/`) but tracked from before the ignore rule landed. `git restore` is the current workaround. Cleanup story: `git rm --cached` all four; one-line follow-up.
 
 ## Deferred — Story 1.17b (supervisor sidecar bundling)
@@ -102,18 +103,25 @@ M0 is fully shipped. M1's first batch (1.10–1.14) shipped, plus 1.15 audit-tra
 
 ## What's next
 
-This sprint: ✅ **Story 1.19 shipped — all 19 Epic-1 stories are now done.** M1's hard backlog is complete. Remaining loose ends are discretionary, not blocking:
+**CTO blockers (Maurice action required):**
+- **Stories 5.9/5.10 CI dispatch:** Go to GitHub Actions → `release.yml` → Run workflow (manual dispatch) or `git tag v0.0.2 && git push`. DMG and AppImage artifacts will be produced automatically.
+- **Story 4.7 Run 1 execution:** Requires desktop app + Zellij + live API keys. ~20–30 min session. All infrastructure verified.
+- **Story 5.8 SSG pick:** Choose a static site generator (e.g. VitePress, Astro, Docusaurus) + deployment URL.
 
-- **Epic-1 close decision (Maurice's call):** flip `epic-1 → done` in `sprint-status.yaml` + optionally run `bmad-retrospective`. Left `in-progress` pending your judgment.
-- **Story 1.17b** — supervisor sidecar bundling (`--target-dir` fix for the cargo-lock deadlock). Install works today via the documented one-time `cargo install`.
-- **Story 1.18 recording capture** — the E2E protocol exists; the real-hardware run + `.mp4`/notes capture is a procedural follow-up.
-- **LICENSES.md** — still DRAFT pending your M0 review; `pinned-versions.md` DRAFTs likewise.
-- **Clickable LICENSES.md open** in Settings → About — deferred (needs `@tauri-apps/plugin-opener` JS; shown as selectable URL for now).
+**Epic 1 close (Maurice's call):** All 19 Epic-1 stories done. Flip `epic-1 → done` in `sprint-status.yaml` + optionally run `bmad-retrospective`.
+
+**Story 1.17b** — supervisor sidecar bundling (`--target-dir` fix for the cargo-lock deadlock). Install works today via the documented one-time `cargo install`.
+
+**Story 1.18 recording capture** — the E2E protocol exists; the real-hardware run + `.mp4`/notes capture is a procedural follow-up.
+
+**LICENSES.md** — still DRAFT pending your M0 review; `pinned-versions.md` DRAFTs likewise.
+
+**Clickable LICENSES.md open** in Settings → About — deferred (needs `@tauri-apps/plugin-opener` JS; shown as selectable URL for now).
 
 ## Change log
 
 | Date       | By                            | Change                                                                                                                                                                                      |
-| ---------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ---------- | ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 2026-05-26 | bmad-sprint-planning (manual) | Initial sprint-status artifact at the BMAD-method pivot point.                                                                                                                              |
 | 2026-05-26 | bmad-sprint-planning (manual) | Story 1.15 marked done; code-review PASS verdict captured; next-up updated to Story 1.16 (a/b).                                                                                             |
 | 2026-05-26 | bmad-sprint-planning (manual) | Story 1.16c done (display layer + xterm.js); Story 1.16d split for bidirectional input.                                                                                                     |
@@ -122,6 +130,9 @@ This sprint: ✅ **Story 1.19 shipped — all 19 Epic-1 stories are now done.** 
 | 2026-05-26 | bmad-dev-story                | Story 1.18 done (E2E protocol + scaffolding). First story shipped via formal BMAD method end-to-end. Next: Story 1.19.                                                                      |
 | 2026-05-28 | bmad-sprint-planning          | **Generated `sprint-status.yaml`** — repaired the missing machine-state file the skills depend on. This `.md` becomes the narrative companion. See postmortem below.                        |
 | 2026-05-28 | bmad-dev-story                | Story 1.19 done (3 attribution surfaces from `@c4n/core`). 19/19 Epic-1 stories complete; M1 hard backlog closed. epic-1 left in-progress pending Maurice's close + retrospective decision. |
+| 2026-05-30 | CTO                           | Stories 5.9/5.10 prep: macOS dmg + Linux appimage Tauri bundle targets + `release.yml` CI workflow committed.                                                                             |
+| 2026-05-31 | CTO                           | Story 4.7 Run 3 (slack-chat): SM-6 criterion PASS — all 6 artifacts + 31 source files. Run 1 (task-tracker) infrastructure verified (typecheck/lint/tests all green).                       |
+| 2026-05-31 | CEO review                    | CTO review: not idle, blocked on CI dispatch (5.9/5.10) and desktop env (4.7 Run 1). Full review at `docs/CTO-review-NEVAAA-80.md`. NEVAAA-80 closed.                                      |
 
 ## BMAD method repair (2026-05-28)
 
