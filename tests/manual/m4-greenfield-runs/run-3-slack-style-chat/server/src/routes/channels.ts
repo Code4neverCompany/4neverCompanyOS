@@ -21,11 +21,9 @@ router.get("/", async (req, res) => {
 router.post("/", async (req, res) => {
   const { name, isPrivate = false, topic } = req.body;
   if (!name || name.length < 2 || name.length > 100) {
-    res
-      .status(400)
-      .json({
-        error: { code: "VALIDATION_ERROR", message: "Channel name must be 2-100 characters" },
-      });
+    res.status(400).json({
+      error: { code: "VALIDATION_ERROR", message: "Channel name must be 2-100 characters" },
+    });
     return;
   }
   try {

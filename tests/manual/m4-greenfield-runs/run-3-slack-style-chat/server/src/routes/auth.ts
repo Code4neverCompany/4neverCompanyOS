@@ -24,11 +24,9 @@ router.post("/register", async (req, res) => {
   try {
     const { email, password, name } = req.body;
     if (!email || !password || !name) {
-      res
-        .status(400)
-        .json({
-          error: { code: "VALIDATION_ERROR", message: "email, password, and name are required" },
-        });
+      res.status(400).json({
+        error: { code: "VALIDATION_ERROR", message: "email, password, and name are required" },
+      });
       return;
     }
     const existing = await queryOne("SELECT id FROM users WHERE email = $1", [email]);

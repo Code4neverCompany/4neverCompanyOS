@@ -8,11 +8,9 @@ export interface AuthRequest extends Request {
 export function authMiddleware(req: Request, res: Response, next: NextFunction): void {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
-    res
-      .status(401)
-      .json({
-        error: { code: "UNAUTHORIZED", message: "Missing or invalid authorization header" },
-      });
+    res.status(401).json({
+      error: { code: "UNAUTHORIZED", message: "Missing or invalid authorization header" },
+    });
     return;
   }
   const token = authHeader.slice(7);
