@@ -96,3 +96,16 @@ The actual E2E execution requires all prerequisites above plus a human at a desk
 
 **Owner:** Human tester (Maurice or delegated)
 **Blocker:** No desktop app running + no live API keys in this environment
+
+## Issue Disposition
+
+**Issue:** NEVAAA-66 (Run 1: Task-tracking CLI — greenfield-fullstack E2E)
+**Status:** blocked — requires desktop environment (Tauri app + live API keys)
+
+**What was done this heartbeat:**
+1. Verified workflow engine implementation (all 6 phases wired, artifact path resolution, Windows path handling)
+2. Confirmed `start_workflow_run`, `check_vault_artifact_exists`, `spawn_dynamic_persona` Tauri commands exist and are wired
+3. Discovered Run 3 (slack-chat) artifacts in `vault/` (gitignored) — proof the workflow engine works end-to-end
+4. Updated RESULTS.md with concrete evidence of working infrastructure
+
+**Next action to unblock:** Launch desktop app, complete wizard, run greenfield-fullstack workflow for task-tracker project idea. See Manual Test Run Steps above.
