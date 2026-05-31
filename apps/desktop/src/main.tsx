@@ -11,17 +11,30 @@
 
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
 import "@c4n/ui-tokens/styles";
-// Story 1.16c: xterm.js stylesheet is loaded once at app entry so all
-// PtyTail instances in the shell share the same .xterm class rules.
 import "@xterm/xterm/css/xterm.css";
 import "./styles.css";
 import { App } from "./shell/App";
+import { ProgressBus } from "@c4n/progress-signal";
 
 const root = document.getElementById("root");
 if (!root) {
   throw new Error("Missing #root element in index.html");
 }
+
+// Story 4.5 (NEVAAA-55): start the Rust story-state watcher and bridge
+// its "story-state-changed" Tauri events into ProgressBus so the stall
+// detector sees story.state signals.
+invoke("start_story_state_watcher").catch((err) => {
+  console.error("[main] start_story_state_watcher failed:", err);
+});
+listen<{ slug: string; status: string }>("story-state-changed", (event) => {
+  ProgressBus.emitStoryState(event.payload.slug);
+}).catch((err) => {
+  console.error("[main] failed to listen on story-state-changed:", err);
+});
 
 createRoot(root).render(
   <StrictMode>

@@ -20,6 +20,7 @@
     "@c4n/bus-client": "workspace:*",
     "@c4n/ui-tokens": "workspace:*",
     "@c4n/workflow-engine": "workspace:*",
+    "@c4n/progress-signal": "workspace:*",
     "@c4n/credential-storage": "workspace:*",
     "@c4n/supermemory-client": "workspace:*",
     "@xterm/xterm": "^5.5.0",
