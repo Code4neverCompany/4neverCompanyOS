@@ -3448,9 +3448,7 @@ pub fn log_workflow_decision(
 /// The watcher is managed as Tauri app state so it stays alive for the
 /// entire app session.
 #[tauri::command]
-pub async fn start_story_state_watcher(
-    app_handle: tauri::AppHandle,
-) -> Result<(), String> {
+pub async fn start_story_state_watcher(app_handle: tauri::AppHandle) -> Result<(), String> {
     use platform_fs::StoryStateChange;
     use tauri::Emitter;
 
