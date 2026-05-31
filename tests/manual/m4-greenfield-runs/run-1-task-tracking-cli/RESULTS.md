@@ -1,6 +1,6 @@
 # Run 1: Task-tracking CLI — RESULTS
 
-**Status:** Infrastructure verified ✅ | SM-6 criterion validated ✅ | Run execution blocked on desktop environment ❌
+**Status:** Infrastructure verified ✅ | SM-6 criterion validated ✅ | Run execution blocked ❌ | Awaiting desktop environment
 **Date:** PENDING — execution blocked on desktop environment
 **Run duration:** PENDING
 **Persona phases completed:** PENDING (execution blocked)
