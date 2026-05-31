@@ -46,7 +46,7 @@ jobs:
 
       - name: Build Tauri
         run: |
-          pnpm tauri build --bundles dmg 2>&1
+          pnpm --filter @c4n/desktop tauri build --bundles dmg 2>&1
           echo "--- Artifacts ---"
           ls -la target/release/bundle/macos/
 
@@ -97,7 +97,7 @@ jobs:
 
       - name: Build Tauri
         run: |
-          pnpm tauri build --bundles appimage 2>&1
+          pnpm --filter @c4n/desktop tauri build --bundles appimage 2>&1
           echo "--- Artifacts ---"
           ls -la target/release/bundle/appimage/
 
@@ -139,7 +139,7 @@ jobs:
       - name: Build Tauri
         shell: pwsh
         run: |
-          pnpm tauri build --bundles nsis 2>&1
+          pnpm --filter @c4n/desktop tauri build --bundles nsis 2>&1
           Get-ChildItem -Recurse target/release/bundle/nsis | Format-Table Name, Length
 
       - name: Upload NSIS artifact
