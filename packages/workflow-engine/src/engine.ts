@@ -94,6 +94,7 @@ export class WorkflowEngine {
   private vaultPoller: ReturnType<typeof setInterval> | null = null;
   private currentWorkflow: WorkflowMetadata | null = null;
   private pendingApprovalPhase: WorkflowPhase | null = null;
+  private pendingApprovalPhaseList: WorkflowPhase[] = [];
   private pendingApprovalQueue: PendingApproval[] = [];
 
   async listWorkflows(): Promise<Array<{ id: string; name: string; description: string }>> {
@@ -392,6 +393,9 @@ export class WorkflowEngine {
           if (phase.approval_required) {
             run.status = "approval_pending";
             this.pendingApprovalPhase = phase;
+            if (!this.pendingApprovalPhaseList.some((p) => p.id === phase.id)) {
+              this.pendingApprovalPhaseList.push(phase);
+            }
 
             const approvalResolve = () => {
               this.pendingApprovalQueue.shift();
@@ -478,16 +482,16 @@ export class WorkflowEngine {
     const run = this.currentRun;
     if (!this.currentWorkflow) return;
 
-    const phaseToAdvance =
-      this.pendingApprovalPhase ?? this.currentWorkflow.phases[run.phase_index];
-
-    this.pendingApprovalPhase = null;
+    if (this.pendingApprovalPhase) {
+      this.pendingApprovalPhase = null;
+      this.pendingApprovalPhaseList.shift();
+    }
 
     try {
       await invoke("log_workflow_decision", {
         runId: run.id,
         projectId: run.project_id,
-        phase: phaseToAdvance.id,
+        phase: run.current_phase,
         decision: "approved",
         feedback: "",
       });
@@ -495,8 +499,11 @@ export class WorkflowEngine {
       console.error("[workflow-engine] failed to log decision:", e);
     }
 
-    await this.advanceToNextPhase(run, phaseToAdvance);
-    ProgressBus.emitStoryState(run.workflow_id);
+    if (this.pendingApprovalQueue.length > 0) {
+      const entry = this.pendingApprovalQueue[0];
+      this.pendingApprovalQueue.shift();
+      entry.resolve();
+    }
   }
 
   async requestChanges(runId: string, feedback: string): Promise<void> {
@@ -507,6 +514,8 @@ export class WorkflowEngine {
     const phase = this.pendingApprovalPhase ?? this.currentWorkflow.phases[run.phase_index];
 
     this.pendingApprovalPhase = null;
+    this.pendingApprovalPhaseList = [];
+    this.pendingApprovalQueue = [];
     run.status = "paused";
     this.clearPoller();
 
@@ -527,6 +536,10 @@ export class WorkflowEngine {
 
   getPendingApprovalPhase(): WorkflowPhase | null {
     return this.pendingApprovalPhase;
+  }
+
+  getPendingApprovalPhases(): WorkflowPhase[] {
+    return [...this.pendingApprovalPhaseList];
   }
 
   private waitForApprovalGate(): Promise<void> {

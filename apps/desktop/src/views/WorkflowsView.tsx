@@ -258,13 +258,74 @@ interface VaultArtifactContent {
   truncated: boolean;
 }
 
-function ApprovalGate({
+function ApprovalQueueView({
   run,
+  phases,
   onApprove,
+  onRequestChanges,
   onPause,
 }: {
   run: ActiveRunDisplay;
+  phases: Array<{ id: string; label: string; artifact: { path: string; description: string } }>;
   onApprove: () => void;
+  onRequestChanges: (feedback: string) => void;
+  onPause: () => void;
+}) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.75)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        overflow: "auto",
+        padding: "40px 0",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+          maxWidth: 560,
+          width: "100%",
+          padding: "0 20px",
+        }}
+      >
+        <div style={{ marginBottom: 4 }}>
+          <Eyebrow color="gold">
+            ⛩ {phases.length} Pending Approval{phases.length !== 1 ? "s" : ""}
+          </Eyebrow>
+        </div>
+        {phases.map((phase, idx) => (
+          <ApprovalGate
+            key={`${phase.id}-${idx}`}
+            run={run}
+            phase={phase}
+            onApprove={onApprove}
+            onRequestChanges={onRequestChanges}
+            onPause={onPause}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ApprovalGate({
+  run,
+  phase,
+  onApprove,
+  onRequestChanges,
+  onPause,
+}: {
+  run: ActiveRunDisplay;
+  phase: { id: string; label: string; artifact: { path: string; description: string } };
+  onApprove: () => void;
+  onRequestChanges: (feedback: string) => void;
   onPause: () => void;
 }) {
   const [feedback, setFeedback] = useState("");
@@ -272,20 +333,15 @@ function ApprovalGate({
   const [busy, setBusy] = useState(false);
   const [artifactContent, setArtifactContent] = useState<VaultArtifactContent | null>(null);
 
-  const pendingPhase = workflowEngine.getPendingApprovalPhase();
-  const currentLabel = PHASE_LABELS[pendingPhase?.id ?? run.current_phase] ?? run.current_phase;
-  const nextPhaseId =
-    PHASE_ORDER[PHASE_ORDER.indexOf(pendingPhase?.id ?? run.current_phase ?? "") + 1];
+  const currentLabel = phase.label;
+  const nextPhaseId = PHASE_ORDER[PHASE_ORDER.indexOf(phase.id) + 1];
   const nextLabel = PHASE_LABELS[nextPhaseId] ?? nextPhaseId ?? "Done";
 
-  const resolvedArtifactPath = pendingPhase
-    ? pendingPhase.artifact.path
-        .replace(/\{project_id\}/g, run.project_id ?? "")
-        .replace(/\{project_name\}/g, run.project_name ?? "")
-    : null;
+  const resolvedArtifactPath = phase.artifact.path
+    .replace(/\{project_id\}/g, run.project_id ?? "")
+    .replace(/\{project_name\}/g, run.project_name ?? "");
 
   useEffect(() => {
-    if (!resolvedArtifactPath) return;
     let cancelled = false;
     invoke<VaultArtifactContent>("read_vault_artifact", { path: resolvedArtifactPath })
       .then((content) => {
@@ -304,10 +360,10 @@ function ApprovalGate({
     onApprove();
   }
 
-  async function handleSubmitFeedback() {
+  function handleSubmitFeedback() {
     if (!feedback.trim()) return;
     setBusy(true);
-    await workflowEngine.requestChanges(run.id, feedback);
+    onRequestChanges(feedback);
     setBusy(false);
   }
 
@@ -360,24 +416,23 @@ function ApprovalGate({
             The <strong style={{ color: "var(--fn-white)" }}>{currentLabel}</strong> phase has
             produced its artifact. Review the output and choose how to proceed.
           </p>
-          {pendingPhase && (
-            <div
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid var(--border-neutral)",
-                borderRadius: 2,
-                padding: "10px 14px",
-              }}
-            >
-              <span style={{ color: "var(--fg-3)", fontSize: 10 }}>ARTIFACT</span>
-              <br />
-              <span style={{ color: "var(--fn-cyan)", fontSize: 11 }}>
-                {pendingPhase!.artifact.path.replace(/\{project_id\}/g, run.project_id ?? "")}
-              </span>
-              <br />
-              <span style={{ color: "var(--fg-3)", fontSize: 10 }}>DESCRIPTION</span>
-              <br />
-              {pendingPhase.artifact.description}
+          <div
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid var(--border-neutral)",
+              borderRadius: 2,
+              padding: "10px 14px",
+            }}
+          >
+            <span style={{ color: "var(--fg-3)", fontSize: 10 }}>ARTIFACT</span>
+            <br />
+            <span style={{ color: "var(--fn-cyan)", fontSize: 11 }}>
+              {phase.artifact.path.replace(/\{project_id\}/g, run.project_id ?? "")}
+            </span>
+            <br />
+            <span style={{ color: "var(--fg-3)", fontSize: 10 }}>DESCRIPTION</span>
+            <br />
+            {phase.artifact.description}
               {artifactContent && (
                 <>
                   <br />
@@ -404,8 +459,7 @@ function ApprovalGate({
                   </div>
                 </>
               )}
-            </div>
-          )}
+          </div>
           <p style={{ margin: "12px 0 0" }}>
             Next: <strong style={{ color: "var(--fn-purple)" }}>{nextLabel}</strong>
           </p>
@@ -843,9 +897,13 @@ export function WorkflowsView() {
           />
         )}
         {displayRun.status === "approval_pending" && (
-          <ApprovalGate
+          <ApprovalQueueView
             run={displayRun}
+            phases={workflowEngine.getPendingApprovalPhases()}
             onApprove={() => workflowEngine.approvePhase(displayRun.id)}
+            onRequestChanges={(feedback) =>
+              workflowEngine.requestChanges(displayRun.id, feedback)
+            }
             onPause={() => workflowEngine.pause()}
           />
         )}
