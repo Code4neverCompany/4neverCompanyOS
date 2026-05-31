@@ -1,11 +1,31 @@
-# Installer — 4neverCompany OS (Windows / NSIS)
+# Installer — 4neverCompany OS (Windows / macOS / Linux)
 
-> **Status:** Story 1.17 ships the NSIS installer for the desktop shell. The
-> persona-supervisor sidecar bundling (Story 1.17b) is still pending — the
-> installed app currently requires the supervisor on `PATH`. Track that
-> limitation under "Known caveats" below.
+> **Status:** Stories 1.17, 5.9, 5.10 ship all three platform installers.
+> Windows NSIS, macOS DMG, and Linux AppImage are all produced via CI on
+> each release tag. Persona-supervisor sidecar bundling (Story 1.17b) is still
+> pending — see "Known caveats" below.
 
-## Build the installer
+## CI Release Builds
+
+All three platform installers are built via GitHub Actions on each version tag.
+To trigger a release build:
+
+```bash
+# Create and push a version tag (must match v* pattern in release.yml)
+git tag v0.0.1
+git push origin v0.0.1
+```
+
+Or manually dispatch the workflow via GitHub CLI:
+
+```bash
+gh workflow run release.yml --field version=v0.0.1
+```
+
+Artifacts are uploaded to the draft GitHub Release at:
+`https://github.com/Code4neverCompany/4neverCompanyOS/releases`
+
+## Local Build (Windows)
 
 From the repo root:
 
@@ -24,9 +44,6 @@ Output lands at:
 target/release/c4n-desktop.exe                                       # raw release binary
 target/release/bundle/nsis/4neverCompany OS_0.0.1_x64-setup.exe     # signed installer (~2.2 MB)
 ```
-
-The first build pulls NSIS 3.11 (~1 MB) into Tauri's cache; subsequent
-builds reuse it.
 
 ## What the installer does
 
