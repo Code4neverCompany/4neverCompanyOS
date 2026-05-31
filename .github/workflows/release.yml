@@ -14,17 +14,12 @@ on:
 env:
   NODE_VERSION: "22"
   PNPM_VERSION: "11.3.0"
-  TAURI_VERSION: "0.0.1"
 
 jobs:
   # ─── macOS DMG ─────────────────────────────────────────────────────
   build-dmg:
-    name: macOS DMG — ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest]
-    runs-on: ${{ matrix.os }}
+    name: macOS DMG
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -49,29 +44,23 @@ jobs:
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
 
-      - name: Build Tauri (release)
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Tauri
+        run: |
+          pnpm tauri build --bundles dmg 2>&1
+          echo "--- Artifacts ---"
+          ls -la target/release/bundle/macos/
+
+      - name: Upload macOS artifact
+        uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.event.inputs.version || github.ref_name }}
-          releaseName: "4neverCompany OS ${{ github.event.inputs.version || github.ref_name }}"
-          releaseBody: |
-            See https://github.com/Code4neverCompany/4neverCompanyOS/releases
-          releaseDraft: true
-          prerelease: false
-          args: --bundles dmg
-          includeUpdaterJson: false
-          assetNamePattern: "*.tar.gz"
+          name: macos-dmg
+          path: target/release/bundle/macos/*.tar.gz
+          retention-days: 5
 
   # ─── Linux AppImage ─────────────────────────────────────────────────
   build-appimage:
-    name: Linux AppImage — ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+    name: Linux AppImage
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -106,28 +95,23 @@ jobs:
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
 
-      - name: Build Tauri (release)
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Tauri
+        run: |
+          pnpm tauri build --bundles appimage 2>&1
+          echo "--- Artifacts ---"
+          ls -la target/release/bundle/appimage/
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.event.inputs.version || github.ref_name }}
-          releaseName: "4neverCompany OS ${{ github.event.inputs.version || github.ref_name }}"
-          releaseBody: |
-            See https://github.com/Code4neverCompany/4neverCompanyOS/releases
-          releaseDraft: true
-          prerelease: false
-          args: --bundles appimage
-          assetNamePattern: "*.AppImage.tar.gz"
+          name: linux-appimage
+          path: target/release/bundle/appimage/*.AppImage.tar.gz
+          retention-days: 5
 
   # ─── Windows NSIS ──────────────────────────────────────────────────
   build-nsis:
-    name: Windows NSIS — ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest]
-    runs-on: ${{ matrix.os }}
+    name: Windows NSIS
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -152,16 +136,56 @@ jobs:
       - name: Rust cache
         uses: Swatinem/rust-cache@v2
 
-      - name: Build Tauri (release)
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build Tauri
+        shell: pwsh
+        run: |
+          pnpm tauri build --bundles nsis 2>&1
+          Get-ChildItem -Recurse target/release/bundle/nsis | Format-Table Name, Length
+
+      - name: Upload NSIS artifact
+        uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.event.inputs.version || github.ref_name }}
-          releaseName: "4neverCompany OS ${{ github.event.inputs.version || github.ref_name }}"
-          releaseBody: |
-            See https://github.com/Code4neverCompany/4neverCompanyOS/releases
-          releaseDraft: true
-          prerelease: false
-          args: --bundles nsis
-          assetNamePattern: "*setup*.exe"
+          name: windows-nsis
+          path: target/release/bundle/nsis/*.exe
+          retention-days: 5
+
+  # ─── Create Release ─────────────────────────────────────────────────
+  create-release:
+    name: Create Draft Release
+    needs: [build-dmg, build-appimage, build-nsis]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: |
+          find artifacts -type f -name "*.tar.gz" -o -name "*.exe" | while read f; do
+            echo "$f"
+          done
+
+      - name: Create Draft Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
+          TAG_NAME="${VERSION#v}"
+
+          # Create release via GitHub CLI
+          gh release create "${VERSION}" \
+            --title "4neverCompany OS ${VERSION}" \
+            --notes "See https://github.com/Code4neverCompany/4neverCompanyOS/releases" \
+            --draft \
+            artifacts/*/4neverCompany*.tar.gz \
+            artifacts/*/*setup*.exe 2>&1 || echo "Release create may have partial failure"
+
+      - name: Verify release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
+          gh release view "${VERSION}" --json tagName,url,draft,assets 2>&1
