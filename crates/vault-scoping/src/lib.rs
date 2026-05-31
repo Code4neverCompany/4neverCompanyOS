@@ -471,10 +471,7 @@ mod tests {
 
         // In-scope: returns false, writes nothing.
         let in_scope = dir.path().join("personas").join("dev").join("memory.md");
-        assert_eq!(
-            g.classify_and_log(&in_scope, WriteType::Modify).unwrap(),
-            false
-        );
+        assert!(!g.classify_and_log(&in_scope, WriteType::Modify).unwrap());
         assert!(
             !g.log_path().exists(),
             "in-scope write must not create the log"
@@ -486,7 +483,7 @@ mod tests {
             .join("personas")
             .join("architect")
             .join("persona.md");
-        assert_eq!(g.classify_and_log(&out, WriteType::Create).unwrap(), true);
+        assert!(g.classify_and_log(&out, WriteType::Create).unwrap());
 
         let body = std::fs::read_to_string(g.log_path()).unwrap();
         let lines: Vec<&str> = body.trim_end().split('\n').collect();

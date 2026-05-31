@@ -10,8 +10,7 @@
 //! - `v`       — schema version; bumped only on breaking changes.
 //! - `type`    — event type (dot-namespaced, e.g. `agent.message`).
 //! - `from`    — origin of the message. The relay stamps `"paperclip"` because
-//!               every envelope it produces originates from Paperclip's event
-//!               stream.
+//!   every envelope it produces originates from Paperclip's event stream.
 //! - `ts`      — ISO-8601 / RFC-3339 timestamp.
 //! - `id`      — UUID for de-dup and trace.
 //! - `payload` — type-specific body.

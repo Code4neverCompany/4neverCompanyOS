@@ -372,8 +372,8 @@ pub fn spawn_dev_persona(project_id: String) -> Result<DevPersonaStatus, String>
 /// Schema mirrors `apps/wizard/src-tauri/src/commands.rs::WorkspaceConfig`
 /// — they should stay in sync. (Future story: extract to a shared crate
 /// once a third consumer materializes.)
-#[derive(Debug, Clone, Deserialize, Serialize)]
-struct WorkspaceConfig {
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub(crate) struct WorkspaceConfig {
     /// Absolute vault path picked in the wizard's vault step.
     vault_path: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -389,18 +389,6 @@ struct WorkspaceConfig {
     /// A value of 0.0 means no limit.
     #[serde(default)]
     persona_budgets: std::collections::HashMap<String, f64>,
-}
-
-impl Default for WorkspaceConfig {
-    fn default() -> Self {
-        Self {
-            vault_path: String::new(),
-            anthropic_authenticated: None,
-            claude_code_authenticated: None,
-            supermemory_categories: std::collections::HashMap::new(),
-            persona_budgets: std::collections::HashMap::new(),
-        }
-    }
 }
 
 fn workspace_config_path() -> Result<PathBuf, String> {
@@ -1979,6 +1967,7 @@ impl DynamicPersonaRegistry {
             .collect()
     }
 
+    #[allow(dead_code)]
     pub fn all_sessions(&self) -> Vec<(String, String)> {
         let guard = self.sessions.lock().unwrap();
         guard.iter().map(|(s, p)| (s.clone(), p.clone())).collect()
@@ -2756,10 +2745,10 @@ fn parse_agents_md(content: &str) -> ParsedAgentsMd {
             continue;
         }
         // H2 → section switch.
-        if line.starts_with("## ") {
+        if let Some(stripped) = line.strip_prefix("## ") {
             in_role = false;
             in_skills_section = false;
-            let section = line[3..].trim();
+            let section = stripped.trim();
             match section {
                 "Role" => in_role = true,
                 "Skills" => in_skills_section = true,
@@ -2805,6 +2794,7 @@ fn parse_agents_md(content: &str) -> ParsedAgentsMd {
 }
 
 /// Build the AGENTS.md content for an authored persona.
+#[allow(clippy::too_many_arguments)]
 fn build_agents_md(
     name: &str,
     role_description: &str,
@@ -3128,7 +3118,7 @@ impl WorkflowRunStore {
                 let _ = std::fs::remove_file(&state_path);
                 continue;
             }
-            let mut store = Self::default();
+            let store = Self::default();
             {
                 let mut guard = store.run.lock().expect("workflow run mutex poisoned");
                 *guard = Some(state.run);
@@ -3179,6 +3169,7 @@ impl WorkflowRunStore {
     }
 
     /// Clear the persisted state file. Called when the run completes or is dismissed.
+    #[allow(dead_code)]
     fn clear_persisted(&self) {
         let guard = self.run.lock().expect("workflow run mutex poisoned");
         let root_guard = self
@@ -3303,6 +3294,7 @@ pub fn start_workflow_run(
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 struct WorkflowRunMarker {
     id: String,
     workflow_id: String,
@@ -3357,6 +3349,7 @@ pub fn resume_workflow_run(store: State<'_, WorkflowRunStore>) -> Result<(), Str
 /// artifact has been detected in the vault and approved. Updates phase,
 /// phase_index, active_personas, and status, then persists to disk.
 #[tauri::command]
+#[allow(dead_code)]
 pub fn advance_workflow_phase(
     to_phase: String,
     to_phase_index: usize,
@@ -3386,6 +3379,7 @@ pub fn advance_workflow_phase(
 /// Clears the in-memory store and deletes the `.workflow-state.json` file.
 /// Called when the user closes the resume prompt without resuming.
 #[tauri::command]
+#[allow(dead_code)]
 pub fn dismiss_workflow_run(store: State<'_, WorkflowRunStore>) -> Result<(), String> {
     store.clear_persisted();
     let mut guard = store.run.lock().expect("workflow run mutex poisoned");
@@ -3396,6 +3390,7 @@ pub fn dismiss_workflow_run(store: State<'_, WorkflowRunStore>) -> Result<(), St
 /// Check whether a vault artifact path exists. Used by the workflow engine
 /// (TypeScript) to poll for phase completion.
 #[tauri::command]
+#[allow(dead_code)]
 pub fn check_vault_artifact_exists(path: String) -> bool {
     PathBuf::from(&path).exists()
 }
@@ -3403,6 +3398,7 @@ pub fn check_vault_artifact_exists(path: String) -> bool {
 /// Log a workflow approval gate decision to the vault's decisions log.
 /// Appends a markdown entry to `vault/projects/<project_id>/bmad/.workflow-decisions.md`.
 #[tauri::command]
+#[allow(dead_code)]
 pub fn log_workflow_decision(
     run_id: String,
     project_id: String,

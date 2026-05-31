@@ -221,7 +221,7 @@ impl EphemeralRegistry {
     ///
     /// Scaffolds `<vault>/personas/<slug>/` (log/, skills/, memory/ subdirs
     /// + `.persona-meta.json`) and marks the registry record as promoted
-    /// with the spawn counter reset to 0.
+    ///   with the spawn counter reset to 0.
     ///
     /// Idempotent: re-calling returns the existing [`PersonaMeta`] without
     /// re-minting the bus identity or resetting the creation timestamp.

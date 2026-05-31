@@ -315,9 +315,4 @@ mod tests {
     }
 
     // ── Channel capacity ─────────────────────────────────────────────────
-
-    #[test]
-    fn control_channel_capacity_positive() {
-        assert!(CONTROL_CHANNEL_CAPACITY > 0);
-    }
 }

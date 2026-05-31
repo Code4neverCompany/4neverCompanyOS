@@ -524,6 +524,7 @@ mod tests {
     // ── Recording notifier for tests ────────────────────────────────
 
     #[derive(Default)]
+    #[allow(dead_code)]
     struct RecordingNotifier {
         detected_count: AtomicUsize,
         cleared_count: AtomicUsize,

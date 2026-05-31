@@ -86,7 +86,7 @@ async fn connect_sse(
 
     let stream = resp
         .bytes_stream()
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
+        .map_err(std::io::Error::other);
     Ok(tokio::io::BufReader::new(
         tokio_util::io::StreamReader::new(stream),
     ))

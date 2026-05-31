@@ -1,0 +1,8 @@
+node_modules/
+.paperclip/
+.pgit/
+*.lock
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+**/gen/schemas/*.json

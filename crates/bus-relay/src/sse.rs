@@ -62,7 +62,7 @@ pub async fn next_frame<R: AsyncBufRead + Unpin>(
             return Ok(None);
         }
 
-        let content = line.trim_end_matches(|c| c == '\n' || c == '\r');
+        let content = line.trim_end_matches(['\n', '\r']);
 
         if content.is_empty() {
             // Blank line dispatches the current frame, if any.
