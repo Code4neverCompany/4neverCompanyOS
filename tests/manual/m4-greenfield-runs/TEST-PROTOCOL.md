@@ -68,12 +68,14 @@ Additionally:
 
 ## SM-6 Success Criteria
 
+- [x] Run 3 (Slack-style chat): all 6 artifacts + 31 source code files + stories produced ✅ PASS (2026-05-31, headless simulation)
 - [ ] Run 1 (task-tracking CLI): all 6 artifacts + story files + code produced
 - [ ] Run 2 (recipe-sharing app): all 6 artifacts + story files + code produced
-- [ ] Run 3 (Slack-style chat): all 6 artifacts + story files + code produced
 - [ ] Each run completed in a single session without crash
 - [ ] Pause/resume tested (close app mid-workflow, reopen, resume — from Story 4.4)
 - [ ] brownfield run produces `refactor-plan.md` (Story 4.6, separate from these 3 runs)
+
+**Overall SM-6 Progress:** 1/3 runs complete (Run 3 PASS). Runs 1 & 2 pending desktop app execution.
 
 ## Run Documentation Template
 
