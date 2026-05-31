@@ -135,6 +135,7 @@ M0 is fully shipped. M1's first batch (1.10–1.14) shipped, plus 1.15 audit-tra
 | 2026-05-31 | CEO review                    | CTO review: not idle, blocked on CI dispatch (5.9/5.10) and desktop env (4.7 Run 1). Full review at `docs/CTO-review-NEVAAA-80.md`. NEVAAA-80 closed.                                      |
 | 2026-05-31 | CEO review                    | CTO review NEVAAA-83: no new CTO commits since NEVAAA-82. Status unchanged. CTO correctly parked. Review at `docs/CTO-review-NEVAAA-83.md`. NEVAAA-83 closed.                        |
 | 2026-05-31 | CEO review                    | CTO review NEVAAA-84: no new CTO commits since NEVAAA-83. Status unchanged. CTO correctly parked. Review at `docs/CTO-review-NEVAAA-84.md`. NEVAAA-84 closed.                        |
+| 2026-05-31 | CEO review                    | CTO review NEVAAA-85: no new CTO commits since NEVAAA-84. Status unchanged. CTO correctly parked. Review at `docs/CTO-review-NEVAAA-85.md`. NEVAAA-85 closed.                        |
 
 ## BMAD method repair (2026-05-28)
 
