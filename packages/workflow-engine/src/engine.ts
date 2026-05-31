@@ -84,11 +84,18 @@ function resolveVaultArtifactPath(vaultDir: string, relativePath: string): strin
   return `${vaultRoot}/${cleanRelative}`;
 }
 
+interface PendingApproval {
+  phase: WorkflowPhase;
+  resolve: () => void;
+}
+
 export class WorkflowEngine {
   private currentRun: WorkflowRunState | null = null;
   private vaultPoller: ReturnType<typeof setInterval> | null = null;
   private currentWorkflow: WorkflowMetadata | null = null;
   private pendingApprovalPhase: WorkflowPhase | null = null;
+  private pendingApprovalPhaseList: WorkflowPhase[] = [];
+  private pendingApprovalQueue: PendingApproval[] = [];
 
   async listWorkflows(): Promise<Array<{ id: string; name: string; description: string }>> {
     return invoke<Array<{ id: string; name: string; description: string }>>("list_workflows");
@@ -337,6 +344,8 @@ export class WorkflowEngine {
     run.status = "running";
     run.active_personas = [];
 
+    await this.waitForApprovalGate();
+
     ProgressBus.emitStoryState(run.workflow_id);
 
     for (const persona of phase.personas) {
@@ -384,7 +393,21 @@ export class WorkflowEngine {
           if (phase.approval_required) {
             run.status = "approval_pending";
             this.pendingApprovalPhase = phase;
-            resolve();
+            if (!this.pendingApprovalPhaseList.some((p) => p.id === phase.id)) {
+              this.pendingApprovalPhaseList.push(phase);
+            }
+
+            invoke("set_workflow_pending_approvals", {
+              phaseIds: this.pendingApprovalPhaseList.map((p) => p.id),
+            }).catch((e) =>
+              console.error("[workflow-engine] failed to persist pending approvals:", e),
+            );
+
+            const approvalResolve = () => {
+              this.pendingApprovalQueue.shift();
+              resolve();
+            };
+            this.pendingApprovalQueue.push({ phase, resolve: approvalResolve });
             return;
           }
 
@@ -432,6 +455,7 @@ export class WorkflowEngine {
     run.current_phase = nextPhase.id;
     run.id = updated.id;
 
+    await this.waitForApprovalGate();
     await this.executePhase(run, nextPhase);
   }
 
@@ -464,16 +488,21 @@ export class WorkflowEngine {
     const run = this.currentRun;
     if (!this.currentWorkflow) return;
 
-    const phaseToAdvance =
-      this.pendingApprovalPhase ?? this.currentWorkflow.phases[run.phase_index];
-
-    this.pendingApprovalPhase = null;
+    if (this.pendingApprovalPhase) {
+      this.pendingApprovalPhase = null;
+      this.pendingApprovalPhaseList.shift();
+      invoke("set_workflow_pending_approvals", {
+        phaseIds: this.pendingApprovalPhaseList.map((p) => p.id),
+      }).catch((e) =>
+        console.error("[workflow-engine] failed to persist pending approvals after approve:", e),
+      );
+    }
 
     try {
       await invoke("log_workflow_decision", {
         runId: run.id,
         projectId: run.project_id,
-        phase: phaseToAdvance.id,
+        phase: run.current_phase,
         decision: "approved",
         feedback: "",
       });
@@ -481,8 +510,11 @@ export class WorkflowEngine {
       console.error("[workflow-engine] failed to log decision:", e);
     }
 
-    await this.advanceToNextPhase(run, phaseToAdvance);
-    ProgressBus.emitStoryState(run.workflow_id);
+    if (this.pendingApprovalQueue.length > 0) {
+      const entry = this.pendingApprovalQueue[0];
+      this.pendingApprovalQueue.shift();
+      entry.resolve();
+    }
   }
 
   async requestChanges(runId: string, feedback: string): Promise<void> {
@@ -493,8 +525,15 @@ export class WorkflowEngine {
     const phase = this.pendingApprovalPhase ?? this.currentWorkflow.phases[run.phase_index];
 
     this.pendingApprovalPhase = null;
+    this.pendingApprovalPhaseList = [];
+    this.pendingApprovalQueue = [];
     run.status = "paused";
     this.clearPoller();
+    invoke("set_workflow_pending_approvals", {
+      phaseIds: [],
+    }).catch((e) =>
+      console.error("[workflow-engine] failed to clear pending approvals:", e),
+    );
 
     try {
       await invoke("log_workflow_decision", {
@@ -515,6 +554,25 @@ export class WorkflowEngine {
     return this.pendingApprovalPhase;
   }
 
+  getPendingApprovalPhases(): WorkflowPhase[] {
+    return [...this.pendingApprovalPhaseList];
+  }
+
+  private waitForApprovalGate(): Promise<void> {
+    return new Promise((resolve) => {
+      if (this.pendingApprovalQueue.length === 0) {
+        resolve();
+        return;
+      }
+      const current = this.pendingApprovalQueue[0];
+      const originalResolve = current.resolve;
+      current.resolve = () => {
+        originalResolve();
+        resolve();
+      };
+    });
+  }
+
   pause(): void {
     if (!this.currentRun) return;
     this.currentRun.status = "paused";
@@ -529,9 +587,79 @@ export class WorkflowEngine {
     this.currentWorkflow = workflow;
     const currentPhase = workflow.phases[run.phase_index];
 
+    await this.restoreEngineState(workflow);
+
     run.status = "running";
     await invoke("resume_workflow_run").catch(console.error);
     await this.executePhase(run, currentPhase);
+  }
+
+  private async restoreEngineState(workflow: WorkflowMetadata): Promise<void> {
+    try {
+      const [run, pendingPhaseIds] = await invoke<
+        [WorkflowRunState | null, string[]]
+      >("get_workflow_engine_state");
+
+      if (!run || pendingPhaseIds.length === 0) return;
+
+      const currentPhase = workflow.phases[run.phase_index];
+      if (!currentPhase) return;
+
+      if (run.status === "approval_pending" || pendingPhaseIds.length > 0) {
+        for (const phaseId of pendingPhaseIds) {
+          const phase = workflow.phases.find((p) => p.id === phaseId);
+          if (phase) {
+            this.pendingApprovalPhaseList.push(phase);
+            this.pendingApprovalQueue.push({
+              phase,
+              resolve: () => {
+                this.pendingApprovalQueue.shift();
+              },
+            });
+          }
+        }
+        run.status = "approval_pending";
+        this.pendingApprovalPhase = currentPhase;
+      }
+    } catch (e) {
+      console.warn("[workflow-engine] restoreEngineState failed:", e);
+    }
+  }
+
+  async restoreEngineState(): Promise<void> {
+    try {
+      const [run, pendingPhaseIds] = await invoke<
+        [WorkflowRunState | null, string[]]
+      >("get_workflow_engine_state");
+
+      if (!run || pendingPhaseIds.length === 0) return;
+
+      const workflow = await this.loadWorkflow(run.workflow_id);
+      this.currentWorkflow = workflow;
+      this.currentRun = run;
+
+      const currentPhase = workflow.phases[run.phase_index];
+      if (!currentPhase) return;
+
+      if (run.status === "approval_pending" || pendingPhaseIds.length > 0) {
+        for (const phaseId of pendingPhaseIds) {
+          const phase = workflow.phases.find((p) => p.id === phaseId);
+          if (phase) {
+            this.pendingApprovalPhaseList.push(phase);
+            this.pendingApprovalQueue.push({
+              phase,
+              resolve: () => {
+                this.pendingApprovalQueue.shift();
+              },
+            });
+          }
+        }
+        run.status = "approval_pending";
+        this.pendingApprovalPhase = currentPhase;
+      }
+    } catch (e) {
+      console.warn("[workflow-engine] restoreEngineState failed:", e);
+    }
   }
 
   getRun(): WorkflowRunState | null {

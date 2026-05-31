@@ -143,8 +143,14 @@ pub fn run() {
             // log_workflow_decision records approvals to vault, dismiss clears state.
             commands::advance_workflow_phase,
             commands::check_vault_artifact_exists,
+            commands::read_vault_artifact,
             commands::log_workflow_decision,
             commands::dismiss_workflow_run,
+            // Story 4.4 (NEVAAA-54): pause/resume across app restart —
+            // set_workflow_pending_approvals stores the approval queue,
+            // get_workflow_engine_state restores it on resume.
+            commands::set_workflow_pending_approvals,
+            commands::get_workflow_engine_state,
             // Story 4.5 (NEVAAA-55): story-state watcher — emits
             // "story-state-changed" Tauri events consumed by the
             // ProgressBus bridge in main.tsx to feed the stall detector.

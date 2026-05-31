@@ -252,34 +252,118 @@ function ResumePrompt({
 
 // ── Approval gate overlay ───────────────────────────────────────────────
 
-function ApprovalGate({
+interface VaultArtifactContent {
+  path: string;
+  content: string;
+  truncated: boolean;
+}
+
+function ApprovalQueueView({
   run,
+  phases,
   onApprove,
+  onRequestChanges,
   onPause,
 }: {
   run: ActiveRunDisplay;
+  phases: Array<{ id: string; label: string; artifact: { path: string; description: string } }>;
   onApprove: () => void;
+  onRequestChanges: (feedback: string) => void;
+  onPause: () => void;
+}) {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(0,0,0,0.75)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 1000,
+        overflow: "auto",
+        padding: "40px 0",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          gap: 16,
+          maxWidth: 560,
+          width: "100%",
+          padding: "0 20px",
+        }}
+      >
+        <div style={{ marginBottom: 4 }}>
+          <Eyebrow color="gold">
+            ⛩ {phases.length} Pending Approval{phases.length !== 1 ? "s" : ""}
+          </Eyebrow>
+        </div>
+        {phases.map((phase, idx) => (
+          <ApprovalGate
+            key={`${phase.id}-${idx}`}
+            run={run}
+            phase={phase}
+            onApprove={onApprove}
+            onRequestChanges={onRequestChanges}
+            onPause={onPause}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ApprovalGate({
+  run,
+  phase,
+  onApprove,
+  onRequestChanges,
+  onPause,
+}: {
+  run: ActiveRunDisplay;
+  phase: { id: string; label: string; artifact: { path: string; description: string } };
+  onApprove: () => void;
+  onRequestChanges: (feedback: string) => void;
   onPause: () => void;
 }) {
   const [feedback, setFeedback] = useState("");
   const [showFeedback, setShowFeedback] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [artifactContent, setArtifactContent] = useState<VaultArtifactContent | null>(null);
 
-  const pendingPhase = workflowEngine.getPendingApprovalPhase();
-  const currentLabel = PHASE_LABELS[pendingPhase?.id ?? run.current_phase] ?? run.current_phase;
-  const nextPhaseId =
-    PHASE_ORDER[PHASE_ORDER.indexOf(pendingPhase?.id ?? run.current_phase ?? "") + 1];
+  const currentLabel = phase.label;
+  const nextPhaseId = PHASE_ORDER[PHASE_ORDER.indexOf(phase.id) + 1];
   const nextLabel = PHASE_LABELS[nextPhaseId] ?? nextPhaseId ?? "Done";
+
+  const resolvedArtifactPath = phase.artifact.path
+    .replace(/\{project_id\}/g, run.project_id ?? "")
+    .replace(/\{project_name\}/g, run.project_name ?? "");
+
+  useEffect(() => {
+    let cancelled = false;
+    invoke<VaultArtifactContent>("read_vault_artifact", { path: resolvedArtifactPath })
+      .then((content) => {
+        if (!cancelled) setArtifactContent(content);
+      })
+      .catch((e) => {
+        console.warn("[ApprovalGate] failed to read artifact:", e);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [resolvedArtifactPath]);
 
   function handleApprove() {
     setBusy(true);
     onApprove();
   }
 
-  async function handleSubmitFeedback() {
+  function handleSubmitFeedback() {
     if (!feedback.trim()) return;
     setBusy(true);
-    await workflowEngine.requestChanges(run.id, feedback);
+    onRequestChanges(feedback);
     setBusy(false);
   }
 
@@ -332,26 +416,50 @@ function ApprovalGate({
             The <strong style={{ color: "var(--fn-white)" }}>{currentLabel}</strong> phase has
             produced its artifact. Review the output and choose how to proceed.
           </p>
-          {pendingPhase && (
-            <div
-              style={{
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid var(--border-neutral)",
-                borderRadius: 2,
-                padding: "10px 14px",
-              }}
-            >
-              <span style={{ color: "var(--fg-3)", fontSize: 10 }}>EXPECTED ARTIFACT</span>
-              <br />
-              <span style={{ color: "var(--fn-cyan)" }}>
-                {pendingPhase!.artifact.path.replace(/\{project_id\}/g, run.project_id ?? "")}
-              </span>
-              <br />
-              <span style={{ color: "var(--fg-3)", fontSize: 10 }}>DESCRIPTION</span>
-              <br />
-              {pendingPhase.artifact.description}
-            </div>
-          )}
+          <div
+            style={{
+              background: "rgba(255,255,255,0.04)",
+              border: "1px solid var(--border-neutral)",
+              borderRadius: 2,
+              padding: "10px 14px",
+            }}
+          >
+            <span style={{ color: "var(--fg-3)", fontSize: 10 }}>ARTIFACT</span>
+            <br />
+            <span style={{ color: "var(--fn-cyan)", fontSize: 11 }}>
+              {phase.artifact.path.replace(/\{project_id\}/g, run.project_id ?? "")}
+            </span>
+            <br />
+            <span style={{ color: "var(--fg-3)", fontSize: 10 }}>DESCRIPTION</span>
+            <br />
+            {phase.artifact.description}
+              {artifactContent && (
+                <>
+                  <br />
+                  <span style={{ color: "var(--fg-3)", fontSize: 10 }}>PREVIEW</span>
+                  <div
+                    style={{
+                      marginTop: 6,
+                      maxHeight: 200,
+                      overflow: "auto",
+                      fontFamily: "var(--font-mono)",
+                      fontSize: 11,
+                      color: "var(--fg-2)",
+                      lineHeight: 1.5,
+                      whiteSpace: "pre-wrap",
+                      background: "rgba(0,0,0,0.2)",
+                      borderRadius: 2,
+                      padding: "8px 10px",
+                    }}
+                  >
+                    {artifactContent.content}
+                    {artifactContent.truncated && (
+                      <span style={{ color: "var(--fn-gold)" }}> …[truncated]</span>
+                    )}
+                  </div>
+                </>
+              )}
+          </div>
           <p style={{ margin: "12px 0 0" }}>
             Next: <strong style={{ color: "var(--fn-purple)" }}>{nextLabel}</strong>
           </p>
@@ -700,19 +808,42 @@ export function WorkflowsView() {
       .then((r) => {
         if (r) {
           const engRun = workflowEngine.getRun();
-          setActiveRun({
-            id: r.id,
-            workflow_id: r.workflow_id,
-            workflow_name: r.workflow_name,
-            project_name: r.project_name,
-            idea: r.idea,
-            current_phase: engRun?.current_phase ?? r.phase,
-            phase_index: engRun?.phase_index ?? 0,
-            status: engRun?.status ?? r.status,
-            vault_dir: r.vault_dir,
-            active_personas: engRun?.active_personas ?? [],
-            created_at_ms: r.created_at_ms,
-          });
+          if (r.status === "approval_pending" && !engRun) {
+            workflowEngine
+              .restoreEngineState()
+              .then(() => {
+                setActiveRun({
+                  id: r.id,
+                  workflow_id: r.workflow_id,
+                  workflow_name: r.workflow_name,
+                  project_name: r.project_name,
+                  idea: r.idea,
+                  current_phase: r.phase,
+                  phase_index: r.phase_index,
+                  status: r.status,
+                  vault_dir: r.vault_dir,
+                  active_personas: r.active_personas,
+                  created_at_ms: r.created_at_ms,
+                });
+              })
+              .catch(() => {
+                setActiveRun(null);
+              });
+          } else {
+            setActiveRun({
+              id: r.id,
+              workflow_id: r.workflow_id,
+              workflow_name: r.workflow_name,
+              project_name: r.project_name,
+              idea: r.idea,
+              current_phase: engRun?.current_phase ?? r.phase,
+              phase_index: engRun?.phase_index ?? 0,
+              status: engRun?.status ?? r.status,
+              vault_dir: r.vault_dir,
+              active_personas: engRun?.active_personas ?? [],
+              created_at_ms: r.created_at_ms,
+            });
+          }
         } else {
           setActiveRun(null);
         }
@@ -789,9 +920,13 @@ export function WorkflowsView() {
           />
         )}
         {displayRun.status === "approval_pending" && (
-          <ApprovalGate
+          <ApprovalQueueView
             run={displayRun}
+            phases={workflowEngine.getPendingApprovalPhases()}
             onApprove={() => workflowEngine.approvePhase(displayRun.id)}
+            onRequestChanges={(feedback) =>
+              workflowEngine.requestChanges(displayRun.id, feedback)
+            }
             onPause={() => workflowEngine.pause()}
           />
         )}

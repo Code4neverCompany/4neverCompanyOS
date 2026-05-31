@@ -3070,6 +3070,10 @@ struct WorkflowStateFile {
     /// The root workflows directory — stored in the file so we can find the
     /// state file again on restart without re-reading workspace config.
     workflows_root: String,
+    /// Phase IDs of approvals that are pending (waiting for user to approve).
+    /// Stored as phase IDs (strings) because the full phase definitions live
+    /// in the TypeScript workflow engine, not in Rust.
+    pending_approval_phases: Vec<String>,
 }
 
 /// Shared in-memory store for the single active workflow run.
@@ -3079,6 +3083,9 @@ struct WorkflowStateFile {
 pub struct WorkflowRunStore {
     run: StdMutex<Option<WorkflowRun>>,
     workflows_root: StdMutex<Option<PathBuf>>,
+    /// Phase IDs of approvals that are pending user action.
+    /// Set by the TypeScript workflow engine when entering approval_pending state.
+    pending_approval_phases: StdMutex<Vec<String>>,
 }
 
 impl WorkflowRunStore {
@@ -3130,6 +3137,13 @@ impl WorkflowRunStore {
                     .expect("workflows root mutex poisoned");
                 *root = Some(workflows_root);
             }
+            {
+                let mut pending = store
+                    .pending_approval_phases
+                    .lock()
+                    .expect("pending approval phases mutex poisoned");
+                *pending = state.pending_approval_phases;
+            }
             return store;
         }
 
@@ -3144,6 +3158,10 @@ impl WorkflowRunStore {
             .workflows_root
             .lock()
             .expect("workflows root mutex poisoned");
+        let pending_guard = self
+            .pending_approval_phases
+            .lock()
+            .expect("pending approval phases mutex poisoned");
 
         let (Some(run), Some(root)) = (guard.as_ref(), root_guard.as_ref()) else {
             return;
@@ -3156,6 +3174,7 @@ impl WorkflowRunStore {
         let state = WorkflowStateFile {
             run: run.clone(),
             workflows_root: root.to_string_lossy().into_owned(),
+            pending_approval_phases: pending_guard.clone(),
         };
 
         if std::fs::create_dir_all(&state_dir).is_err() {
@@ -3387,12 +3406,88 @@ pub fn dismiss_workflow_run(store: State<'_, WorkflowRunStore>) -> Result<(), St
     Ok(())
 }
 
+/// Story 4-4: Update the pending approval queue.
+/// Called by the TypeScript workflow engine when entering approval_pending state.
+#[tauri::command]
+pub fn set_workflow_pending_approvals(
+    phase_ids: Vec<String>,
+    store: State<'_, WorkflowRunStore>,
+) -> Result<(), String> {
+    let mut guard = store
+        .pending_approval_phases
+        .lock()
+        .expect("pending approval phases mutex poisoned");
+    *guard = phase_ids;
+    drop(guard);
+    store.persist();
+    Ok(())
+}
+
+/// Story 4-4: Get the persisted workflow engine state for resume.
+/// Returns (run, pending_approval_phase_ids) so the TypeScript engine
+/// can restore its internal state.
+#[tauri::command]
+pub fn get_workflow_engine_state(
+    store: State<'_, WorkflowRunStore>,
+) -> Result<(Option<WorkflowRun>, Vec<String>), String> {
+    let run_guard = store.run.lock().expect("workflow run mutex poisoned");
+    let pending_guard = store
+        .pending_approval_phases
+        .lock()
+        .expect("pending approval phases mutex poisoned");
+    Ok((run_guard.clone(), pending_guard.clone()))
+}
+
 /// Check whether a vault artifact path exists. Used by the workflow engine
 /// (TypeScript) to poll for phase completion.
 #[tauri::command]
 #[allow(dead_code)]
 pub fn check_vault_artifact_exists(path: String) -> bool {
     PathBuf::from(&path).exists()
+}
+
+const VAULT_ARTIFACT_MAX_BYTES: usize = 64 * 1024;
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct VaultArtifactContent {
+    pub path: String,
+    pub content: String,
+    pub truncated: bool,
+}
+
+/// Read the content of a vault artifact file for the approval preview.
+/// Caps content at VAULT_ARTIFACT_MAX_BYTES to avoid loading large files
+/// into the UI. The UI truncates display separately.
+#[tauri::command]
+#[allow(dead_code)]
+pub fn read_vault_artifact(path: String) -> Result<VaultArtifactContent, String> {
+    let path_buf = PathBuf::from(&path);
+    if !path_buf.exists() {
+        return Err(format!("artifact file not found: {}", path));
+    }
+
+    let metadata = std::fs::metadata(&path_buf)
+        .map_err(|e| format!("could not read artifact metadata: {}", e))?;
+
+    let truncated = metadata.len() > VAULT_ARTIFACT_MAX_BYTES as u64;
+
+    use std::io::Read;
+    let mut file = std::fs::File::open(&path_buf)
+        .map_err(|e| format!("could not open artifact file: {}", e))?;
+    let mut buf = Vec::with_capacity(VAULT_ARTIFACT_MAX_BYTES + 1);
+    file.take((VAULT_ARTIFACT_MAX_BYTES + 1) as u64).read_to_end(&mut buf)
+        .map_err(|e| format!("could not read artifact file: {}", e))?;
+
+    if truncated {
+        buf.truncate(VAULT_ARTIFACT_MAX_BYTES);
+    }
+
+    let content = String::from_utf8_lossy(&buf).into_owned();
+    Ok(VaultArtifactContent {
+        path,
+        content,
+        truncated,
+    })
 }
 
 /// Log a workflow approval gate decision to the vault's decisions log.
@@ -3448,7 +3543,9 @@ pub fn log_workflow_decision(
 /// The watcher is managed as Tauri app state so it stays alive for the
 /// entire app session.
 #[tauri::command]
-pub async fn start_story_state_watcher(app_handle: tauri::AppHandle) -> Result<(), String> {
+pub async fn start_story_state_watcher(
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
     use platform_fs::StoryStateChange;
     use tauri::Emitter;
 
