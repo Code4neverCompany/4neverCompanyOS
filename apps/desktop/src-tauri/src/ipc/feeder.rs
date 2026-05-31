@@ -87,9 +87,9 @@ async fn connect_sse(
     let stream = resp
         .bytes_stream()
         .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
-    Ok(tokio::io::BufReader::new(tokio_util::io::StreamReader::new(
-        stream,
-    )))
+    Ok(tokio::io::BufReader::new(
+        tokio_util::io::StreamReader::new(stream),
+    ))
 }
 
 /// Drive the relay's connect → pump → reconnect loop against the live
@@ -264,7 +264,10 @@ mod tests {
         let n = relay.pump(&mut reader).await.expect("pump the live stream");
         assert_eq!(n, 1, "exactly one frame relayed");
 
-        let env = rx.recv().await.expect("subscriber receives the relayed event");
+        let env = rx
+            .recv()
+            .await
+            .expect("subscriber receives the relayed event");
         assert_eq!(env.event_type, "agent.message");
         assert_eq!(env.from, "paperclip");
         assert_eq!(env.payload["text"], "hi");

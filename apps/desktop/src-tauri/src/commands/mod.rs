@@ -439,7 +439,9 @@ pub fn get_supermemory_categories() -> Result<std::collections::HashMap<String, 
 }
 
 #[tauri::command]
-pub fn save_supermemory_categories(categories: std::collections::HashMap<String, bool>) -> Result<(), String> {
+pub fn save_supermemory_categories(
+    categories: std::collections::HashMap<String, bool>,
+) -> Result<(), String> {
     let mut config = read_workspace_config()?;
     config.supermemory_categories = categories;
     write_workspace_config(config)
@@ -487,10 +489,7 @@ pub fn github_sync_pull() -> Result<c4n_github_sync::SyncResult, String> {
 
 /// Create a GitHub repo and configure the vault as a git repo with the remote.
 #[tauri::command]
-pub fn github_sync_init(
-    repo_name: String,
-    is_private: bool,
-) -> Result<(String, String), String> {
+pub fn github_sync_init(repo_name: String, is_private: bool) -> Result<(String, String), String> {
     let config = read_workspace_config().map_err(|e| e.to_string())?;
     let vault_path = &config.vault_path;
     if vault_path.is_empty() {
@@ -708,8 +707,8 @@ pub fn spawn_hermes(project_id: String) -> Result<HermesStatus, String> {
             workspace_config.vault_path, // vault root
             "--project".to_string(),     // Story 3.5: scope monitor project
             project.id.clone(),
-            "--".to_string(),            // argv separator
-            hermes_bin,                  // child command
+            "--".to_string(), // argv separator
+            hermes_bin,       // child command
         ],
         env: HashMap::new(),
         cwd: Some(cwd),
@@ -801,17 +800,17 @@ fn resolve_designer_persona_content(
             .map_err(|e| format!("read {}: {e}", override_path.display()))?;
         return Ok((content, PersonaSource::ProjectOverride));
     }
-    Ok((BUNDLED_DESIGNER_PERSONA_MD.to_string(), PersonaSource::Bundled))
+    Ok((
+        BUNDLED_DESIGNER_PERSONA_MD.to_string(),
+        PersonaSource::Bundled,
+    ))
 }
 
 /// Build the agy.md content: persona text + optional vault context section.
 /// The vault context is appended after the persona file's trailing `---`
 /// delimiter so it appears as "working memory" that the designer can
 /// consult at session start.
-fn build_agy_md_with_vault_context(
-    persona_content: &str,
-    vault_path: &Path,
-) -> String {
+fn build_agy_md_with_vault_context(persona_content: &str, vault_path: &Path) -> String {
     let entries = platform_fs::recent_vault_entries(vault_path, VAULT_CONTEXT_ENTRY_LIMIT)
         .unwrap_or_default();
     let context_section = platform_fs::format_vault_context(&entries);
@@ -975,9 +974,8 @@ pub struct VaultContextSummary {
 pub fn vault_context_summary() -> Result<VaultContextSummary, String> {
     let workspace_config = read_workspace_config()?;
     let vault_path = PathBuf::from(&workspace_config.vault_path);
-    let entries =
-        platform_fs::recent_vault_entries(&vault_path, VAULT_CONTEXT_ENTRY_LIMIT)
-            .map_err(|e| format!("read vault: {e}"))?;
+    let entries = platform_fs::recent_vault_entries(&vault_path, VAULT_CONTEXT_ENTRY_LIMIT)
+        .map_err(|e| format!("read vault: {e}"))?;
     let total_chars = entries.iter().map(|e| e.content.len()).sum();
     let titles = entries
         .iter()
@@ -1016,7 +1014,13 @@ pub fn write_vault_note(title: String, body: String) -> Result<String, String> {
     let slug: String = title
         .to_lowercase()
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' { c } else { '-' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' {
+                c
+            } else {
+                '-'
+            }
+        })
         .collect::<String>()
         .split('-')
         .filter(|s| !s.is_empty())
@@ -1192,7 +1196,10 @@ impl PersonaDriftReport {
                 fields: vec![],
                 first_detected_at: None,
             },
-            DriftState::Drifted { fields, first_detected_at } => Self {
+            DriftState::Drifted {
+                fields,
+                first_detected_at,
+            } => Self {
                 persona_id,
                 status: "drifted".into(),
                 field_count: fields.len(),
@@ -1229,7 +1236,10 @@ pub fn get_persona_drift_state(
     if slug.trim().is_empty() {
         return Err("slug must not be empty".to_string());
     }
-    let guard = registry.watchers.lock().expect("drift registry mutex poisoned");
+    let guard = registry
+        .watchers
+        .lock()
+        .expect("drift registry mutex poisoned");
     let report = match guard.get(&slug) {
         Some(watcher) => PersonaDriftReport::from_state(slug.clone(), watcher.state()),
         None => PersonaDriftReport {
@@ -1253,7 +1263,10 @@ pub fn dismiss_persona_drift(
     if slug.trim().is_empty() {
         return Err("slug must not be empty".to_string());
     }
-    let guard = registry.watchers.lock().expect("drift registry mutex poisoned");
+    let guard = registry
+        .watchers
+        .lock()
+        .expect("drift registry mutex poisoned");
     if let Some(watcher) = guard.get(&slug) {
         watcher.dismiss();
     }
@@ -1458,7 +1471,9 @@ fn slugify_name(name: &str) -> String {
     let mut prev_dash = false;
     for c in slug.chars() {
         if c == '-' {
-            if !prev_dash { result.push(c); }
+            if !prev_dash {
+                result.push(c);
+            }
             prev_dash = true;
         } else {
             result.push(c);
@@ -1466,7 +1481,11 @@ fn slugify_name(name: &str) -> String {
         }
     }
     slug = result.trim_matches('-').to_string();
-    if slug.is_empty() { "agent".to_string() } else { slug }
+    if slug.is_empty() {
+        "agent".to_string()
+    } else {
+        slug
+    }
 }
 
 /// Generate the session name for a dynamic persona.
@@ -1546,7 +1565,10 @@ pub fn spawn_dynamic_persona(
     }
     let allowed_lifecycles = ["persistent", "ephemeral"];
     if !allowed_lifecycles.contains(&lifecycle.as_str()) {
-        return Err(format!("lifecycle must be one of: {}", allowed_lifecycles.join(", ")));
+        return Err(format!(
+            "lifecycle must be one of: {}",
+            allowed_lifecycles.join(", ")
+        ));
     }
     let is_ephemeral = lifecycle == "ephemeral";
     let task_prompt = task_prompt.unwrap_or_default();
@@ -1589,7 +1611,10 @@ pub fn spawn_dynamic_persona(
 
     // Check if already running; if so, just return running state.
     let sessions = zellij::list_sessions().map_err(|e| format!("list sessions: {e}"))?;
-    if sessions.iter().any(|l| l.split_whitespace().next() == Some(session_name.as_str())) {
+    if sessions
+        .iter()
+        .any(|l| l.split_whitespace().next() == Some(session_name.as_str()))
+    {
         return Ok(DynamicPersonaInfo {
             name,
             slug,
@@ -1717,8 +1742,13 @@ pub fn kill_dynamic_persona(
     if !zellij::is_available() {
         return Err("Zellij not available".to_string());
     }
-    let handle = c4n_zellij_adapter::PaneHandle { session_name: session_name.clone(), pane_name: None };
-    handle.kill().map_err(|e| format!("kill dynamic persona {session_name}: {e}"))?;
+    let handle = c4n_zellij_adapter::PaneHandle {
+        session_name: session_name.clone(),
+        pane_name: None,
+    };
+    handle
+        .kill()
+        .map_err(|e| format!("kill dynamic persona {session_name}: {e}"))?;
     store.unregister(&session_name);
     Ok(())
 }
@@ -1774,7 +1804,11 @@ pub fn kill_all_project_personas(
     if errors.is_empty() {
         Ok(killed)
     } else {
-        Err(format!("killed {} but errors: {}", killed.len(), errors.join("; ")))
+        Err(format!(
+            "killed {} but errors: {}",
+            killed.len(),
+            errors.join("; ")
+        ))
     }
 }
 
@@ -1828,9 +1862,7 @@ pub fn add_persona_spend(
 
 /// Save per-persona budget limits to the workspace config.
 #[tauri::command]
-pub fn save_persona_budgets(
-    budgets: std::collections::HashMap<String, f64>,
-) -> Result<(), String> {
+pub fn save_persona_budgets(budgets: std::collections::HashMap<String, f64>) -> Result<(), String> {
     let mut config = read_workspace_config().map_err(|e| e.to_string())?;
     config.persona_budgets = budgets;
     write_workspace_config(config)
@@ -2008,10 +2040,7 @@ impl BudgetStore {
     }
 
     /// Get budget status for all tracked personas.
-    pub fn get_all_status(
-        &self,
-        config: &WorkspaceConfig,
-    ) -> Vec<PersonaBudgetStatus> {
+    pub fn get_all_status(&self, config: &WorkspaceConfig) -> Vec<PersonaBudgetStatus> {
         let spend_guard = self.spend.lock().unwrap();
         let paused_guard = self.paused.lock().unwrap();
 
@@ -2028,7 +2057,11 @@ impl BudgetStore {
                 let spend = *spend_guard.get(&id).unwrap_or(&0.0);
                 let limit = config.persona_budgets.get(&id).copied().unwrap_or(0.0);
                 let paused = *paused_guard.get(&id).unwrap_or(&false);
-                let pct = if limit > 0.0 { (spend / limit * 100.0).min(100.0) } else { 0.0 };
+                let pct = if limit > 0.0 {
+                    (spend / limit * 100.0).min(100.0)
+                } else {
+                    0.0
+                };
                 PersonaBudgetStatus {
                     persona_id: id,
                     spend_usd: spend,
@@ -2396,32 +2429,86 @@ pub fn write_persona_pty_in(persona_id: String, bytes: Vec<u8>) -> Result<(), St
 const INSTALLABLE_SKILLS: &[(&str, &str)] = &[
     ("bmad-quick-dev", "Quick Dev — one-shot code implementation"),
     ("bmad-dev-story", "Dev Story — story-driven implementation"),
-    ("bmad-code-review", "Code Review — adversarial review layers"),
-    ("bmad-create-architecture", "Create Architecture — system design"),
+    (
+        "bmad-code-review",
+        "Code Review — adversarial review layers",
+    ),
+    (
+        "bmad-create-architecture",
+        "Create Architecture — system design",
+    ),
     ("bmad-create-prd", "Create PRD — product requirements"),
-    ("bmad-create-epics-and-stories", "Epics & Stories — breakdown"),
-    ("bmad-sprint-planning", "Sprint Planning — sprint status + plan"),
+    (
+        "bmad-create-epics-and-stories",
+        "Epics & Stories — breakdown",
+    ),
+    (
+        "bmad-sprint-planning",
+        "Sprint Planning — sprint status + plan",
+    ),
     ("bmad-sprint-status", "Sprint Status — surface risks"),
-    ("bmad-investigate", "Investigate — forensic bug/incident tracing"),
-    ("bmad-checkpoint-preview", "Checkpoint — human-in-the-loop review"),
-    ("bmad-correct-course", "Correct Course — sprint change management"),
+    (
+        "bmad-investigate",
+        "Investigate — forensic bug/incident tracing",
+    ),
+    (
+        "bmad-checkpoint-preview",
+        "Checkpoint — human-in-the-loop review",
+    ),
+    (
+        "bmad-correct-course",
+        "Correct Course — sprint change management",
+    ),
     ("bmad-retrospective", "Retrospective — post-epic lessons"),
-    ("bmad-qa-generate-e2e-tests", "QA E2E Tests — automated test generation"),
+    (
+        "bmad-qa-generate-e2e-tests",
+        "QA E2E Tests — automated test generation",
+    ),
     ("bmad-brainstorming", "Brainstorming — ideation sessions"),
-    ("bmad-distillator", "Distillator — lossless document compression"),
-    ("bmad-document-project", "Document Project — brownfield AI context"),
+    (
+        "bmad-distillator",
+        "Distillator — lossless document compression",
+    ),
+    (
+        "bmad-document-project",
+        "Document Project — brownfield AI context",
+    ),
     ("bmad-agent-analyst", "Analyst — business analysis (Mary)"),
-    ("bmad-agent-architect", "Architect — system design (Winston)"),
+    (
+        "bmad-agent-architect",
+        "Architect — system design (Winston)",
+    ),
     ("bmad-agent-dev", "Developer — story execution (Amelia)"),
     ("bmad-agent-pm", "Product Manager — PRD discovery (John)"),
-    ("bmad-agent-ux-designer", "UX Designer — UI specialist (Sally)"),
-    ("bmad-agent-tech-writer", "Tech Writer — documentation (Paige)"),
-    ("bmad-review-adversarial-general", "Adversarial Review — critical review"),
-    ("bmad-review-edge-case-hunter", "Edge Case Hunter — boundary analysis"),
-    ("para-memory-files", "PARA Memory — file-based memory system"),
-    ("bmad-create-story", "Create Story — story file with full context"),
+    (
+        "bmad-agent-ux-designer",
+        "UX Designer — UI specialist (Sally)",
+    ),
+    (
+        "bmad-agent-tech-writer",
+        "Tech Writer — documentation (Paige)",
+    ),
+    (
+        "bmad-review-adversarial-general",
+        "Adversarial Review — critical review",
+    ),
+    (
+        "bmad-review-edge-case-hunter",
+        "Edge Case Hunter — boundary analysis",
+    ),
+    (
+        "para-memory-files",
+        "PARA Memory — file-based memory system",
+    ),
+    (
+        "bmad-create-story",
+        "Create Story — story file with full context",
+    ),
     ("bmad-help", "BMad Help — recommendations + skill analysis"),
-    ("bmad-party-mode", "Party Mode — multi-agent group discussions"),
+    (
+        "bmad-party-mode",
+        "Party Mode — multi-agent group discussions",
+    ),
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -2499,7 +2586,10 @@ pub fn author_persona(
     }
     let allowed_lifecycles = ["persistent", "ephemeral"];
     if !allowed_lifecycles.contains(&lifecycle.as_str()) {
-        return Err(format!("lifecycle must be one of: {}", allowed_lifecycles.join(", ")));
+        return Err(format!(
+            "lifecycle must be one of: {}",
+            allowed_lifecycles.join(", ")
+        ));
     }
     let allowed_scopes = ["shared", "isolated"];
     if !allowed_scopes.contains(&vault_scope.as_str()) {
@@ -2524,8 +2614,7 @@ pub fn author_persona(
     }
 
     // Scaffold vault dir + mint (or load) stable bus identity (Story 3.3).
-    let meta =
-        ensure_persona_vault_dir(&vault_path, &slug, "dynamic", &lifecycle, &backing_cli)?;
+    let meta = ensure_persona_vault_dir(&vault_path, &slug, "dynamic", &lifecycle, &backing_cli)?;
     let vault_dir = persona_dir.to_string_lossy().to_string();
 
     // Write AGENTS.md.
@@ -2539,8 +2628,7 @@ pub fn author_persona(
         &model_override,
         &meta.bus_identity,
     );
-    std::fs::write(&agents_md_path, &content)
-        .map_err(|e| format!("write AGENTS.md: {e}"))?;
+    std::fs::write(&agents_md_path, &content).map_err(|e| format!("write AGENTS.md: {e}"))?;
 
     Ok(AuthoredPersonaInfo {
         name,
@@ -2574,8 +2662,8 @@ pub fn list_authored_personas() -> Result<Vec<AuthoredPersonaInfo>, String> {
     }
 
     let mut result = Vec::new();
-    let entries = std::fs::read_dir(&personas_dir)
-        .map_err(|e| format!("read personas dir: {e}"))?;
+    let entries =
+        std::fs::read_dir(&personas_dir).map_err(|e| format!("read personas dir: {e}"))?;
 
     for entry in entries.flatten() {
         let dir = entry.path();
@@ -2607,9 +2695,18 @@ pub fn list_authored_personas() -> Result<Vec<AuthoredPersonaInfo>, String> {
         let agents_md_content = std::fs::read_to_string(&agents_md).unwrap_or_default();
         let parsed = parse_agents_md(&agents_md_content);
 
-        let bus_identity = meta.as_ref().map(|m| m.bus_identity.clone()).unwrap_or_default();
-        let backing_cli = meta.as_ref().map(|m| m.backing_cli.clone()).unwrap_or_default();
-        let lifecycle = meta.as_ref().map(|m| m.lifecycle.clone()).unwrap_or_default();
+        let bus_identity = meta
+            .as_ref()
+            .map(|m| m.bus_identity.clone())
+            .unwrap_or_default();
+        let backing_cli = meta
+            .as_ref()
+            .map(|m| m.backing_cli.clone())
+            .unwrap_or_default();
+        let lifecycle = meta
+            .as_ref()
+            .map(|m| m.lifecycle.clone())
+            .unwrap_or_default();
 
         result.push(AuthoredPersonaInfo {
             name: parsed.name.unwrap_or_else(|| slug.clone()),
@@ -2698,7 +2795,13 @@ fn parse_agents_md(content: &str) -> ParsedAgentsMd {
         Some(role_lines.join("\n").trim().to_string())
     };
 
-    ParsedAgentsMd { name, role_description, vault_scope, skills, model_override }
+    ParsedAgentsMd {
+        name,
+        role_description,
+        vault_scope,
+        skills,
+        model_override,
+    }
 }
 
 /// Build the AGENTS.md content for an authored persona.
@@ -2715,7 +2818,11 @@ fn build_agents_md(
     let skills_block = if skills.is_empty() {
         "_(no specific skills selected)_".to_string()
     } else {
-        skills.iter().map(|s| format!("- {s}")).collect::<Vec<_>>().join("\n")
+        skills
+            .iter()
+            .map(|s| format!("- {s}"))
+            .collect::<Vec<_>>()
+            .join("\n")
     };
 
     let model_line = if model_override.trim().is_empty() {
@@ -2861,8 +2968,7 @@ pub fn receive_spawn_proposal(
     proposed_by: String,
     store: State<'_, PendingProposalsStore>,
 ) -> Result<SpawnProposalRecord, String> {
-    validate_spawn_proposal_payload(&payload, &proposed_by)
-        .map_err(|errs| errs.join("; "))?;
+    validate_spawn_proposal_payload(&payload, &proposed_by).map_err(|errs| errs.join("; "))?;
 
     let record = SpawnProposalRecord {
         id: generate_uuid_v4(),
@@ -2890,9 +2996,7 @@ pub fn receive_spawn_proposal(
 /// Return the current list of pending spawn proposals.
 /// Called by the user-approval panel (Story 3.8 / NEVAAA-34).
 #[tauri::command]
-pub fn list_pending_proposals(
-    store: State<'_, PendingProposalsStore>,
-) -> Vec<SpawnProposalRecord> {
+pub fn list_pending_proposals(store: State<'_, PendingProposalsStore>) -> Vec<SpawnProposalRecord> {
     store
         .proposals
         .lock()
@@ -3030,7 +3134,10 @@ impl WorkflowRunStore {
                 *guard = Some(state.run);
             }
             {
-                let mut root = store.workflows_root.lock().expect("workflows root mutex poisoned");
+                let mut root = store
+                    .workflows_root
+                    .lock()
+                    .expect("workflows root mutex poisoned");
                 *root = Some(workflows_root);
             }
             return store;
@@ -3043,7 +3150,10 @@ impl WorkflowRunStore {
     /// Idempotent: if the run is None, removes the state file.
     fn persist(&self) {
         let guard = self.run.lock().expect("workflow run mutex poisoned");
-        let root_guard = self.workflows_root.lock().expect("workflows root mutex poisoned");
+        let root_guard = self
+            .workflows_root
+            .lock()
+            .expect("workflows root mutex poisoned");
 
         let (Some(run), Some(root)) = (guard.as_ref(), root_guard.as_ref()) else {
             return;
@@ -3071,7 +3181,10 @@ impl WorkflowRunStore {
     /// Clear the persisted state file. Called when the run completes or is dismissed.
     fn clear_persisted(&self) {
         let guard = self.run.lock().expect("workflow run mutex poisoned");
-        let root_guard = self.workflows_root.lock().expect("workflows root mutex poisoned");
+        let root_guard = self
+            .workflows_root
+            .lock()
+            .expect("workflows root mutex poisoned");
 
         let (Some(run), Some(root)) = (guard.as_ref(), root_guard.as_ref()) else {
             return;
@@ -3176,7 +3289,10 @@ pub fn start_workflow_run(
         *guard = Some(run.clone());
     }
     {
-        let mut root = store.workflows_root.lock().expect("workflows root mutex poisoned");
+        let mut root = store
+            .workflows_root
+            .lock()
+            .expect("workflows root mutex poisoned");
         *root = Some(vault_workflow_root.clone());
     }
 
@@ -3198,7 +3314,11 @@ struct WorkflowRunMarker {
 
 #[tauri::command]
 pub fn get_workflow_run(store: State<'_, WorkflowRunStore>) -> Option<WorkflowRun> {
-    store.run.lock().expect("workflow run mutex poisoned").clone()
+    store
+        .run
+        .lock()
+        .expect("workflow run mutex poisoned")
+        .clone()
 }
 
 #[tauri::command]
@@ -3306,9 +3426,7 @@ pub fn log_workflow_decision(
     let timestamp = chrono::Utc::now().to_rfc3339();
 
     let entry = if feedback.is_empty() {
-        format!(
-            "## [{timestamp}] Phase `{phase}` — {decision}\n\nRun ID: `{run_id}`\n\n",
-        )
+        format!("## [{timestamp}] Phase `{phase}` — {decision}\n\nRun ID: `{run_id}`\n\n",)
     } else {
         format!(
             "## [{timestamp}] Phase `{phase}` — {decision}\n\nRun ID: `{run_id}`\n\n**Feedback:** {feedback}\n\n",
@@ -3862,14 +3980,19 @@ mod tests {
         ));
         std::fs::create_dir_all(&vault).unwrap();
 
-        let meta =
-            ensure_persona_vault_dir(&vault, "architect", "dynamic", "persistent", "claude")
-                .unwrap();
+        let meta = ensure_persona_vault_dir(&vault, "architect", "dynamic", "persistent", "claude")
+            .unwrap();
 
         let persona_dir = vault.join("personas").join("architect");
         assert!(persona_dir.join("log").is_dir(), "log/ subdir missing");
-        assert!(persona_dir.join("skills").is_dir(), "skills/ subdir missing");
-        assert!(persona_dir.join("memory").is_dir(), "memory/ subdir missing");
+        assert!(
+            persona_dir.join("skills").is_dir(),
+            "skills/ subdir missing"
+        );
+        assert!(
+            persona_dir.join("memory").is_dir(),
+            "memory/ subdir missing"
+        );
         assert!(
             persona_dir.join(".persona-meta.json").is_file(),
             ".persona-meta.json missing"
@@ -3886,8 +4009,7 @@ mod tests {
         assert_eq!(meta.vault_dir_version, VAULT_DIR_VERSION);
 
         // The persisted file round-trips to the same identity.
-        let raw =
-            std::fs::read_to_string(persona_dir.join(".persona-meta.json")).unwrap();
+        let raw = std::fs::read_to_string(persona_dir.join(".persona-meta.json")).unwrap();
         let on_disk: PersonaMeta = serde_json::from_str(&raw).unwrap();
         assert_eq!(on_disk.bus_identity, meta.bus_identity);
 
@@ -4038,8 +4160,7 @@ mod tests {
 
     #[test]
     fn resolve_designer_falls_back_to_bundled_when_no_override() {
-        let tmp =
-            std::env::temp_dir().join(format!("c4n-designer-resolve-{}", std::process::id()));
+        let tmp = std::env::temp_dir().join(format!("c4n-designer-resolve-{}", std::process::id()));
         std::fs::create_dir_all(&tmp).unwrap();
         let (content, source) = resolve_designer_persona_content(&tmp).unwrap();
         std::fs::remove_dir_all(&tmp).ok();
@@ -4149,7 +4270,10 @@ mod tests {
             "You audit the codebase for OWASP top-10 vulnerabilities.",
             "persistent",
             "claude",
-            &["bmad-code-review".to_string(), "bmad-investigate".to_string()],
+            &[
+                "bmad-code-review".to_string(),
+                "bmad-investigate".to_string(),
+            ],
             "isolated",
             "claude-opus-4-6",
             "agent:security-auditor:abc123",
@@ -4157,18 +4281,42 @@ mod tests {
         assert!(md.contains("# Security Auditor"), "H1 name missing");
         assert!(md.contains("## Role"), "Role section missing");
         assert!(md.contains("OWASP"), "role body missing");
-        assert!(md.contains("**Lifecycle:** persistent"), "lifecycle missing");
-        assert!(md.contains("**Vault scope:** isolated"), "vault scope missing");
-        assert!(md.contains("**Base model:** claude-opus-4-6"), "model override missing");
+        assert!(
+            md.contains("**Lifecycle:** persistent"),
+            "lifecycle missing"
+        );
+        assert!(
+            md.contains("**Vault scope:** isolated"),
+            "vault scope missing"
+        );
+        assert!(
+            md.contains("**Base model:** claude-opus-4-6"),
+            "model override missing"
+        );
         assert!(md.contains("- bmad-code-review"), "skill missing");
         assert!(md.contains("## Skills"), "Skills section missing");
     }
 
     #[test]
     fn build_agents_md_model_dash_when_empty() {
-        let md = build_agents_md("Foo", "does things", "ephemeral", "agy", &[], "shared", "", "agent:foo:x");
-        assert!(md.contains("**Base model:** \u{2014}"), "empty model should render as dash");
-        assert!(md.contains("_(no specific skills selected)_"), "empty skills placeholder missing");
+        let md = build_agents_md(
+            "Foo",
+            "does things",
+            "ephemeral",
+            "agy",
+            &[],
+            "shared",
+            "",
+            "agent:foo:x",
+        );
+        assert!(
+            md.contains("**Base model:** \u{2014}"),
+            "empty model should render as dash"
+        );
+        assert!(
+            md.contains("_(no specific skills selected)_"),
+            "empty skills placeholder missing"
+        );
     }
 
     #[test]
@@ -4186,12 +4334,19 @@ mod tests {
         let parsed = parse_agents_md(&md);
         assert_eq!(parsed.name.as_deref(), Some("DB Architect"));
         assert!(
-            parsed.role_description.as_deref().unwrap_or("").contains("Designs"),
+            parsed
+                .role_description
+                .as_deref()
+                .unwrap_or("")
+                .contains("Designs"),
             "role body round-trip failed"
         );
         assert_eq!(parsed.vault_scope.as_deref(), Some("shared"));
         assert_eq!(parsed.skills, vec!["bmad-create-architecture"]);
-        assert!(parsed.model_override.is_none(), "empty model should parse as None");
+        assert!(
+            parsed.model_override.is_none(),
+            "empty model should parse as None"
+        );
     }
 
     #[test]
@@ -4217,11 +4372,18 @@ mod tests {
         assert!(!skills.is_empty(), "skill list must not be empty");
         for s in &skills {
             assert!(!s.id.is_empty(), "blank skill id in list");
-            assert!(!s.description.is_empty(), "blank skill description for {}", s.id);
+            assert!(
+                !s.description.is_empty(),
+                "blank skill description for {}",
+                s.id
+            );
         }
         let ids: Vec<&str> = skills.iter().map(|s| s.id.as_str()).collect();
         assert!(ids.contains(&"bmad-quick-dev"), "bmad-quick-dev missing");
-        assert!(ids.contains(&"bmad-code-review"), "bmad-code-review missing");
+        assert!(
+            ids.contains(&"bmad-code-review"),
+            "bmad-code-review missing"
+        );
     }
 
     #[test]
@@ -4251,7 +4413,11 @@ mod tests {
 
         // The guard checks AGENTS.md existence, not just the directory.
         assert!(
-            vault.join("personas").join(&slug).join("AGENTS.md").exists(),
+            vault
+                .join("personas")
+                .join(&slug)
+                .join("AGENTS.md")
+                .exists(),
             "test setup: AGENTS.md must exist for uniqueness guard to fire"
         );
 
@@ -4278,7 +4444,10 @@ mod tests {
     #[test]
     fn valid_spawn_proposal_accepted() {
         let result = validate_spawn_proposal_payload(&valid_spawn_payload(), "hermes");
-        assert!(result.is_ok(), "valid proposal should be accepted; got: {result:?}");
+        assert!(
+            result.is_ok(),
+            "valid proposal should be accepted; got: {result:?}"
+        );
     }
 
     #[test]
@@ -4287,7 +4456,10 @@ mod tests {
             let mut p = valid_spawn_payload();
             p.persona_type = (*pt).to_string();
             let result = validate_spawn_proposal_payload(&p, "hermes");
-            assert!(result.is_ok(), "persona_type {pt} should be valid; got: {result:?}");
+            assert!(
+                result.is_ok(),
+                "persona_type {pt} should be valid; got: {result:?}"
+            );
         }
     }
 
@@ -4296,7 +4468,10 @@ mod tests {
         let mut p = valid_spawn_payload();
         p.budget_estimate = Some(SPAWN_PROPOSAL_BUDGET_MAX_USD);
         let result = validate_spawn_proposal_payload(&p, "hermes");
-        assert!(result.is_ok(), "budget at limit should be accepted; got: {result:?}");
+        assert!(
+            result.is_ok(),
+            "budget at limit should be accepted; got: {result:?}"
+        );
     }
 
     #[test]
@@ -4304,7 +4479,10 @@ mod tests {
         let mut p = valid_spawn_payload();
         p.lifecycle = "persistent".into();
         let result = validate_spawn_proposal_payload(&p, "hermes");
-        assert!(result.is_ok(), "persistent lifecycle should be accepted; got: {result:?}");
+        assert!(
+            result.is_ok(),
+            "persistent lifecycle should be accepted; got: {result:?}"
+        );
     }
 
     #[test]
@@ -4314,7 +4492,10 @@ mod tests {
         let result = validate_spawn_proposal_payload(&p, "hermes");
         assert!(result.is_err(), "empty name should be rejected");
         let errors = result.unwrap_err();
-        assert!(errors.iter().any(|e| e.contains("name")), "error must mention name; got: {errors:?}");
+        assert!(
+            errors.iter().any(|e| e.contains("name")),
+            "error must mention name; got: {errors:?}"
+        );
     }
 
     #[test]
@@ -4324,7 +4505,10 @@ mod tests {
         let result = validate_spawn_proposal_payload(&p, "hermes");
         assert!(result.is_err(), "empty task_description should be rejected");
         let errors = result.unwrap_err();
-        assert!(errors.iter().any(|e| e.contains("task_description")), "got: {errors:?}");
+        assert!(
+            errors.iter().any(|e| e.contains("task_description")),
+            "got: {errors:?}"
+        );
     }
 
     #[test]
@@ -4335,7 +4519,9 @@ mod tests {
         assert!(result.is_err(), "unknown persona_type should be rejected");
         let errors = result.unwrap_err();
         assert!(
-            errors.iter().any(|e| e.contains("persona_type") && e.contains("gemini-pro")),
+            errors
+                .iter()
+                .any(|e| e.contains("persona_type") && e.contains("gemini-pro")),
             "error must mention the bad value; got: {errors:?}"
         );
     }
@@ -4348,7 +4534,9 @@ mod tests {
         assert!(result.is_err(), "unknown lifecycle should be rejected");
         let errors = result.unwrap_err();
         assert!(
-            errors.iter().any(|e| e.contains("lifecycle") && e.contains("transient")),
+            errors
+                .iter()
+                .any(|e| e.contains("lifecycle") && e.contains("transient")),
             "error must mention the bad value; got: {errors:?}"
         );
     }
@@ -4361,7 +4549,9 @@ mod tests {
         assert!(result.is_err(), "over-limit budget should be rejected");
         let errors = result.unwrap_err();
         assert!(
-            errors.iter().any(|e| e.contains("budget_estimate") && e.contains("limit")),
+            errors
+                .iter()
+                .any(|e| e.contains("budget_estimate") && e.contains("limit")),
             "error must mention budget_estimate and limit; got: {errors:?}"
         );
     }
@@ -4373,7 +4563,10 @@ mod tests {
         let result = validate_spawn_proposal_payload(&p, "hermes");
         assert!(result.is_err(), "negative budget should be rejected");
         let errors = result.unwrap_err();
-        assert!(errors.iter().any(|e| e.contains("budget_estimate")), "got: {errors:?}");
+        assert!(
+            errors.iter().any(|e| e.contains("budget_estimate")),
+            "got: {errors:?}"
+        );
     }
 
     #[test]
@@ -4381,7 +4574,10 @@ mod tests {
         let result = validate_spawn_proposal_payload(&valid_spawn_payload(), "  ");
         assert!(result.is_err(), "empty proposed_by should be rejected");
         let errors = result.unwrap_err();
-        assert!(errors.iter().any(|e| e.contains("proposed_by")), "got: {errors:?}");
+        assert!(
+            errors.iter().any(|e| e.contains("proposed_by")),
+            "got: {errors:?}"
+        );
     }
 
     #[test]
@@ -4402,5 +4598,4 @@ mod tests {
             errors.len()
         );
     }
-
 }

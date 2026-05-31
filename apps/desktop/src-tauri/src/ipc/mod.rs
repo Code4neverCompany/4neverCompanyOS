@@ -458,13 +458,16 @@ mod tests {
     // status bar switches on (Story 2.11).
     #[test]
     fn connection_state_serializes_to_tagged_wire_shape() {
-        let connected = serde_json::to_value(map_connection_state(&ConnectionState::Connected)).unwrap();
+        let connected =
+            serde_json::to_value(map_connection_state(&ConnectionState::Connected)).unwrap();
         assert_eq!(connected["state"], "connected");
 
-        let reconnecting = serde_json::to_value(map_connection_state(
-            &ConnectionState::Reconnecting { attempt: 2, delay_ms: 2000 },
-        ))
-        .unwrap();
+        let reconnecting =
+            serde_json::to_value(map_connection_state(&ConnectionState::Reconnecting {
+                attempt: 2,
+                delay_ms: 2000,
+            }))
+            .unwrap();
         assert_eq!(reconnecting["state"], "reconnecting");
         assert_eq!(reconnecting["attempt"], 2);
         assert_eq!(reconnecting["delayMs"], 2000);
@@ -518,7 +521,10 @@ mod tests {
                 break;
             }
         }
-        assert!(saw_connected, "stream should report Connected after link-up");
+        assert!(
+            saw_connected,
+            "stream should report Connected after link-up"
+        );
 
         notify.notify_one();
         task.await.unwrap();

@@ -96,7 +96,8 @@ async fn run_ephemeral_mode(args: &[String]) -> ExitCode {
 
     // run_ephemeral is synchronous (std::process); run it off the async
     // runtime so we never block the reactor thread.
-    let result = tokio::task::spawn_blocking(move || run_ephemeral(config, &NullNotifier, None)).await;
+    let result =
+        tokio::task::spawn_blocking(move || run_ephemeral(config, &NullNotifier, None)).await;
 
     match result {
         Ok(Ok(outcome)) => {
@@ -141,7 +142,10 @@ fn parse_ephemeral_args(args: &[String]) -> Result<EphemeralConfig, String> {
     }
     let vault_path = std::path::PathBuf::from(&args[4]);
     if !vault_path.exists() {
-        return Err(format!("vault path does not exist: {}", vault_path.display()));
+        return Err(format!(
+            "vault path does not exist: {}",
+            vault_path.display()
+        ));
     }
     if !vault_path.is_dir() {
         return Err(format!(
@@ -204,9 +208,9 @@ fn parse_args(args: &[String]) -> Result<SupervisorConfig, String> {
     let mut i = 3;
     let mut project_ids: Vec<String> = Vec::new();
     while i < args.len() && args[i] == "--project" {
-        let id = args.get(i + 1).ok_or_else(|| {
-            "`--project` requires an argument (a project id)".to_string()
-        })?;
+        let id = args
+            .get(i + 1)
+            .ok_or_else(|| "`--project` requires an argument (a project id)".to_string())?;
         if id.is_empty() {
             return Err("`--project` id must not be empty".to_string());
         }
@@ -324,7 +328,10 @@ mod tests {
         assert_eq!(cfg.slug, "security-reviewer");
         assert_eq!(cfg.project_id, "demo-proj-0a1b2c3d");
         assert_eq!(cfg.command, "claude");
-        assert_eq!(cfg.args, vec!["-p".to_string(), "review this PR".to_string()]);
+        assert_eq!(
+            cfg.args,
+            vec!["-p".to_string(), "review this PR".to_string()]
+        );
     }
 
     #[test]
@@ -360,7 +367,10 @@ mod tests {
         ]))
         .unwrap();
         assert_eq!(config.persona_id, "dev");
-        assert_eq!(config.project_ids, vec!["proj-abc".to_string(), "proj-xyz".to_string()]);
+        assert_eq!(
+            config.project_ids,
+            vec!["proj-abc".to_string(), "proj-xyz".to_string()]
+        );
         assert_eq!(config.command, "claude");
         assert_eq!(config.args, vec!["--version".to_string()]);
     }

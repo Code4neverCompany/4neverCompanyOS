@@ -744,7 +744,9 @@ export function WorkflowsView() {
         if (!rustRun) {
           setActiveRun(null);
         }
-      } catch {}
+      } catch {
+        // ignore poll errors, will retry
+      }
     }, 2000);
     return () => clearInterval(id);
   }, [activeRun]);

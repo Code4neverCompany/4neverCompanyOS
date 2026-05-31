@@ -278,9 +278,7 @@ impl EphemeralRegistry {
 
 /// Current time as ISO-8601 UTC, e.g. `2026-05-29T15:00:00Z`.
 fn iso8601_utc_now() -> String {
-    chrono::Utc::now()
-        .format("%Y-%m-%dT%H:%M:%SZ")
-        .to_string()
+    chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
 }
 
 /// Non-cryptographic UUID-v4-shaped string (8-4-4-4-12 hex).
@@ -533,11 +531,12 @@ mod tests {
         reg.record_spawn("reviewer").unwrap();
 
         // Record must live at <vault>/ephemeral-registry/reviewer.json.
-        let path = dir
-            .path()
-            .join("ephemeral-registry")
-            .join("reviewer.json");
-        assert!(path.exists(), "registry record must be at {}", path.display());
+        let path = dir.path().join("ephemeral-registry").join("reviewer.json");
+        assert!(
+            path.exists(),
+            "registry record must be at {}",
+            path.display()
+        );
 
         let raw = std::fs::read_to_string(&path).unwrap();
         let record: EphemeralRecord = serde_json::from_str(&raw).unwrap();
@@ -555,6 +554,9 @@ mod tests {
         assert_eq!(parts[2].len(), 4);
         assert_eq!(parts[3].len(), 4);
         assert_eq!(parts[4].len(), 12);
-        assert!(parts[2].starts_with('4'), "version nibble must be 4: {uuid}");
+        assert!(
+            parts[2].starts_with('4'),
+            "version nibble must be 4: {uuid}"
+        );
     }
 }

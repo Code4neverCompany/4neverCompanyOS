@@ -1,7 +1,7 @@
 import { Router } from "express";
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
-import { query, queryOne } from "../db/client.js";
+import { queryOne } from "../db/client.js";
 
 const router = Router();
 const BCRYPT_ROUNDS = 12;

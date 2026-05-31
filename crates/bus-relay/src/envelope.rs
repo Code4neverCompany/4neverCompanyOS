@@ -60,10 +60,7 @@ impl BusEnvelope {
         let payload = serde_json::from_str(&frame.data)
             .unwrap_or_else(|_| serde_json::Value::String(frame.data.clone()));
 
-        let event_type = frame
-            .event
-            .clone()
-            .unwrap_or_else(|| "message".to_string());
+        let event_type = frame.event.clone().unwrap_or_else(|| "message".to_string());
 
         let id = frame
             .id
@@ -129,7 +126,10 @@ mod tests {
             retry: None,
         };
         let env = BusEnvelope::from_sse(&frame);
-        assert_eq!(env.payload, serde_json::Value::String("not-json".to_string()));
+        assert_eq!(
+            env.payload,
+            serde_json::Value::String("not-json".to_string())
+        );
     }
 
     #[test]

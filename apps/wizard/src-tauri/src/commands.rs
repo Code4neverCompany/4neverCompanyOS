@@ -212,9 +212,8 @@ fn parse_agy_security(doc: &str) -> AntigravitySecurity {
     if status.is_empty() {
         status = "unknown".to_string();
         if reason.is_empty() {
-            reason =
-                "Could not read the agy security gate from pinned-versions.md. Failing safe."
-                    .to_string();
+            reason = "Could not read the agy security gate from pinned-versions.md. Failing safe."
+                .to_string();
         }
     }
 

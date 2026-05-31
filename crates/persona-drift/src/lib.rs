@@ -252,7 +252,10 @@ impl DriftWatcher {
 
     /// Current drift state. Cheap — just clones the inner `Arc<Mutex<DriftState>>`.
     pub fn state(&self) -> DriftState {
-        self.state.lock().expect("drift state mutex poisoned").clone()
+        self.state
+            .lock()
+            .expect("drift state mutex poisoned")
+            .clone()
     }
 
     /// Dismiss the current drift badge. The state moves to `Dismissed` so
@@ -322,8 +325,7 @@ fn process_drift_event(
                     // drifted fields. If so, we can declare the sync complete.
                     // Because we don't store per-field mtimes in the guard
                     // (they'd be stale), we re-scan the vault.
-                    let still_drifted =
-                        vault_has_newer_changes(persona_dir, def_mtime);
+                    let still_drifted = vault_has_newer_changes(persona_dir, def_mtime);
                     if !still_drifted {
                         let prev_fields = fields.clone();
                         *guard = DriftState::Clean;
@@ -503,9 +505,7 @@ fn normalize_lexical(path: &Path) -> PathBuf {
 
 /// Current time as ISO-8601 UTC, e.g. `2026-05-29T15:00:00Z`.
 fn now_iso8601() -> String {
-    chrono::Utc::now()
-        .format("%Y-%m-%dT%H:%M:%SZ")
-        .to_string()
+    chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
 }
 
 /// Returns the crate's identity string. Used by tests and module-presence checks.
@@ -565,15 +565,23 @@ mod tests {
 
         let drifted = DriftState::Drifted {
             fields: vec![
-                DriftField { relative_path: "memory/a.md".into(), detected_at: "now".into() },
-                DriftField { relative_path: "skills/b.md".into(), detected_at: "now".into() },
+                DriftField {
+                    relative_path: "memory/a.md".into(),
+                    detected_at: "now".into(),
+                },
+                DriftField {
+                    relative_path: "skills/b.md".into(),
+                    detected_at: "now".into(),
+                },
             ],
             first_detected_at: "now".into(),
         };
         assert_eq!(drifted.field_count(), 2);
         assert!(drifted.is_drifted());
 
-        let dismissed = DriftState::Dismissed { dismissed_at: "now".into() };
+        let dismissed = DriftState::Dismissed {
+            dismissed_at: "now".into(),
+        };
         assert_eq!(dismissed.field_count(), 0);
         assert!(!dismissed.is_drifted());
     }
@@ -619,7 +627,11 @@ mod tests {
         );
         assert_eq!(initial.field_count(), 1);
         if let DriftState::Drifted { fields, .. } = &initial {
-            assert!(fields[0].relative_path.contains("notes.md"), "got: {:?}", fields[0]);
+            assert!(
+                fields[0].relative_path.contains("notes.md"),
+                "got: {:?}",
+                fields[0]
+            );
         }
     }
 
@@ -637,7 +649,10 @@ mod tests {
         std::fs::write(pdir.join("skills").join("c.md"), "skill C").unwrap();
 
         let initial = compute_initial_drift(&pdir, None);
-        assert!(initial.is_drifted(), "three vault files, no definition → drift");
+        assert!(
+            initial.is_drifted(),
+            "three vault files, no definition → drift"
+        );
         assert_eq!(initial.field_count(), 3, "expected 3 drifted fields");
     }
 
@@ -650,20 +665,19 @@ mod tests {
             std::fs::create_dir_all(pdir.join(sub)).unwrap();
         }
 
-        let watcher = DriftWatcher::start(
-            vault.path(),
-            "dev",
-            &def,
-            Arc::new(NullDriftNotifier),
-        )
-        .unwrap();
+        let watcher =
+            DriftWatcher::start(vault.path(), "dev", &def, Arc::new(NullDriftNotifier)).unwrap();
 
         // Initially clean (empty vault dirs, definition file present).
         assert_eq!(watcher.state(), DriftState::Clean);
 
         // Dismiss when clean → still clean.
         watcher.dismiss();
-        assert_eq!(watcher.state(), DriftState::Clean, "dismiss on clean is a no-op");
+        assert_eq!(
+            watcher.state(),
+            DriftState::Clean,
+            "dismiss on clean is a no-op"
+        );
     }
 
     #[test]

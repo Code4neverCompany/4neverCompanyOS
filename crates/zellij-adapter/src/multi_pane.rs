@@ -35,7 +35,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::{list_sessions, session_name_matches, spawn_pane, PaneHandle, Result, SpawnPaneConfig, ZellijError};
+use crate::{
+    list_sessions, session_name_matches, spawn_pane, PaneHandle, Result, SpawnPaneConfig,
+    ZellijError,
+};
 
 /// Maximum panes a single [`MultiPaneSession`] will hold by default.
 ///
@@ -434,15 +437,26 @@ mod tests {
         let s = MultiPaneSession::from_snapshot(SessionSnapshot {
             session_name: "look".into(),
             panes: vec![
-                Pane { persona_id: "dev".into(), command: "claude".into(), args: vec![] },
-                Pane { persona_id: "hermes".into(), command: "hermes".into(), args: vec![] },
+                Pane {
+                    persona_id: "dev".into(),
+                    command: "claude".into(),
+                    args: vec![],
+                },
+                Pane {
+                    persona_id: "hermes".into(),
+                    command: "hermes".into(),
+                    args: vec![],
+                },
             ],
             max_panes: 10,
         });
         assert!(s.contains("dev"));
         assert!(!s.contains("nope"));
         assert_eq!(s.personas(), vec!["dev", "hermes"]);
-        assert_eq!(s.pane_for("hermes").map(|p| p.command.as_str()), Some("hermes"));
+        assert_eq!(
+            s.pane_for("hermes").map(|p| p.command.as_str()),
+            Some("hermes")
+        );
         assert!(s.pane_for("nope").is_none());
     }
 
@@ -475,7 +489,11 @@ mod tests {
     fn detach_returns_snapshot_matching_state() {
         let s = MultiPaneSession::from_snapshot(SessionSnapshot {
             session_name: "d".into(),
-            panes: vec![Pane { persona_id: "dev".into(), command: "claude".into(), args: vec![] }],
+            panes: vec![Pane {
+                persona_id: "dev".into(),
+                command: "claude".into(),
+                args: vec![],
+            }],
             max_panes: 8,
         });
         let snap = s.detach();
@@ -540,7 +558,9 @@ mod tests {
         let reattached =
             MultiPaneSession::reattach(snapshot).expect("reattach to live session should succeed");
         assert_eq!(reattached.pane_count(), N, "pane map survives reattach");
-        assert!(reattached.session_exists().expect("liveness query after reattach"));
+        assert!(reattached
+            .session_exists()
+            .expect("liveness query after reattach"));
 
         // Cleanup — kill the whole session.
         reattached.kill().expect("kill should succeed");

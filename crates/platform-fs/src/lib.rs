@@ -167,8 +167,7 @@ mod tests {
 
     #[test]
     fn recent_vault_entries_reads_md_files() {
-        let tmp =
-            std::env::temp_dir().join(format!("c4n-vault-test-{}", std::process::id()));
+        let tmp = std::env::temp_dir().join(format!("c4n-vault-test-{}", std::process::id()));
         std::fs::create_dir_all(&tmp).unwrap();
         std::fs::write(tmp.join("note-a.md"), "# Note A\nHello").unwrap();
         std::fs::write(tmp.join("not-md.txt"), "ignored").unwrap();

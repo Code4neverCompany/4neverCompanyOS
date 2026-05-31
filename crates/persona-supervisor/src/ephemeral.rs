@@ -210,8 +210,12 @@ pub fn run_ephemeral(
     // reviews dir. The reviews dir is created on demand; the personas dir is
     // deliberately never touched.
     let timestamp = artifact_timestamp();
-    let artifact_path =
-        ephemeral_artifact_path(&config.vault_path, &config.project_id, &config.slug, &timestamp);
+    let artifact_path = ephemeral_artifact_path(
+        &config.vault_path,
+        &config.project_id,
+        &config.slug,
+        &timestamp,
+    );
     if let Some(parent) = artifact_path.parent() {
         std::fs::create_dir_all(parent)?;
     }
@@ -416,14 +420,21 @@ mod tests {
     fn run_ephemeral_writes_artifact_and_reaps() {
         let vault = TempDir::new().unwrap();
         let notifier = RecordingNotifier::default();
-        let outcome =
-            run_ephemeral(config_for(vault.path(), "security-reviewer"), &notifier, None).unwrap();
+        let outcome = run_ephemeral(
+            config_for(vault.path(), "security-reviewer"),
+            &notifier,
+            None,
+        )
+        .unwrap();
 
         assert_eq!(outcome.exit_code, 0);
         assert_eq!(outcome.orphans, 0);
         assert!(outcome.artifact_path.exists(), "artifact must be written");
         let body = std::fs::read_to_string(&outcome.artifact_path).unwrap();
-        assert!(body.contains("ephemeral-ok"), "captured output, got: {body}");
+        assert!(
+            body.contains("ephemeral-ok"),
+            "captured output, got: {body}"
+        );
 
         // Bus lifecycle: registered once, completed once, deregistered once.
         assert_eq!(notifier.registered.load(Ordering::SeqCst), 1);
@@ -439,7 +450,12 @@ mod tests {
     fn run_ephemeral_leaves_no_persona_vault_dir() {
         let vault = TempDir::new().unwrap();
         let notifier = NullNotifier;
-        run_ephemeral(config_for(vault.path(), "security-reviewer"), &notifier, None).unwrap();
+        run_ephemeral(
+            config_for(vault.path(), "security-reviewer"),
+            &notifier,
+            None,
+        )
+        .unwrap();
 
         // The ephemeral must NOT create vault/personas/<slug>/ — zero residue.
         let personas = vault.path().join("personas");
@@ -489,12 +505,20 @@ mod tests {
         let notifier = NullNotifier;
         let registry = crate::promotion::EphemeralRegistry::new(vault.path());
 
-        let o1 = run_ephemeral(config_for(vault.path(), "reviewer"), &notifier, Some(&registry))
-            .unwrap();
+        let o1 = run_ephemeral(
+            config_for(vault.path(), "reviewer"),
+            &notifier,
+            Some(&registry),
+        )
+        .unwrap();
         assert_eq!(o1.promotion, crate::promotion::PromotionState::None);
 
-        let o2 = run_ephemeral(config_for(vault.path(), "reviewer"), &notifier, Some(&registry))
-            .unwrap();
+        let o2 = run_ephemeral(
+            config_for(vault.path(), "reviewer"),
+            &notifier,
+            Some(&registry),
+        )
+        .unwrap();
         assert_eq!(o2.promotion, crate::promotion::PromotionState::None);
     }
 
@@ -504,11 +528,24 @@ mod tests {
         let notifier = NullNotifier;
         let registry = crate::promotion::EphemeralRegistry::new(vault.path());
 
-        run_ephemeral(config_for(vault.path(), "reviewer"), &notifier, Some(&registry)).unwrap();
-        run_ephemeral(config_for(vault.path(), "reviewer"), &notifier, Some(&registry)).unwrap();
-        let o3 =
-            run_ephemeral(config_for(vault.path(), "reviewer"), &notifier, Some(&registry))
-                .unwrap();
+        run_ephemeral(
+            config_for(vault.path(), "reviewer"),
+            &notifier,
+            Some(&registry),
+        )
+        .unwrap();
+        run_ephemeral(
+            config_for(vault.path(), "reviewer"),
+            &notifier,
+            Some(&registry),
+        )
+        .unwrap();
+        let o3 = run_ephemeral(
+            config_for(vault.path(), "reviewer"),
+            &notifier,
+            Some(&registry),
+        )
+        .unwrap();
 
         assert_eq!(
             o3.promotion,
@@ -590,7 +627,10 @@ mod tests {
     #[test]
     fn pause_flag_default_trait_is_running() {
         let flag = EphemeralPauseFlag::default();
-        assert!(!flag.is_paused(), "Default::default() must start in Running state");
+        assert!(
+            !flag.is_paused(),
+            "Default::default() must start in Running state"
+        );
     }
 
     #[test]
@@ -612,7 +652,10 @@ mod tests {
             "clone must reflect the same underlying atomic"
         );
         flag2.resume();
-        assert!(!flag.is_paused(), "resume via clone must be visible on original");
+        assert!(
+            !flag.is_paused(),
+            "resume via clone must be visible on original"
+        );
     }
 
     #[test]
@@ -621,9 +664,13 @@ mod tests {
         let notifier = NullNotifier;
         let flag = EphemeralPauseFlag::new();
 
-        let outcome =
-            run_ephemeral_controlled(config_for(vault.path(), "ctrl-slug"), &notifier, None, &flag)
-                .unwrap();
+        let outcome = run_ephemeral_controlled(
+            config_for(vault.path(), "ctrl-slug"),
+            &notifier,
+            None,
+            &flag,
+        )
+        .unwrap();
 
         assert_eq!(outcome.exit_code, 0);
         assert_eq!(outcome.orphans, 0);
@@ -645,9 +692,13 @@ mod tests {
 
         let notifier = NullNotifier;
         // Should block until the thread resumes, then complete normally.
-        let outcome =
-            run_ephemeral_controlled(config_for(vault.path(), "pause-wait"), &notifier, None, &flag)
-                .unwrap();
+        let outcome = run_ephemeral_controlled(
+            config_for(vault.path(), "pause-wait"),
+            &notifier,
+            None,
+            &flag,
+        )
+        .unwrap();
 
         assert_eq!(outcome.exit_code, 0);
         assert!(
@@ -690,8 +741,7 @@ mod tests {
         });
 
         let notifier = NullNotifier;
-        let outcome =
-            run_ephemeral_controlled(redirect_config, &notifier, None, &flag).unwrap();
+        let outcome = run_ephemeral_controlled(redirect_config, &notifier, None, &flag).unwrap();
 
         // AC: no task picked up while paused; task received after redirect.
         assert_eq!(outcome.exit_code, 0, "redirected task must complete");

@@ -221,9 +221,7 @@ fn append_entry(log_path: &Path, entry: &OutOfScopeEntry) -> Result<(), ScopingE
 
 /// Current time as an ISO-8601 UTC string, e.g. `2026-05-29T15:00:00Z`.
 fn now_iso8601() -> String {
-    chrono::Utc::now()
-        .format("%Y-%m-%dT%H:%M:%SZ")
-        .to_string()
+    chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string()
 }
 
 /// Lexically normalize a path: drop `.` components and resolve `..` by
@@ -383,7 +381,12 @@ mod tests {
     fn own_persona_dir_is_in_scope() {
         let dir = TempDir::new().unwrap();
         let g = guard_in(&dir, "dev", &[]);
-        let p = dir.path().join("personas").join("dev").join("memory").join("note.md");
+        let p = dir
+            .path()
+            .join("personas")
+            .join("dev")
+            .join("memory")
+            .join("note.md");
         assert!(g.is_in_scope(&p));
     }
 
@@ -391,7 +394,11 @@ mod tests {
     fn other_persona_dir_is_out_of_scope() {
         let dir = TempDir::new().unwrap();
         let g = guard_in(&dir, "dev", &[]);
-        let p = dir.path().join("personas").join("architect").join("persona.md");
+        let p = dir
+            .path()
+            .join("personas")
+            .join("architect")
+            .join("persona.md");
         assert!(!g.is_in_scope(&p));
     }
 
@@ -399,7 +406,12 @@ mod tests {
     fn shared_project_dir_is_in_scope_when_attached() {
         let dir = TempDir::new().unwrap();
         let g = guard_in(&dir, "dev", &["proj-abc"]);
-        let p = dir.path().join("projects").join("proj-abc").join("bmad").join("prd.md");
+        let p = dir
+            .path()
+            .join("projects")
+            .join("proj-abc")
+            .join("bmad")
+            .join("prd.md");
         assert!(g.is_in_scope(&p));
         // A different project's area is NOT in scope.
         let other = dir.path().join("projects").join("proj-xyz").join("x.md");
@@ -418,14 +430,26 @@ mod tests {
             .join("..")
             .join("architect")
             .join("secret.md");
-        assert!(!g.is_in_scope(&sneaky), "`..` must not be treated as in-scope");
+        assert!(
+            !g.is_in_scope(&sneaky),
+            "`..` must not be treated as in-scope"
+        );
     }
 
     #[test]
     fn write_type_serializes_lowercase() {
-        assert_eq!(serde_json::to_string(&WriteType::Create).unwrap(), "\"create\"");
-        assert_eq!(serde_json::to_string(&WriteType::Modify).unwrap(), "\"modify\"");
-        assert_eq!(serde_json::to_string(&WriteType::Remove).unwrap(), "\"remove\"");
+        assert_eq!(
+            serde_json::to_string(&WriteType::Create).unwrap(),
+            "\"create\""
+        );
+        assert_eq!(
+            serde_json::to_string(&WriteType::Modify).unwrap(),
+            "\"modify\""
+        );
+        assert_eq!(
+            serde_json::to_string(&WriteType::Remove).unwrap(),
+            "\"remove\""
+        );
     }
 
     #[test]
@@ -434,7 +458,10 @@ mod tests {
         let g = guard_in(&dir, "dev", &[]);
         let lp = g.log_path();
         let s = lp.to_string_lossy().replace('\\', "/");
-        assert!(s.ends_with("personas/dev/out-of-scope-writes.log"), "got: {s}");
+        assert!(
+            s.ends_with("personas/dev/out-of-scope-writes.log"),
+            "got: {s}"
+        );
     }
 
     #[test]
@@ -444,11 +471,21 @@ mod tests {
 
         // In-scope: returns false, writes nothing.
         let in_scope = dir.path().join("personas").join("dev").join("memory.md");
-        assert_eq!(g.classify_and_log(&in_scope, WriteType::Modify).unwrap(), false);
-        assert!(!g.log_path().exists(), "in-scope write must not create the log");
+        assert_eq!(
+            g.classify_and_log(&in_scope, WriteType::Modify).unwrap(),
+            false
+        );
+        assert!(
+            !g.log_path().exists(),
+            "in-scope write must not create the log"
+        );
 
         // Out-of-scope: returns true, appends one JSONL entry.
-        let out = dir.path().join("personas").join("architect").join("persona.md");
+        let out = dir
+            .path()
+            .join("personas")
+            .join("architect")
+            .join("persona.md");
         assert_eq!(g.classify_and_log(&out, WriteType::Create).unwrap(), true);
 
         let body = std::fs::read_to_string(g.log_path()).unwrap();
@@ -457,9 +494,16 @@ mod tests {
         let entry: OutOfScopeEntry = serde_json::from_str(lines[0]).unwrap();
         assert_eq!(entry.caller_persona_id, "dev");
         assert_eq!(entry.write_type, WriteType::Create);
-        assert!(entry.attempted_path.replace('\\', "/").contains("personas/architect/persona.md"));
+        assert!(entry
+            .attempted_path
+            .replace('\\', "/")
+            .contains("personas/architect/persona.md"));
         // ISO-8601 UTC shape: ends with Z, has a T separator.
-        assert!(entry.ts.ends_with('Z') && entry.ts.contains('T'), "ts: {}", entry.ts);
+        assert!(
+            entry.ts.ends_with('Z') && entry.ts.contains('T'),
+            "ts: {}",
+            entry.ts
+        );
     }
 
     #[test]

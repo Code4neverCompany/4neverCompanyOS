@@ -120,7 +120,11 @@ fn github_api(
         "PUT" => agent.put(url),
         "DELETE" => agent.delete(url),
         "PATCH" => agent.patch(url),
-        _ => return Err(GithubSyncError::Git(format!("unsupported method: {method}"))),
+        _ => {
+            return Err(GithubSyncError::Git(format!(
+                "unsupported method: {method}"
+            )))
+        }
     };
 
     let req = req
@@ -130,8 +134,7 @@ fn github_api(
         .set("User-Agent", "4neverCompany-OS/1.0");
 
     let resp: std::result::Result<ureq::Response, ureq::Error> = if let Some(b) = body {
-        req.set("Content-Type", "application/json")
-            .send_string(b)
+        req.set("Content-Type", "application/json").send_string(b)
     } else {
         req.call()
     };
@@ -207,24 +210,14 @@ pub fn sync_status(vault_path: &str) -> Result<SyncStatus, GithubSyncError> {
             .output();
 
         let ahead_str = Command::new("git")
-            .args([
-                "rev-list",
-                "--left-only",
-                "--count",
-                "HEAD...origin/HEAD",
-            ])
+            .args(["rev-list", "--left-only", "--count", "HEAD...origin/HEAD"])
             .current_dir(vault)
             .output()
             .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
             .unwrap_or_default();
 
         let behind_str = Command::new("git")
-            .args([
-                "rev-list",
-                "--right-only",
-                "--count",
-                "HEAD...origin/HEAD",
-            ])
+            .args(["rev-list", "--right-only", "--count", "HEAD...origin/HEAD"])
             .current_dir(vault)
             .output()
             .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
@@ -248,10 +241,7 @@ pub fn sync_status(vault_path: &str) -> Result<SyncStatus, GithubSyncError> {
 }
 
 /// Stage files matching the sync policy and push to the configured remote.
-pub fn sync_push(
-    vault_path: &str,
-    policy: &SyncPolicy,
-) -> Result<SyncResult, GithubSyncError> {
+pub fn sync_push(vault_path: &str, policy: &SyncPolicy) -> Result<SyncResult, GithubSyncError> {
     let vault = Path::new(vault_path);
     let token = get_github_token()?;
 
@@ -483,8 +473,12 @@ pub fn sync_init(
         "description": "4neverCompany OS workspace vault"
     });
 
-    let (status, resp_body) =
-        github_api(&token, "POST", "https://api.github.com/user/repos", Some(&body.to_string()))?;
+    let (status, resp_body) = github_api(
+        &token,
+        "POST",
+        "https://api.github.com/user/repos",
+        Some(&body.to_string()),
+    )?;
 
     if status != 201 && status != 200 {
         return Err(GithubSyncError::Api {
@@ -516,7 +510,11 @@ pub fn sync_init(
         .output();
 
     // If origin already exists, set-url
-    if remote_output.as_ref().map(|o| !o.status.success()).unwrap_or(false) {
+    if remote_output
+        .as_ref()
+        .map(|o| !o.status.success())
+        .unwrap_or(false)
+    {
         Command::new("git")
             .args(["remote", "set-url", "origin", &https_url])
             .current_dir(vault)

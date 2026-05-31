@@ -15,7 +15,7 @@ interface MessageListProps {
 
 export function MessageList({ channelId }: MessageListProps) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [hasMore, setHasMore] = useState(true);
+  const [_hasMore, setHasMore] = useState(true);
   const bottomRef = useRef<HTMLDivElement>(null);
   const socket = useSocket();
 

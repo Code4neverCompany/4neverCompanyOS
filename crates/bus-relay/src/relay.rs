@@ -161,10 +161,7 @@ impl Relay {
     /// Drive one connected stream to EOF, broadcasting each frame as an
     /// envelope. Returns the number of frames relayed. `Ok` means the stream
     /// ended cleanly (the peer disconnected); callers reconnect via [`run`].
-    pub async fn pump<R: AsyncBufRead + Unpin>(
-        &self,
-        reader: &mut R,
-    ) -> Result<u64, RelayError> {
+    pub async fn pump<R: AsyncBufRead + Unpin>(&self, reader: &mut R) -> Result<u64, RelayError> {
         let mut count = 0u64;
         while let Some(frame) = sse::next_frame(reader).await? {
             let envelope = BusEnvelope::from_sse(&frame);
@@ -389,7 +386,10 @@ mod tests {
     #[tokio::test]
     async fn connection_state_starts_connecting() {
         let relay = Relay::new();
-        assert_eq!(relay.current_connection_state(), ConnectionState::Connecting);
+        assert_eq!(
+            relay.current_connection_state(),
+            ConnectionState::Connecting
+        );
     }
 
     // AC (Story 2.11): run() surfaces Connected on link-up and Reconnecting
