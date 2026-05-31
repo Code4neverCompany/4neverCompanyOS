@@ -145,6 +145,10 @@ pub fn run() {
             commands::check_vault_artifact_exists,
             commands::log_workflow_decision,
             commands::dismiss_workflow_run,
+            // Story 4.5 (NEVAAA-55): story-state watcher — emits
+            // "story-state-changed" Tauri events consumed by the
+            // ProgressBus bridge in main.tsx to feed the stall detector.
+            commands::start_story_state_watcher,
             // Story 5.2 (FR-31): Supermemory opt-in settings.
             commands::get_supermemory_categories,
             commands::save_supermemory_categories,

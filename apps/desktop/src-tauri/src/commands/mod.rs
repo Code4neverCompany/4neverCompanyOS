@@ -3437,6 +3437,52 @@ pub fn log_workflow_decision(
     Ok(())
 }
 
+/// Story 4.5 (NEVAAA-55): Start the story-state watcher.
+///
+/// Monitors `vault/projects/*/bmad/stories/*.md` for YAML frontmatter
+/// `status` field changes. When a status transitions, emits a Tauri
+/// `"story-state-changed"` event carrying `{ slug, status }` so the
+/// frontend can call `ProgressBus.emitStoryState(slug)` to feed the
+/// stall detector's rolling window.
+///
+/// The watcher is managed as Tauri app state so it stays alive for the
+/// entire app session.
+#[tauri::command]
+pub async fn start_story_state_watcher(
+    app_handle: tauri::AppHandle,
+) -> Result<(), String> {
+    use platform_fs::StoryStateChange;
+    use tauri::Emitter;
+
+    let vault_path = read_workspace_config()
+        .map_err(|e| format!("could not read workspace config: {e}"))?
+        .vault_path;
+
+    let vault_root = PathBuf::from(&vault_path);
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<StoryStateChange>(64);
+
+    // Start the watcher in the platform-fs library.
+    platform_fs::watch_story_states(vault_root, tx)
+        .map_err(|e| format!("story watcher error: {e}"))?;
+
+    // Forward events to the frontend as Tauri events.
+    let handle = app_handle.clone();
+    tokio::spawn(async move {
+        while let Some(change) = rx.recv().await {
+            let payload = serde_json::json!({
+                "slug": change.slug,
+                "status": change.status,
+            });
+            if let Err(e) = handle.emit("story-state-changed", payload) {
+                tracing::warn!("failed to emit story-state-changed event: {e}");
+            }
+        }
+    });
+
+    tracing::info!("story-state watcher started");
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

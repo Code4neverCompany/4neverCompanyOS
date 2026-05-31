@@ -1,76 +1,54 @@
 //! c4n-platform-fs — Rust-side file-watching and vault reading.
-//! Replaces chokidar (which is weaker on Windows). Backs
-//! progress-signal artifact.changed and code.changed subscribers.
 //!
 //! Architecture: D-4
-//! Implementing stories: M2 Story 2.12-2.13 (file watcher),
-//!                       M2 Story 2.3  (vault reader — this file).
-//!
-//! M2 ships vault_entries() for reading recent Obsidian vault entries
-//! at persona spawn time. The reactive FileWatcher (notify-based) lands
-//! in Stories 2.12-2.13.
+//! Implementing stories:
+//!   M2 Story 2.3  — vault reader (read-once)
+//!   M2 Story 2.12-2.13 — reactive file watcher (notify-based)
+//!   M4 Story 4.5 (NEVAAA-55) — story.state progress signal watcher
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
+use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
-/// Returns the crate's identity string. Used by tests and module-presence checks.
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use serde::Deserialize;
+use tokio::sync::mpsc;
+
+// ────────────────────────────────────────────────────────────────────────────
+// Vault reader (Story 2.3)
+// ────────────────────────────────────────────────────────────────────────────
+
 pub fn package_name() -> &'static str {
     "c4n-platform-fs"
 }
 
-// ────────────────────────────────────────────────────────────────────────────
-// Story 2.3 — Vault reader (read-once; reactive watcher in 2.12-2.13)
-// ────────────────────────────────────────────────────────────────────────────
-
-/// A single Markdown entry from the Obsidian vault.
 #[derive(Debug, Clone)]
 pub struct VaultEntry {
-    /// Absolute path to the file.
     pub path: PathBuf,
-    /// Raw Markdown content. Silently truncated to `MAX_ENTRY_BYTES` on
-    /// read so a giant daily note doesn't blow out the spawn-time budget.
     pub content: String,
-    /// Last-modified time, used for sort ordering.
     pub modified: SystemTime,
 }
 
-/// Maximum bytes we read from any single vault file at spawn time.
-/// 16 KB is enough for a rich daily note; avoids allocating large files.
 const MAX_ENTRY_BYTES: usize = 16 * 1024;
-
-/// Maximum depth to recurse into the vault directory tree when scanning.
-/// Keeps the scan cheap on large vaults while still reaching nested notes.
 const MAX_SCAN_DEPTH: usize = 4;
 
-/// Read at most `limit` recently-modified Markdown files from `dir`
-/// (recursively, up to `MAX_SCAN_DEPTH` levels). Returns entries sorted
-/// newest-first. Silently skips unreadable files and non-markdown files.
-///
-/// Called by `spawn_designer_persona` to inject vault context into `agy.md`
-/// at persona launch time. The read is synchronous and intentionally
-/// cheap — it's a one-shot scan of a local SSD, not a watch loop.
 pub fn recent_vault_entries(dir: &Path, limit: usize) -> std::io::Result<Vec<VaultEntry>> {
     let mut candidates: Vec<(SystemTime, PathBuf)> = Vec::new();
     collect_md_files(dir, 0, &mut candidates)?;
-    // Sort newest-first, then take up to `limit`.
     candidates.sort_by(|a, b| b.0.cmp(&a.0));
     candidates.truncate(limit);
 
     let mut entries = Vec::with_capacity(candidates.len());
     for (modified, path) in candidates {
         match read_truncated(&path) {
-            Ok(content) => entries.push(VaultEntry {
-                path,
-                content,
-                modified,
-            }),
-            Err(_) => continue, // skip unreadable files silently
+            Ok(content) => entries.push(VaultEntry { path, content, modified }),
+            Err(_) => continue,
         }
     }
     Ok(entries)
 }
 
-/// Recursively collect `(mtime, path)` pairs for every `.md` file under `dir`.
 fn collect_md_files(
     dir: &Path,
     depth: usize,
@@ -81,7 +59,7 @@ fn collect_md_files(
     }
     let rd = match std::fs::read_dir(dir) {
         Ok(rd) => rd,
-        Err(_) => return Ok(()), // permission error or missing dir — skip
+        Err(_) => return Ok(()),
     };
     for entry in rd.flatten() {
         let path = entry.path();
@@ -106,8 +84,6 @@ fn collect_md_files(
     Ok(())
 }
 
-/// Read a file, truncating at `MAX_ENTRY_BYTES` so we don't allocate
-/// huge strings for very large daily notes or dumps.
 fn read_truncated(path: &Path) -> std::io::Result<String> {
     use std::io::Read;
     let f = std::fs::File::open(path)?;
@@ -124,9 +100,6 @@ fn read_truncated(path: &Path) -> std::io::Result<String> {
     Ok(s)
 }
 
-/// Format vault entries as a Markdown section suitable for appending to
-/// a persona file (`agy.md` or `claude.md`). Each entry is rendered as
-/// a level-3 heading with the filename and its content block.
 pub fn format_vault_context(entries: &[VaultEntry]) -> String {
     if entries.is_empty() {
         return String::from(
@@ -150,6 +123,163 @@ pub fn format_vault_context(entries: &[VaultEntry]) -> String {
     out
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Story 4.5 (NEVAAA-55) — story.state progress signal watcher
+// ────────────────────────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+pub struct StoryStateChange {
+    pub path: String,
+    pub slug: String,
+    pub status: Option<String>,
+    pub ts: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct StoryFrontmatter {
+    status: Option<String>,
+}
+
+fn current_unix_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+fn extract_story_slug(path: &Path) -> Option<String> {
+    path.file_stem().and_then(|s| s.to_str()).map(|s| s.to_string())
+}
+
+fn parse_frontmatter_status(content: &str) -> Option<String> {
+    let first_lines: String = content.lines().take(100).collect::<Vec<_>>().join("\n");
+    let start = first_lines.find("---")? + 3;
+    let rest = &first_lines[start..];
+    let end = rest.find("---")?;
+    let frontmatter = &rest[..end];
+    serde_yaml::from_str::<StoryFrontmatter>(frontmatter)
+        .ok()
+        .and_then(|f| f.status)
+}
+
+fn extract_story_status(path: &Path) -> Option<String> {
+    let content = std::fs::read_to_string(path).ok()?;
+    parse_frontmatter_status(&content)
+}
+
+fn collect_story_files(vault_root: &Path) -> Vec<PathBuf> {
+    let projects_dir = vault_root.join("projects");
+    let mut files = Vec::new();
+    if !projects_dir.exists() {
+        return files;
+    }
+    if let Ok(entries) = std::fs::read_dir(&projects_dir) {
+        for entry in entries.flatten() {
+            let project_path = entry.path();
+            if project_path.is_dir() {
+                let stories_dir = project_path.join("bmad").join("stories");
+                if stories_dir.exists() {
+                    if let Ok(rd) = std::fs::read_dir(&stories_dir) {
+                        for e in rd.flatten() {
+                            let p = e.path();
+                            if p.is_file() && p.extension().is_some_and(|e| e == "md") {
+                                files.push(p);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    files
+}
+
+fn init_story_statuses(vault_root: &Path) -> HashMap<String, Option<String>> {
+    let mut statuses = HashMap::new();
+    for path in collect_story_files(vault_root) {
+        if let Some(slug) = extract_story_slug(&path) {
+            let status = extract_story_status(&path);
+            statuses.insert(slug, status);
+        }
+    }
+    statuses
+}
+
+/// Start watching `vault_root/projects/*/bmad/stories/*.md` for frontmatter
+/// `status` field changes. When a story's status changes, a `StoryStateChange`
+/// is sent to `tx`. Drop `tx` to stop the watcher.
+pub fn watch_story_states(
+    vault_root: PathBuf,
+    tx: mpsc::Sender<StoryStateChange>,
+) -> anyhow::Result<()> {
+    let projects_dir = vault_root.join("projects");
+    if !projects_dir.exists() {
+        return Ok(());
+    }
+
+    let mut statuses = init_story_statuses(&vault_root);
+
+    let (notify_tx, mut notify_rx) = tokio::sync::mpsc::channel(64);
+    let notify_tx_arc = Arc::new(notify_tx);
+
+    let mut watcher: RecommendedWatcher = notify::recommended_watcher(move |res: Result<notify::Event, notify::Error>| {
+        if let Ok(event) = res {
+            if matches!(
+                event.kind,
+                notify::EventKind::Modify(_) | notify::EventKind::Create(_)
+            ) {
+                let _ = notify_tx_arc.blocking_send(event);
+            }
+        }
+    })
+    .map_err(|e| anyhow::anyhow!("failed to create watcher: {}", e))?;
+
+    watcher
+        .watch(&projects_dir, RecursiveMode::Recursive)
+        .map_err(|e| anyhow::anyhow!("failed to watch projects dir: {}", e))?;
+
+    let tx_clone = tx;
+    tokio::spawn(async move {
+        while let Some(event) = notify_rx.recv().await {
+            for path in event.paths {
+                if path.extension().and_then(|e| e.to_str()) != Some("md") {
+                    continue;
+                }
+                if !path.to_string_lossy().contains("/stories/") {
+                    continue;
+                }
+                if !path.exists() {
+                    continue;
+                }
+
+                let Some(slug) = extract_story_slug(&path) else {
+                    continue;
+                };
+                let new_status = extract_story_status(&path);
+                let prev = statuses.get(&slug).cloned();
+                if prev.as_ref() != Some(&new_status) {
+                    statuses.insert(slug.clone(), new_status.clone());
+                    let change = StoryStateChange {
+                        path: path.to_string_lossy().to_string(),
+                        slug,
+                        status: new_status,
+                        ts: current_unix_ms(),
+                    };
+                    if tx_clone.send(change).await.is_err() {
+                        return;
+                    }
+                }
+            }
+        }
+    });
+
+    Ok(())
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Tests
+// ────────────────────────────────────────────────────────────────────────────
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,19 +291,25 @@ mod tests {
 
     #[test]
     fn recent_vault_entries_returns_empty_on_missing_dir() {
-        let result = recent_vault_entries(Path::new("/nonexistent/vault/path"), 10).unwrap();
+        let result =
+            recent_vault_entries(Path::new("/nonexistent/vault/path"), 10).unwrap();
         assert!(result.is_empty());
     }
 
     #[test]
     fn recent_vault_entries_reads_md_files() {
-        let tmp = std::env::temp_dir().join(format!("c4n-vault-test-{}", std::process::id()));
+        let tmp =
+            std::env::temp_dir().join(format!("c4n-vault-test-{}", std::process::id()));
         std::fs::create_dir_all(&tmp).unwrap();
         std::fs::write(tmp.join("note-a.md"), "# Note A\nHello").unwrap();
         std::fs::write(tmp.join("not-md.txt"), "ignored").unwrap();
 
         let entries = recent_vault_entries(&tmp, 10).unwrap();
-        assert_eq!(entries.len(), 1, "only .md files should be included");
+        assert_eq!(
+            entries.len(),
+            1,
+            "only .md files should be included"
+        );
         assert!(
             entries[0].content.contains("Hello"),
             "file content should be read"
@@ -198,5 +334,26 @@ mod tests {
     fn format_vault_context_empty_placeholder() {
         let out = format_vault_context(&[]);
         assert!(out.contains("No recent vault entries"));
+    }
+
+    #[test]
+    fn parse_frontmatter_status_extracts_status() {
+        let content = "---\nstatus: in-progress\n---\n\n# Story\n";
+        assert_eq!(
+            parse_frontmatter_status(content),
+            Some("in-progress".to_string())
+        );
+    }
+
+    #[test]
+    fn parse_frontmatter_status_returns_none_for_no_frontmatter() {
+        let content = "# Just a header\n";
+        assert_eq!(parse_frontmatter_status(content), None);
+    }
+
+    #[test]
+    fn parse_frontmatter_status_returns_none_for_no_status_field() {
+        let content = "---\ntitle: My Story\n---\n\n# Story\n";
+        assert_eq!(parse_frontmatter_status(content), None);
     }
 }

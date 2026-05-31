@@ -61,7 +61,7 @@ development_status:
   epic-1-retrospective: optional
 
   # ── Epic 2: Second Agent + Live Bus + Stall Detection (M2) ───────
-  epic-2: in-progress
+  epic-2: done
   2-1-m2-antigravity-oauth-flow-in-wizard: done # NEVAAA-17 — wizard Antigravity step: pinned-versions security gate + agy auth login OAuth + agy auth status verify
   2-2-m2-frontend-designer-persona-spawn-on-project-open: done # f39d0b9 — spawn_designer_persona + status + kill + PersonasView
   2-3-m2-agy-md-projection-from-bmad-frontend-designer-persona-file: done # f39d0b9 — agy.md + vault context inject at spawn time
@@ -80,7 +80,7 @@ development_status:
   2-16-m2-telemetry-tap-token-count-parser-per-cli: done # NEVAAA-20 — completed post-generation; backlog was incorrect
   2-17-m2-stall-detection-10-scenario-validation-corpus: done # NEVAAA-21 — 10-scenario corpus in tests/manual/m2-stall-scenarios/ (corpus.test.ts), 10/10 pass; threshold recorded in docs/progress-signal-taxonomy.md
   2-18-m2-progress-signal-taxonomy-doc-initial-pause-redirect-action: done # NEVAAA-22 — completed post-generation; backlog was incorrect
-  epic-2-retrospective: optional
+  epic-2-retrospective: done
 
   # ── Epic 3: Dynamic Persona Spawning + BMad Builder (M3) ─────────
   epic-3: done
