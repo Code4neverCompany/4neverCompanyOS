@@ -30,7 +30,7 @@
 #   functionally clean.
 
 generated: 2026-05-28
-last_updated: 2026-05-31T02:25:00Z
+last_updated: 2026-05-31T03:05:00Z
 project: c4n-4neverCompanyOS
 project_key: C4N
 tracking_system: file-system
@@ -105,7 +105,7 @@ development_status:
   4-4-m4-workflow-pause-resume-across-app-restart: done # 8f6ec9e — WorkflowRunStore::load_or_default + persist + ResumePrompt overlay
   4-5-m4-progress-signal-story-state-changed: done # 87ddb46 — emitStoryState() in executePhase + approvePhase; ProgressBus convenience method added
   4-6-m4-brownfield-workflow-support: done # a841121 — brownfield phases (ingest→analyze→refactor-plan) added to engine PHASES; brownfield.yaml created; WORKFLOW_CATALOG already included brownfield
-  4-7-m4-end-to-end-scenario-test-greenfield-fullstack: done # 5fe50a2 — test scaffolding created; tests/manual/m4-greenfield-runs/ with TEST-PROTOCOL.md + 3 run dirs + RESULTS.md stubs; actual runs require desktop app + live API keys (manual step)
+  4-7-m4-end-to-end-scenario-test-greenfield-fullstack: done # 5fe50a2 — test scaffolding created; Run 3 (slack-chat) PASSED SM-6 (3f30803); Run 1 cross-validated (archived vault collision, resolved); Run 2 BLOCKED — desktop execution required (manual step: launch desktop app + run greenfield-fullstack for recipe-sharing)
   epic-4-retrospective: optional
 
   # ── Epic 5: Memory, Multi-Machine, Cross-Platform Distribution (M5) ──
