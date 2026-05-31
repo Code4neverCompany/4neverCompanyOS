@@ -515,6 +515,281 @@ mod tests {
         assert_eq!(body.trim_end().split('\n').count(), 2);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // P0-C: NEVAAA-49 — concurrent vault-scoping hardening
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /// Two personas write concurrently: each sees only their own out-of-scope
+    /// log, and neither log contains entries attributed to the other persona.
+    #[test]
+    fn two_personas_concurrent_writes_logged_to_separate_files() {
+        let dir = TempDir::new().unwrap();
+        let g_dev = guard_in(&dir, "dev", &[]);
+        let g_architect = guard_in(&dir, "architect", &[]);
+
+        let dev_out = dir.path().join("personas").join("architect").join("dev_write.md");
+        let arch_out = dir.path().join("personas").join("dev").join("arch_write.md");
+
+        std::thread::scope(|s| {
+            s.spawn(|| {
+                g_dev
+                    .classify_and_log(&dev_out, WriteType::Create)
+                    .unwrap();
+            });
+            s.spawn(|| {
+                g_architect
+                    .classify_and_log(&arch_out, WriteType::Create)
+                    .unwrap();
+            });
+        });
+
+        let dev_log = std::fs::read_to_string(g_dev.log_path()).unwrap();
+        let arch_log = std::fs::read_to_string(g_architect.log_path()).unwrap();
+
+        // dev's log: should contain the architect path, attributed to "dev"
+        assert!(
+            dev_log.contains("dev_write.md"),
+            "dev log missing architect write: {dev_log}"
+        );
+        assert!(
+            dev_log.contains("\"caller_persona_id\":\"dev\""),
+            "dev log should attribute to 'dev': {dev_log}"
+        );
+
+        // architect's log: should contain the dev path, attributed to "architect"
+        assert!(
+            arch_log.contains("arch_write.md"),
+            "architect log missing dev write: {arch_log}"
+        );
+        assert!(
+            arch_log.contains("\"caller_persona_id\":\"architect\""),
+            "architect log should attribute to 'architect': {arch_log}"
+        );
+
+        // Each log must NOT contain the other persona's ID
+        assert!(
+            !dev_log.contains("\"caller_persona_id\":\"architect\""),
+            "dev log must not attribute to architect: {dev_log}"
+        );
+        assert!(
+            !arch_log.contains("\"caller_persona_id\":\"dev\""),
+            "architect log must not attribute to dev: {arch_log}"
+        );
+    }
+
+    /// Rapid sequential spawn/despawn of multiple personas — each cycle's
+    /// ScopeGuard produces its own isolated log file and cleans up without
+    /// interfering with other cycles.
+    #[test]
+    fn rapid_spawn_despawn_cycles_isolate_correctly() {
+        let dir = TempDir::new().unwrap();
+        for i in 0..20 {
+            let persona = format!("persona-{i}");
+            let g = guard_in(&dir, &persona, &[]);
+            let out_path = dir
+                .path()
+                .join("personas")
+                .join(format!("persona-{}", (i + 1) % 20))
+                .join(format!("cross-{i}.md"));
+            g.classify_and_log(&out_path, WriteType::Modify)
+                .unwrap();
+        }
+
+        // Each persona log should have exactly one entry
+        for i in 0..20 {
+            let g = guard_in(&dir, &format!("persona-{i}"), &[]);
+            let body = std::fs::read_to_string(g.log_path()).unwrap();
+            assert_eq!(
+                body.trim_end().split('\n').count(),
+                1,
+                "persona-{i} should have exactly 1 entry"
+            );
+        }
+    }
+
+    /// Concurrent writes to the same out-of-scope path from many personas —
+    /// all entries must appear in each persona's log (no lost updates).
+    #[test]
+    fn high_concurrency_all_out_of_scope_entries_preserved() {
+        let dir = TempDir::new().unwrap();
+        let g_a = guard_in(&dir, "alice", &[]);
+        let g_b = guard_in(&dir, "bob", &[]);
+        let g_c = guard_in(&dir, "carol", &[]);
+
+        let shared_out_of_scope = dir
+            .path()
+            .join("personas")
+            .join("outsider")
+            .join("shared.md");
+
+        std::thread::scope(|s| {
+            s.spawn(|| {
+                for _ in 0..50 {
+                    g_a.classify_and_log(&shared_out_of_scope, WriteType::Create)
+                        .unwrap();
+                }
+            });
+            s.spawn(|| {
+                for _ in 0..50 {
+                    g_b.classify_and_log(&shared_out_of_scope, WriteType::Create)
+                        .unwrap();
+                }
+            });
+            s.spawn(|| {
+                for _ in 0..50 {
+                    g_c.classify_and_log(&shared_out_of_scope, WriteType::Create)
+                        .unwrap();
+                }
+            });
+        });
+
+        let alice_log = std::fs::read_to_string(g_a.log_path()).unwrap();
+        let bob_log = std::fs::read_to_string(g_b.log_path()).unwrap();
+        let carol_log = std::fs::read_to_string(g_c.log_path()).unwrap();
+
+        // Each log should have exactly 50 entries (100 total cross-persona writes,
+        // but each log only records the one path it's guarding against)
+        assert_eq!(
+            alice_log.trim_end().split('\n').count(),
+            50,
+            "alice log line count"
+        );
+        assert_eq!(
+            bob_log.trim_end().split('\n').count(),
+            50,
+            "bob log line count"
+        );
+        assert_eq!(
+            carol_log.trim_end().split('\n').count(),
+            50,
+            "carol log line count"
+        );
+    }
+
+    /// Shared project directory is in-scope for attached personas — no false
+    /// positives when multiple personas write to the same shared area.
+    #[test]
+    fn shared_project_no_false_positives_concurrent() {
+        let dir = TempDir::new().unwrap();
+        let g_alice = guard_in(&dir, "alice", &["proj-x"]);
+        let g_bob = guard_in(&dir, "bob", &["proj-x"]);
+
+        let shared_file_a = dir
+            .path()
+            .join("projects")
+            .join("proj-x")
+            .join("alice-writes.md");
+        let shared_file_b = dir
+            .path()
+            .join("projects")
+            .join("proj-x")
+            .join("bob-writes.md");
+
+        std::thread::scope(|s| {
+            s.spawn(|| {
+                assert!(
+                    !g_alice.classify_and_log(&shared_file_a, WriteType::Create).unwrap(),
+                    "alice writing to proj-x should be in-scope"
+                );
+            });
+            s.spawn(|| {
+                assert!(
+                    !g_bob.classify_and_log(&shared_file_b, WriteType::Create).unwrap(),
+                    "bob writing to proj-x should be in-scope"
+                );
+            });
+        });
+
+        // No out-of-scope log should exist for either persona
+        assert!(
+            !g_alice.log_path().exists(),
+            "alice should not have an out-of-scope log"
+        );
+        assert!(
+            !g_bob.log_path().exists(),
+            "bob should not have an out-of-scope log"
+        );
+    }
+
+    /// Five-persona stress: each persona targets every other persona's dir
+    /// concurrently. All entries must appear with correct attribution and
+    /// no cross-contamination.
+    #[test]
+    fn five_persona_full_cross_concurrent_no_contamination() {
+        let dir = TempDir::new().unwrap();
+        let personas = ["alice", "bob", "carol", "dave", "eve"];
+        let vault_root = dir.path().to_path_buf();
+
+        std::thread::scope(|s| {
+            for i in 0..personas.len() {
+                let vault = vault_root.clone();
+                s.spawn(move || {
+                    let g = ScopeGuard::new(&vault, personas[i], std::iter::empty::<String>());
+                    for j in 0..personas.len() {
+                        if i == j {
+                            continue;
+                        }
+                        let target = vault
+                            .join("personas")
+                            .join(personas[j])
+                            .join(format!("from-{}.md", personas[i]));
+                        g.classify_and_log(&target, WriteType::Create)
+                            .unwrap();
+                    }
+                });
+            }
+        });
+
+        for i in 0..personas.len() {
+            let g = guard_in(&dir, personas[i], &[]);
+            let body = std::fs::read_to_string(g.log_path()).unwrap();
+            let lines: Vec<&str> = body.trim_end().split('\n').collect();
+            assert_eq!(lines.len(), 4, "personas/{} should have 4 entries, got {}", personas[i], lines.len());
+            for line in &lines {
+                assert!(
+                    line.contains(&format!("\"caller_persona_id\":\"{}\"", personas[i])),
+                    "personas/{} entry missing self-attribution: {}",
+                    personas[i],
+                    line
+                );
+            }
+        }
+    }
+
+    /// ScopeMonitor Drop is clean: after the monitor is dropped, no events
+    /// from in-scope paths are logged.
+    #[test]
+    fn scope_monitor_drop_cleans_up_thread() {
+        let dir = TempDir::new().unwrap();
+        let g = guard_in(&dir, "dev", &[]);
+
+        {
+            let _monitor = ScopeMonitor::start(g.clone()).unwrap();
+            let out = dir
+                .path()
+                .join("personas")
+                .join("architect")
+                .join("x.md");
+            g.classify_and_log(&out, WriteType::Create).unwrap();
+        }
+
+        let out2 = dir
+            .path()
+            .join("personas")
+            .join("bob")
+            .join("y.md");
+        g.classify_and_log(&out2, WriteType::Modify).unwrap();
+        let body = std::fs::read_to_string(g.log_path()).unwrap();
+        assert!(
+            body.contains("y.md"),
+            "post-drop write should be logged: {body}"
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // End P0-C
+    // ─────────────────────────────────────────────────────────────────────────────────────────────────────
+
     /// End-to-end watcher test. `#[ignore]` because notify's debounce +
     /// platform backends (esp. Windows ReadDirectoryChangesW) make exact
     /// timing flaky in CI; the classification + logging core above is the
