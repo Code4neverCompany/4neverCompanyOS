@@ -54,7 +54,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: macos-dmg
-          path: target/release/bundle/macos/*.tar.gz
+          path: target/release/bundle/dmg/*.dmg
           retention-days: 5
 
   # ─── Linux AppImage ─────────────────────────────────────────────────
@@ -105,7 +105,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: linux-appimage
-          path: target/release/bundle/appimage/*.AppImage.tar.gz
+          path: target/release/bundle/appimage/*.AppImage
           retention-days: 5
 
   # ─── Windows NSIS ──────────────────────────────────────────────────
@@ -181,8 +181,9 @@ jobs:
             --title "4neverCompany OS ${VERSION}" \
             --notes "See https://github.com/Code4neverCompany/4neverCompanyOS/releases" \
             --draft \
-            artifacts/*/4neverCompany*.tar.gz \
-            artifacts/*/*setup*.exe 2>&1 || echo "Release create may have partial failure"
+            artifacts/macos-dmg/*.dmg \
+            artifacts/linux-appimage/*.AppImage \
+            artifacts/windows-nsis/*setup*.exe 2>&1 || echo "Release create may have partial failure"
 
       - name: Verify release
         env:
