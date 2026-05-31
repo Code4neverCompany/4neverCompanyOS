@@ -38,6 +38,9 @@ importers:
       '@c4n/credential-storage':
         specifier: workspace:*
         version: link:../../packages/credential-storage
+      '@c4n/progress-signal':
+        specifier: workspace:*
+        version: link:../../packages/progress-signal
       '@c4n/supermemory-client':
         specifier: workspace:*
         version: link:../../packages/supermemory-client

@@ -1,9 +1,1 @@
-{
-  "default": {
-    "identifier": "default",
-    "description": "Desktop shell default capabilities. Story 1.12 adds dialog access so the Projects view can prompt for a project directory.",
-    "local": true,
-    "windows": ["main"],
-    "permissions": ["core:default", "dialog:default", "dialog:allow-open"]
-  }
-}
+{"default":{"identifier":"default","description":"Desktop shell default capabilities. Story 1.12 adds dialog access so the Projects view can prompt for a project directory.","local":true,"windows":["main"],"permissions":["core:default","dialog:default","dialog:allow-open"]}}
