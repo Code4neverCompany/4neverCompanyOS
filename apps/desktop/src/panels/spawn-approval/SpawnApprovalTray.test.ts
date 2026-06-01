@@ -1,4 +1,4 @@
-// Story 3.8 (NEVAAA-38) — SpawnApprovalTray unit tests.
+// Story 3.8 (NEVAAA-38) / NEVAAA-58 — SpawnApprovalTray unit tests.
 //
 // Tests the proposal filtering logic (5-min expiry) and type-level contracts.
 // The component itself requires a Tauri/IPC environment; these tests cover

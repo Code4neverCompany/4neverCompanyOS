@@ -92,6 +92,7 @@ development_status:
   3-6-m3-ephemeral-persona-lifecycle-spawn-task-exit-cleanly: done # NEVAAA-25 — run_ephemeral primitive (artifact→reviews/, deregister-on-drop bus identity, zero vault residue); supervisor --ephemeral mode; spawn_dynamic_persona ephemeral path (transient identity, no persona dir, close_on_exit) + task-prompt UI; SM-5 100-cycle zero-orphans test passes
   3-7-m3-hermes-initiated-spawn-proposal: done # NEVAAA-33 — Hermes emits spawn_proposal bus events; receive/list/dismiss commands
   3-8-m3-user-approval-required-before-spawn: done # NEVAAA-40 — SpawnApprovalTray: floating card for Hermes proposals; Approve/Reject/Modify
+  nevaaa-47-stabilize-hermes-spawn-proposal-ux: done # NEVAAA-47 — UX improvements: Veto rename, confirmation dialogs, dismiss, artifact preview, richer context; merged via PR #1
   3-9-m3-promotion-path-ephemeral-persistent-after-3-spawns: done # NEVAAA-34 — ephemeral → persistent promotion after 3 spawns
   3-10-m3-custom-persona-authoring-via-bmad-builder: done # NEVAAA-35 — PersonaAuthorForm: name/role/lifecycle/skills/model/backing-CLI; author_persona Tauri command
   3-11-m3-pause-redirect-any-persona: done # NEVAAA-36 — pause/redirect/resume control surface in persona-supervisor
