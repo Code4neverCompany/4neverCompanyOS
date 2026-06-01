@@ -92,6 +92,19 @@ This rebuilds:
   procurement is tracked separately (see LICENSES.md / pinned-versions.md
   for related procurement items).
 
+## Known issues
+
+- **Wizard's "Zellij not installed" gate in dev** — on a machine that
+  doesn't already have Zellij on `PATH`, the first-launch wizard's
+  Zellij-detection probe only walks `PATH` and does not consult the
+  bundled `zellij.exe` shipped at
+  `apps/desktop/src-tauri/binaries/zellij.exe`. Result: a red
+  "Zellij not installed" screen with only a Recheck button. Workarounds
+  (winget install or `PATH` override) documented at
+  [troubleshooting/zellij-wizard-detection.md](troubleshooting/zellij-wizard-detection.md).
+  Root-cause code fix tracked at
+  [NEVAAA-136](/NEVAAA/issues/NEVAAA-136).
+
 ## Verification
 
 After install, verify the desktop binary works:
