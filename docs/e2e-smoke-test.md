@@ -15,7 +15,7 @@ The test is **manual**. Automating Tauri 2 + xterm.js end-to-end requires a WebD
 These are one-time setup costs a fresh-install user pays before the stopwatch starts.
 
 1. **Clean Windows 10 or 11 environment.** A throwaway VM (Hyper-V, VirtualBox, Parallels) is ideal. A fresh user profile on an existing Win 11 box works as a fallback.
-2. **Zellij ≥ 0.44.3 on `PATH`.** Install via `winget install zellij-org.zellij`. (Per architecture D-2, Zellij is the spawn authority for every persistent persona; the desktop app doesn't bundle it.)
+2. **Zellij ≥ 0.44.3** — bundled in the installer and added to PATH automatically (no separate installation needed).
 3. **Claude Code installed + authenticated.** Story 1.9's wizard step only verifies presence (`claude --version`). Authentication is OOB until M2 wires the Anthropic OAuth flow into the wizard.
 4. **Anthropic API key paste-ready.** Get one from <https://console.anthropic.com/settings/keys> if you don't already have one.
 5. **A folder to use as the test "project."** A checkout of any repo (4neverCompany OS itself works) — the project doesn't need a `claude.md` (Story 1.13 projects one on spawn).

@@ -85,9 +85,8 @@ This rebuilds:
   ```
   Override via `C4N_PERSONA_SUPERVISOR=<absolute-path>` env var if the
   binary lives outside `PATH`.
-- **Zellij must be installed separately.** The brief commits to Zellij as
-  the spawn authority (D-2); we don't bundle it. Install via
-  `winget install zellij-org.zellij` (≥ 0.44.3 for Windows ConPTY support).
+- **Zellij is bundled** in the NSIS installer and added to PATH automatically
+  (≥ 0.44.3 for Windows ConPTY support). No separate installation required.
 - **Code signing not configured.** The installer is unsigned, so Windows
   SmartScreen will warn on first launch. Code-signing certificate
   procurement is tracked separately (see LICENSES.md / pinned-versions.md

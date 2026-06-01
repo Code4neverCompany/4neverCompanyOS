@@ -40,6 +40,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
+    "resources": ["binaries/zellij.exe"],
     "windows": {
       "webviewInstallMode": {
         "type": "downloadBootstrapper"
@@ -48,7 +49,8 @@
         "displayLanguageSelector": false,
         "installerIcon": "icons/icon.ico",
         "installMode": "currentUser",
-        "languages": ["English"]
+        "languages": ["English"],
+        "installerHooks": "nsis/installer-hooks.nsi"
       }
     },
     "macOS": {

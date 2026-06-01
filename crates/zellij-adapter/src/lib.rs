@@ -31,17 +31,23 @@
 //!
 //! ## Zellij prerequisite
 //!
-//! Zellij ≥ 0.44.0 must be installed and on PATH. v0.44.0 introduced native
-//! Windows support via ConPTY; older versions are Linux/macOS only. The pin
-//! lives in `docs/pinned-versions.md` (currently v0.44.3).
+//! Zellij ≥ 0.44.0 must be available. v0.44.0 introduced native Windows support
+//! via ConPTY; older versions are Linux/macOS only. The pin lives in
+//! `docs/pinned-versions.md` (currently v0.44.3).
 //!
-//! Install:
-//!   - Windows: `winget install zellij-org.zellij` OR `cargo install zellij --locked --version 0.44.3`
-//!   - macOS:   `brew install zellij`
-//!   - Linux:   `cargo install zellij --locked --version 0.44.3` OR distro pkg
+//! **Bundled installation (default):** On Windows, the NSIS installer bundles
+//! `zellij.exe` in `resources/binaries/zellij.exe`. The adapter resolves the
+//! binary via `TAURI_RESOURCE_PATH` automatically.
+//!
+//! **Override:** Set `C4N_ZELLIJ_PATH` to an absolute path to use a specific
+//! Zellij binary instead.
+//!
+//! **Manual installation (fallback):** If not bundled and no override is set,
+//! the adapter falls back to looking for `zellij` on PATH.
 
 use serde::Serialize;
 use std::collections::HashMap;
+use std::env;
 use std::path::PathBuf;
 use std::process::Command;
 use thiserror::Error;
@@ -151,12 +157,13 @@ impl PaneHandle {
     /// (including any others added later) and the Zellij server for that
     /// session.
     pub fn kill(&self) -> Result<()> {
-        let output = Command::new("zellij")
+        let zellij_path = find_zellij_path().ok_or(ZellijError::NotInstalled)?;
+        let output = Command::new(&zellij_path)
             .args(["delete-session", &self.session_name, "--force"])
             .output()?;
         if !output.status.success() {
             return Err(ZellijError::CommandFailed {
-                cmd: format!("zellij delete-session {} --force", self.session_name),
+                cmd: format!("{} delete-session {} --force", zellij_path.display(), self.session_name),
                 exit_code: output.status.code().unwrap_or(-1),
                 stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
             });
@@ -165,21 +172,48 @@ impl PaneHandle {
     }
 }
 
-/// Returns true if the `zellij` binary is on PATH and executes.
+/// Returns the path to the Zellij binary, if one is found.
+/// Priority: C4N_ZELLIJ_PATH env var > bundled resource > PATH.
+fn find_zellij_path() -> Option<PathBuf> {
+    if let Ok(zellij_path) = env::var("C4N_ZELLIJ_PATH") {
+        let p = PathBuf::from(&zellij_path);
+        if p.exists() {
+            debug!(path = %p.display(), "using Zellij from C4N_ZELLIJ_PATH");
+            return Some(p);
+        }
+    }
+
+    if let Ok(resource_path) = env::var("TAURI_RESOURCE_PATH") {
+        let bundled = PathBuf::from(resource_path).join("binaries").join("zellij.exe");
+        if bundled.exists() {
+            debug!(path = %bundled.display(), "using bundled Zellij");
+            return Some(bundled);
+        }
+    }
+
+    if Command::new("zellij").arg("--version").output().map(|o| o.status.success()).unwrap_or(false) {
+        if let Ok(zellij_path) = which::which("zellij") {
+            debug!(path = %zellij_path.display(), "using Zellij from PATH");
+            return Some(zellij_path);
+        }
+        return Some(PathBuf::from("zellij"));
+    }
+
+    None
+}
+
+/// Returns true if the `zellij` binary is available (bundled, on PATH, or via C4N_ZELLIJ_PATH).
 pub fn is_available() -> bool {
-    Command::new("zellij")
-        .arg("--version")
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
+    find_zellij_path().is_some()
 }
 
 /// Returns the Zellij version string (e.g. "zellij 0.44.3") or an error.
 pub fn version() -> Result<String> {
-    let output = Command::new("zellij").arg("--version").output()?;
+    let zellij_path = find_zellij_path().ok_or(ZellijError::NotInstalled)?;
+    let output = Command::new(&zellij_path).arg("--version").output()?;
     if !output.status.success() {
         return Err(ZellijError::CommandFailed {
-            cmd: "zellij --version".to_string(),
+            cmd: format!("{} --version", zellij_path.display()),
             exit_code: output.status.code().unwrap_or(-1),
             stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
         });
@@ -191,7 +225,8 @@ pub fn version() -> Result<String> {
 /// like "session-name [Created Nm Hs ago]"). Returns an empty vec if no
 /// sessions are active.
 pub fn list_sessions() -> Result<Vec<String>> {
-    let output = Command::new("zellij").arg("list-sessions").output()?;
+    let zellij_path = find_zellij_path().ok_or(ZellijError::NotInstalled)?;
+    let output = Command::new(&zellij_path).arg("list-sessions").output()?;
     // `zellij list-sessions` exits non-zero (1) when no sessions exist; treat
     // that case as "empty list" rather than an error.
     if !output.status.success() {
@@ -200,7 +235,7 @@ pub fn list_sessions() -> Result<Vec<String>> {
             return Ok(Vec::new());
         }
         return Err(ZellijError::CommandFailed {
-            cmd: "zellij list-sessions".to_string(),
+            cmd: format!("{} list-sessions", zellij_path.display()),
             exit_code: output.status.code().unwrap_or(-1),
             stderr: stderr.into_owned(),
         });
@@ -225,14 +260,17 @@ pub fn list_sessions() -> Result<Vec<String>> {
 /// fixes. If pane spawn surfaces Windows-specific issues at integration time,
 /// log them as a `[NOTE FOR PM]` against this story and revisit at M1 mid-review.
 pub fn spawn_pane(config: SpawnPaneConfig) -> Result<PaneHandle> {
+    let zellij_path = find_zellij_path().ok_or(ZellijError::NotInstalled)?;
+
     debug!(
         session = %config.session_name,
         command = %config.command,
         args = ?config.args,
+        zellij_path = %zellij_path.display(),
         "spawning Zellij pane"
     );
 
-    let mut cmd = Command::new("zellij");
+    let mut cmd = Command::new(&zellij_path);
     cmd.args(["--session", &config.session_name])
         .arg("action")
         .arg("new-pane");
@@ -264,8 +302,8 @@ pub fn spawn_pane(config: SpawnPaneConfig) -> Result<PaneHandle> {
         );
         return Err(ZellijError::CommandFailed {
             cmd: format!(
-                "zellij --session {} action new-pane -- {} {:?}",
-                config.session_name, config.command, config.args
+                "{} --session {} action new-pane -- {} {:?}",
+                zellij_path.display(), config.session_name, config.command, config.args
             ),
             exit_code: output.status.code().unwrap_or(-1),
             stderr,

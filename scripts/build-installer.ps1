@@ -19,6 +19,9 @@ Write-Host "Loading VS Developer environment..."
 
 Set-Location $PSScriptRoot\..
 
+Write-Host "Downloading Zellij v0.44.3 for bundling..."
+pwsh ./scripts/download-zellij.ps1
+
 Write-Host "Building desktop installer..."
 pnpm build:desktop
 
