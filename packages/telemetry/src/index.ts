@@ -5,4 +5,24 @@
 //
 // M0 scaffolding; substantive implementation lands in the stories above.
 
+import { createLogger } from "@c4n/observability";
+
 export const PACKAGE_NAME = "@c4n/telemetry" as const;
+
+export { parseJsonl, type LogEntry, type ParseResult, type ParseError } from "./parser.js";
+export {
+  aggregate,
+  aggregateByPersona,
+  TOKEN_ESTIMATE_CHARS_PER_TOKEN,
+  type PersonaAggregate,
+} from "./aggregator.js";
+export {
+  startTelemetryConsumer,
+  stopTelemetryConsumer,
+  latestAggregate,
+  type StartConsumerOptions,
+  type WatcherFactory,
+} from "./consumer.js";
+
+/** Convenience re-export of the package-level logger. */
+export const log = createLogger("@c4n/telemetry");

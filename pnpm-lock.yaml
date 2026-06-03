@@ -38,12 +38,18 @@ importers:
       '@c4n/credential-storage':
         specifier: workspace:*
         version: link:../../packages/credential-storage
+      '@c4n/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@c4n/progress-signal':
         specifier: workspace:*
         version: link:../../packages/progress-signal
       '@c4n/supermemory-client':
         specifier: workspace:*
         version: link:../../packages/supermemory-client
+      '@c4n/telemetry':
+        specifier: workspace:*
+        version: link:../../packages/telemetry
       '@c4n/ui-tokens':
         specifier: workspace:*
         version: link:../../packages/ui-tokens
@@ -108,6 +114,9 @@ importers:
       '@c4n/credential-storage':
         specifier: workspace:*
         version: link:../../packages/credential-storage
+      '@c4n/observability':
+        specifier: workspace:*
+        version: link:../../packages/observability
       '@c4n/ui-tokens':
         specifier: workspace:*
         version: link:../../packages/ui-tokens
@@ -151,6 +160,9 @@ importers:
       '@c4n/core':
         specifier: workspace:*
         version: link:../core
+      '@c4n/observability':
+        specifier: workspace:*
+        version: link:../observability
     devDependencies:
       typescript:
         specifier: 5.8.3
@@ -223,6 +235,15 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(@types/node@22.19.19)
 
+  packages/observability:
+    devDependencies:
+      typescript:
+        specifier: 5.8.3
+        version: 5.8.3
+      vitest:
+        specifier: ^2.1.8
+        version: 2.1.9(@types/node@22.19.19)
+
   packages/persona-sync:
     dependencies:
       '@c4n/core':
@@ -286,6 +307,12 @@ importers:
       '@c4n/core':
         specifier: workspace:*
         version: link:../core
+      '@c4n/observability':
+        specifier: workspace:*
+        version: link:../observability
+      '@c4n/progress-signal':
+        specifier: workspace:*
+        version: link:../progress-signal
     devDependencies:
       typescript:
         specifier: 5.8.3
@@ -331,6 +358,9 @@ importers:
       '@c4n/core':
         specifier: workspace:*
         version: link:../core
+      '@c4n/observability':
+        specifier: workspace:*
+        version: link:../observability
       '@c4n/progress-signal':
         specifier: workspace:*
         version: link:../progress-signal
