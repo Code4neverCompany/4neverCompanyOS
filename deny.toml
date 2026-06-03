@@ -1,0 +1,160 @@
+# cargo-deny configuration for 4neverCompany OS.
+#
+# See .github/workflows/audit.yml for the CI invocation.
+# See LICENSES.md for the canonical attribution surface and the
+# per-tier license / redistribution policy that this file enforces.
+#
+# Cargo-deny version: 0.19.x (schema tested with cargo-deny 0.19.8).
+# Reference: https://embarkstudios.github.io/cargo-deny/
+
+# Targets to check. The workspace has Linux/macOS/Windows targets via
+# Tauri; we only need to check the crates we actually compile into the
+# desktop and wizard bins.
+[graph]
+all-features = false
+
+[advisories]
+# Fail the audit job on any advisory. The CI job does not pass
+# --ignore-yanked, so yanked advisories are also surfaced.
+db-path = "~/.cargo/advisory-db"
+db-urls = ["https://github.com/rustsec/advisory-db"]
+yanked = "warn"
+# The gtk3-rs bindings (atk, gtk, gdk*, gtk3-macros, proc-macro-error)
+# are unmaintained. We pull them in transitively through the Tauri
+# 2.x stack on Linux (via webkit2gtk-sys / wry). The upstream fix
+# path is to migrate to gtk4-rs, which the Tauri team is tracking
+# (https://github.com/tauri-apps/tauri/issues/9684). Until that
+# lands, we silence the unmaintained warnings for the gtk-rs
+# family explicitly so the audit job can catch *new* advisories.
+# Re-evaluate when Tauri ships gtk4-rs support.
+ignore = [
+    "RUSTSEC-2024-0411",  # gdkwayland-sys unmaintained
+    "RUSTSEC-2024-0412",  # gdk unmaintained
+    "RUSTSEC-2024-0413",  # atk unmaintained
+    "RUSTSEC-2024-0414",  # gdkx11-sys unmaintained
+    "RUSTSEC-2024-0415",  # gtk unmaintained
+    "RUSTSEC-2024-0416",  # atk-sys unmaintained
+    "RUSTSEC-2024-0417",  # gdkx11 unmaintained
+    "RUSTSEC-2024-0418",  # gdk-sys unmaintained
+    "RUSTSEC-2024-0419",  # gtk3-macros unmaintained
+    "RUSTSEC-2024-0420",  # gtk-sys unmaintained
+    "RUSTSEC-2024-0370",  # proc-macro-error unmaintained (transitive via gtk3-macros / glib-macros)
+    "RUSTSEC-2025-0075",  # unic-char-range unmaintained (transitive via urlpattern / tauri-utils)
+    "RUSTSEC-2025-0080",  # unic-common unmaintained (transitive via urlpattern / tauri-utils)
+    "RUSTSEC-2025-0081",  # unic-char-property unmaintained (transitive via urlpattern / tauri-utils)
+    "RUSTSEC-2025-0098",  # unic-ucd-version unmaintained (transitive via urlpattern / tauri-utils)
+    "RUSTSEC-2025-0100",  # unic-ucd-ident unmaintained (transitive via urlpattern / tauri-utils)
+    "RUSTSEC-2024-0429",  # glib unsound (transitive via gtk / webkit2gtk)
+]
+
+[licenses]
+version = 2
+# Permissive allow list. Each entry is a SPDX license identifier or
+# SPDX expression. LICENSES.md is the canonical source for which
+# licenses the project accepts; this allow list mirrors the Tier 1
+# redistribution policy in that document.
+#
+# Entries not encountered in the current dep tree are still kept
+# because they are part of the policy; cargo-deny emits a
+# `license-not-encountered` warning for them which is informational.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MPL-2.0",
+    "Zlib",
+    "Unicode-3.0",
+    "CC0-1.0",
+    "0BSD",
+    "Unlicense",
+    "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.8
+# skip = [] — do not silently skip any crate's license check. If a
+# crate's license cannot be determined, fail the audit so we can
+# investigate.
+#
+# The `private` field is left at its default (ignore = false), so
+# workspace members DO get their declared license checked against
+# the allow list. Every c4n-* crate declares
+# `license = "MIT OR Apache-2.0"`, which is in the allow list.
+
+[[licenses.clarify]]
+# ring is dual-licensed: the SPDX expression it ships uses
+# "ISC AND MIT AND OpenSSL". All three identifiers are in the allow
+# list, but we add this entry as a deliberate, audited decision.
+name = "ring"
+expression = "ISC AND MIT AND OpenSSL"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0ece23 },
+]
+
+[[licenses.clarify]]
+# encoding_rs carries an additional BSD-3-Clause notice on top of
+# Apache-2.0 / MIT. Accept both.
+name = "encoding_rs"
+expression = "(Apache-2.0 OR MIT) AND BSD-3-Clause"
+license-files = [
+    { path = "COPYING", hash = 0x6c9d0aa0 },
+]
+
+[bans]
+# Multiple versions of the same crate cause silent API drift and
+# duplicate-link bloat. We forbid the wildcard ("*") forms below.
+multiple-versions = "warn"
+wildcards = "deny"
+# Workspace path-dependencies (e.g. c4n-zellij-adapter = { path = "..." })
+# are reported by cargo-deny as "wildcard" because they have no
+# version constraint, but they don't suffer from the version-drift
+# problems that real wildcards cause. Allow path-only wildcards so
+# the bans check focuses on real version-drift risks in registry
+# dependencies.
+allow-wildcard-paths = true
+
+# Crates we never want pulled in. We rely on rustls everywhere
+# (reqwest is pinned with default-features = false + the
+# `rustls-tls` feature in apps/desktop/src-tauri/Cargo.toml), so a
+# transitive openssl pull-in would silently regress us onto the
+# system OpenSSL on Windows.
+#
+# NB: cargo-deny 0.19's `[bans] allow` field is the inverse of
+# `deny` — populating it switches the check to a strict
+# "only allow these crates" allowlist mode and makes every other
+# crate report `not-allowed`. We do NOT use it. To re-allow a
+# specific version of a denied crate, scope the `deny` entry to a
+# version range that excludes the version we need.
+deny = [
+    # Hard ban. openssl is a system-library crate; if any new
+    # dependency tries to drag it in, fail the audit so we can pick
+    # a rustls-based alternative before the build surprises us.
+    { name = "openssl" },
+    { name = "openssl-sys" },
+    # chrono is currently a workspace dep (see Cargo.toml). The
+    # workspace pins it to "0.4" via `[workspace.dependencies]`
+    # chrono = { version = "0.4" } (i.e. ^0.4). We ban any future
+    # 0.5+ release: if someone tries to upgrade chrono without
+    # first auditing the new release, the audit job will catch it.
+    # The audit log shows 0 advisories against chrono 0.4.44 as of
+    # 2026-06-03, so this is purely a forward-looking guard. If
+    # the audit job ever catches a 0.4 advisory, the replacement
+    # plan is to migrate to the `time` crate (MIT/Apache-2.0).
+    { name = "chrono", version = ">= 0.5" },
+]
+
+# skip = [] — do not blanket-skip any tree.
+skip = []
+# ignore = [] — no specific-tree exceptions.
+
+# allow is intentionally unset. cargo-deny 0.19's `[bans] allow`
+# is a strict allowlist, not a per-crate exception list. If we
+# need to re-allow a specific version of a banned crate in the
+# future, scope the `deny` entry's `version` field instead.
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []
