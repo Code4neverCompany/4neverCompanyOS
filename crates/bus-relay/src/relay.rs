@@ -36,6 +36,48 @@ use crate::RelayError;
 /// unbounded memory growth on the relay.
 pub const DEFAULT_CHANNEL_CAPACITY: usize = 1024;
 
+/// What the relay does when a slow subscriber falls behind and the
+/// in-process broadcast channel fills up.
+///
+/// This is a real product decision because every choice has a
+/// downside — the relay either drops messages, blocks the producer, or
+/// grows the producer's memory footprint. The default (`DropOldest`)
+/// is what we ship with and what the existing call sites assume; the
+/// other variants exist so future call sites (e.g. a bus-replay tool,
+/// or a sidecar that must never lose a message) can opt in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum BackpressurePolicy {
+    /// (Default) Slow subscribers miss messages and see
+    /// `RecvError::Lagged`. The relay emits a `tracing::warn!` on
+    /// each lag. The producer is never blocked.
+    ///
+    /// Rationale for the default: the bus is a real-time UI feed —
+    /// dropping a few envelopes on a frozen pane is strictly better
+    /// than blocking the SSE pump (which would back-pressure the
+    /// network and risk a connection drop) or spilling to disk
+    /// (which adds an unbounded I/O tail to every publish).
+    #[default]
+    DropOldest,
+    /// Slow subscribers block the publisher until they catch up. The
+    /// SSE pump stops reading from the network while a slow consumer
+    /// is in the way, which acts as natural TCP-level back-pressure
+    /// against the upstream.
+    ///
+    /// Tradeoff: a stuck subscriber stalls the entire bus. Only safe
+    /// when every consumer is known to be well-behaved.
+    Block,
+    /// Slow subscribers get their overflow envelopes spilled to a
+    /// spill file (`<vault>/bus-relay-spill/<subscriber>.jsonl`).
+    /// On resume, the consumer replays the spill before consuming
+    /// new envelopes. Best-effort: a full disk stops the spill and
+    /// the relay falls back to `DropOldest` for that subscriber.
+    ///
+    /// Tradeoff: every dropped message costs an `fsync`-grade write
+    /// (or we'd lose the durability story). Use only when the
+    /// producer has a hard "no message may be lost" requirement.
+    SpillToDisk,
+}
+
 /// Reconnection backoff policy for [`Relay::run`].
 #[derive(Debug, Clone)]
 pub struct RetryPolicy {
@@ -102,6 +144,10 @@ pub struct RelayStats {
 pub struct Relay {
     tx: broadcast::Sender<BusEnvelope>,
     state_tx: watch::Sender<ConnectionState>,
+    /// Backpressure policy selected at construction time. See
+    /// [`BackpressurePolicy`] for the tradeoffs and the v0 caveat
+    /// about runtime enforcement.
+    policy: BackpressurePolicy,
 }
 
 impl Default for Relay {
@@ -111,16 +157,44 @@ impl Default for Relay {
 }
 
 impl Relay {
-    /// Create a relay with the default channel capacity.
+    /// Create a relay with the default channel capacity and the
+    /// default (`BackpressurePolicy::DropOldest`) policy.
     pub fn new() -> Self {
         Relay::with_capacity(DEFAULT_CHANNEL_CAPACITY)
     }
 
-    /// Create a relay with a custom broadcast channel capacity.
+    /// Create a relay with a custom broadcast channel capacity and the
+    /// default (`BackpressurePolicy::DropOldest`) policy.
     pub fn with_capacity(capacity: usize) -> Self {
+        Relay::with_capacity_and_policy(capacity, BackpressurePolicy::default())
+    }
+
+    /// Create a relay with both a custom channel capacity AND an
+    /// explicit backpressure policy. Use this when the default
+    /// `DropOldest` isn't appropriate (see [`BackpressurePolicy`] for
+    /// the full rationale).
+    ///
+    /// v0 caveat: the policy is stored on the relay but not yet
+    /// consulted at publish time. The `tokio::sync::broadcast` channel
+    /// we wrap is always `DropOldest` under the hood; the other two
+    /// policies (Block, SpillToDisk) are wired through a future
+    /// patch that introduces a per-subscriber `mpsc` ring and an
+    /// optional spill file. The policy is exposed now so call sites
+    /// that need it can record their intent and so this enum is a
+    /// stable public API before we add the runtime enforcement.
+    pub fn with_capacity_and_policy(capacity: usize, policy: BackpressurePolicy) -> Self {
         let (tx, _rx) = broadcast::channel(capacity);
         let (state_tx, _) = watch::channel(ConnectionState::Connecting);
-        Relay { tx, state_tx }
+        Relay {
+            tx,
+            state_tx,
+            policy,
+        }
+    }
+
+    /// The currently configured backpressure policy.
+    pub fn backpressure_policy(&self) -> BackpressurePolicy {
+        self.policy
     }
 
     /// Subscribe to live [`ConnectionState`] transitions driven by
@@ -425,5 +499,56 @@ mod tests {
             s,
             ConnectionState::Reconnecting { attempt, .. } if *attempt >= 1
         )));
+    }
+
+    // ── BackpressurePolicy tests (NEVAAA-OBS-PERF) ──────────────────
+
+    // AC: BackpressurePolicy::default() is DropOldest. This is the
+    // product decision recorded in the enum's doc-comment: the relay
+    // is a real-time UI feed, so dropping on a frozen pane is
+    // strictly better than blocking the SSE pump or growing a
+    // spill file.
+    #[test]
+    fn backpressure_policy_default_is_drop_oldest() {
+        assert_eq!(BackpressurePolicy::default(), BackpressurePolicy::DropOldest);
+    }
+
+    // AC: Relay::new() and Relay::with_capacity() both default to
+    // DropOldest — they preserve the existing call-site contract.
+    #[test]
+    fn new_and_with_capacity_default_to_drop_oldest() {
+        assert_eq!(Relay::new().backpressure_policy(), BackpressurePolicy::DropOldest);
+        assert_eq!(
+            Relay::with_capacity(64).backpressure_policy(),
+            BackpressurePolicy::DropOldest
+        );
+    }
+
+    // AC: with_capacity_and_policy records the chosen policy verbatim
+    // so call sites that need Block or SpillToDisk can declare their
+    // intent even though the runtime enforcement lands in a future
+    // patch (see the v0 caveat in the doc-comment).
+    #[test]
+    fn with_capacity_and_policy_round_trips() {
+        for policy in [
+            BackpressurePolicy::DropOldest,
+            BackpressurePolicy::Block,
+            BackpressurePolicy::SpillToDisk,
+        ] {
+            let relay = Relay::with_capacity_and_policy(128, policy);
+            assert_eq!(relay.backpressure_policy(), policy);
+        }
+    }
+
+    // AC: the policy enum is PartialEq + Eq + Copy + Clone + Debug,
+    // so it can be stored in a const, sent across tasks, and
+    // formatted in test failure messages.
+    #[test]
+    fn backpressure_policy_is_copy_and_eq() {
+        let a = BackpressurePolicy::Block;
+        let b = a; // Copy
+        assert_eq!(a, b);
+        let c = format!("{:?}", a);
+        assert!(c.contains("Block"));
     }
 }

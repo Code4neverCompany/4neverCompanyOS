@@ -1,0 +1,21 @@
+{
+  "name": "@c4n/observability",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Framework-agnostic structured logging + tracing for the 4neverCompany OS TypeScript packages. Zero runtime deps so it can be imported from any package — including the tauri-free test environment.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "5.8.3",
+    "vitest": "^2.1.8"
+  }
+}

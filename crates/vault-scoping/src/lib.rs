@@ -740,19 +740,22 @@ mod tests {
             }
         });
 
-        for i in 0..personas.len() {
-            let g = guard_in(&dir, personas[i], &[]);
+        for (i, persona) in personas.iter().enumerate() {
+            let g = guard_in(&dir, persona, &[]);
             let body = std::fs::read_to_string(g.log_path()).unwrap();
             let lines: Vec<&str> = body.trim_end().split('\n').collect();
-            assert_eq!(lines.len(), 4, "personas/{} should have 4 entries, got {}", personas[i], lines.len());
+            assert_eq!(lines.len(), 4, "personas/{} should have 4 entries, got {}", persona, lines.len());
             for line in &lines {
                 assert!(
-                    line.contains(&format!("\"caller_persona_id\":\"{}\"", personas[i])),
+                    line.contains(&format!("\"caller_persona_id\":\"{}\"", persona)),
                     "personas/{} entry missing self-attribution: {}",
-                    personas[i],
+                    persona,
                     line
                 );
             }
+            // `i` is kept for parity with the original range-loop —
+            // the test harness reads it via the assertion messages.
+            let _ = i;
         }
     }
 

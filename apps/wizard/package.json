@@ -18,7 +18,8 @@
     "@tauri-apps/plugin-dialog": "^2",
     "@c4n/core": "workspace:*",
     "@c4n/credential-storage": "workspace:*",
-    "@c4n/ui-tokens": "workspace:*"
+    "@c4n/ui-tokens": "workspace:*",
+    "@c4n/observability": "workspace:*"
   },
   "devDependencies": {
     "@types/react": "^19.2.15",
