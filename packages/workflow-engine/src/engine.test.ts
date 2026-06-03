@@ -5,7 +5,7 @@
 // advance the phase within 1s without waiting for the 3s safety-net
 // poller to fire.
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 // Tauri `invoke` is mocked at module-load time so the engine's
 // `start_workflow_run`, `spawn_dynamic_persona`, etc. calls are
@@ -18,6 +18,18 @@ vi.mock("@tauri-apps/api/core", () => ({
 
 import { WorkflowEngine } from "./engine.js";
 import { ProgressBus } from "@c4n/progress-signal";
+import { setLogSink, type LogRecord } from "@c4n/observability";
+
+// Capture sink so tests can assert on what the engine actually
+// logged. Reset between tests via afterEach.
+let captured: LogRecord[] = [];
+beforeEach(() => {
+  captured = [];
+  setLogSink((rec) => captured.push(rec));
+});
+afterEach(() => {
+  setLogSink(null);
+});
 
 describe("WorkflowEngine — notify-based artifact wait", () => {
   beforeEach(() => {
@@ -134,6 +146,97 @@ describe("WorkflowEngine — notify-based artifact wait", () => {
     expect(r).not.toBeNull();
 
     engine.pause();
+    startPromise.catch(() => undefined);
+  });
+
+  // Regression test for the verifier's finding on attempt 1: the
+  // engine's onArtifactChanged listener was leaking into the bus
+  // because clearAllWaiters() was overwriting the bus subscription
+  // reference with a function that only cleared the fast-clear
+  // timer. The leak manifested as log.debug firing on bus events
+  // emitted AFTER the engine was disposed.
+  //
+  // This test reproduces the exact scenario: subscribe, dispose,
+  // emit a matching event, and assert no log line mentions the
+  // matched-artifact path.
+  it("does not leak the bus listener after dispose()", async () => {
+    const engine = new WorkflowEngine();
+    const startPromise = engine.startRun(
+      "greenfield-fullstack",
+      "demo",
+      "proj-1",
+      "C:/vault",
+      "test idea",
+    );
+
+    // Let the engine reach waiting_for_artifact and register the
+    // bus subscription.
+    const reached = await waitFor(() => {
+      const r = engine.getRun();
+      return r !== null && r.status === "waiting_for_artifact";
+    }, 1_500);
+    expect(reached).toBe(true);
+
+    // Tear the engine down. This is the path the verifier walked:
+    // pause() → clearAllWaiters() → busUnsub() must fire.
+    engine.dispose();
+
+    // Clear the captured log so we only count records emitted
+    // AFTER dispose.
+    const baseline = captured.length;
+
+    // Emit a matching artifact path. If the bus subscription is
+    // still registered (the bug), onArtifactChanged fires and
+    // emits a debug log line.
+    ProgressBus.emitArtifact("C:/vault/projects/proj-1/bmad/01-brief.md");
+
+    // Give the bus dispatch a turn to run. ProgressBus.emit is
+    // synchronous, so by the time emit() returns, every still-
+    // registered listener has already fired.
+    await new Promise((r) => setTimeout(r, 50));
+
+    const newRecords = captured.slice(baseline);
+    const matchedLogs = newRecords.filter((r) =>
+      r.msg.includes("artifact.changed matched expected phase artifact"),
+    );
+    expect(matchedLogs).toHaveLength(0);
+
+    // Swallow startPromise — startRun is still in flight because
+    // waitForArtifact never resolved.
+    startPromise.catch(() => undefined);
+  });
+
+  // Companion regression: pause() must also tear down the bus
+  // subscription. The verifier specifically called out dispose();
+  // pause() goes through the same clearAllWaiters path so it
+  // should hold to the same contract.
+  it("does not leak the bus listener after pause()", async () => {
+    const engine = new WorkflowEngine();
+    const startPromise = engine.startRun(
+      "greenfield-fullstack",
+      "demo",
+      "proj-1",
+      "C:/vault",
+      "test idea",
+    );
+
+    const reached = await waitFor(() => {
+      const r = engine.getRun();
+      return r !== null && r.status === "waiting_for_artifact";
+    }, 1_500);
+    expect(reached).toBe(true);
+
+    engine.pause();
+    const baseline = captured.length;
+    ProgressBus.emitArtifact("C:/vault/projects/proj-1/bmad/01-brief.md");
+    await new Promise((r) => setTimeout(r, 50));
+    const newRecords = captured.slice(baseline);
+    const matchedLogs = newRecords.filter((r) =>
+      r.msg.includes("artifact.changed matched expected phase artifact"),
+    );
+    expect(matchedLogs).toHaveLength(0);
+
+    engine.dispose();
     startPromise.catch(() => undefined);
   });
 });

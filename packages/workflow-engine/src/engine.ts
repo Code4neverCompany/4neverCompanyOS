@@ -15,7 +15,10 @@
 // Story 4.6: brownfield workflow — ingest → analyze → refactor-plan phases.
 
 import { invoke } from "@tauri-apps/api/core";
-import { ProgressBus } from "@c4n/progress-signal";
+import { ProgressBus, type ProgressSignal } from "@c4n/progress-signal";
+import { createLogger, startSpan } from "@c4n/observability";
+
+const log = createLogger("@c4n/workflow-engine");
 
 export interface WorkflowPhasePersona {
   name: string;
@@ -98,6 +101,7 @@ function resolveVaultArtifactPath(vaultDir: string, relativePath: string): strin
 export class WorkflowEngine {
   private currentRun: WorkflowRunState | null = null;
   private vaultPoller: ReturnType<typeof setInterval> | null = null;
+  private busUnsubscribe: (() => void) | null = null;
   private currentWorkflow: WorkflowMetadata | null = null;
   private pendingApprovalPhase: WorkflowPhase | null = null;
 
@@ -412,41 +416,149 @@ export class WorkflowEngine {
       .replace(/\{project_name\}/g, run.project_name);
     const artifactPath = resolveVaultArtifactPath(run.vault_dir, rawPath);
 
+    const waitSpan = startSpan("wait-for-artifact", "@c4n/workflow-engine", {
+      fields: { runId: run.id, phase: phase.id, artifactPath },
+    });
+
     return new Promise((resolve) => {
-      const poll = async () => {
-        if (run.status === "paused" || run.status === "idle" || run.status === "done") {
-          return;
+      let resolved = false;
+      // Tracks whether the ProgressBus delivered a matching event before
+      // the 3s safety-net poll fired. Used to distinguish a healthy
+      // notify path (delivered < 1s) from a degraded one (poll fired
+      // first because the listener was registered late or missed).
+      let busDelivered = false;
+      const busDeliveredAt: { ms: number | null } = { ms: null };
+      let safetyNetWarned = false;
+
+      const onArtifactChanged = (signal: ProgressSignal): void => {
+        if (signal.kind !== "artifact.changed") return;
+        if (resolved) return;
+        if (run.status === "paused" || run.status === "idle" || run.status === "done") return;
+        // Path comparison: the bus may emit a different casing /
+        // separator form than our resolved artifactPath, so we match on
+        // the trailing suffix.
+        if (!pathsMatch(signal.path, artifactPath)) return;
+        busDelivered = true;
+        busDeliveredAt.ms = Date.now();
+        log.debug("artifact.changed matched expected phase artifact", {
+          runId: run.id,
+          phase: phase.id,
+          latencyMs: (busDeliveredAt.ms ?? 0) - Date.now(),
+        });
+        void advance();
+      };
+
+      const advance = async (): Promise<void> => {
+        if (resolved) return;
+        resolved = true;
+        this.clearAllWaiters();
+        const latencyMs = busDeliveredAt.ms !== null ? Date.now() - busDeliveredAt.ms : -1;
+        if (busDelivered) {
+          waitSpan.end({ path: "bus", latencyMs });
+        } else {
+          waitSpan.end({ path: "poll", latencyMs });
         }
 
-        const found = await invoke<boolean>("check_vault_artifact_exists", {
-          path: artifactPath,
-        });
+        if (phase.approval_required) {
+          run.status = "approval_pending";
+          this.pendingApprovalPhase = phase;
 
-        if (found) {
-          this.clearPoller();
-
-          if (phase.approval_required) {
-            run.status = "approval_pending";
-            this.pendingApprovalPhase = phase;
-
-            if (phase.governance_gate) {
-              resolve();
-              this.waitForPaperclipApproval(run, phase, artifactPath).catch(console.error);
-              return;
-            }
-
+          if (phase.governance_gate) {
             resolve();
+            this.waitForPaperclipApproval(run, phase, artifactPath).catch(console.error);
             return;
           }
 
-          await this.advanceToNextPhase(run, phase);
           resolve();
+          return;
+        }
+
+        await this.advanceToNextPhase(run, phase);
+        resolve();
+      };
+
+      const poll = async (): Promise<void> => {
+        if (resolved) return;
+        if (run.status === "paused" || run.status === "idle" || run.status === "done") return;
+
+        // The 3s safety net only fires when the bus didn't deliver
+        // within 1s. If the bus already matched, the poller is a no-op.
+        const elapsed = busDeliveredAt.ms !== null ? Date.now() - busDeliveredAt.ms : 0;
+        if (busDelivered) return;
+
+        if (!safetyNetWarned && elapsed > 0) {
+          // The poller fired before the bus delivered — the notify
+          // path is degraded (listener was registered late, or the
+          // event was missed). Surface it so the operator can
+          // investigate without taking the workflow down.
+          safetyNetWarned = true;
+          log.warn("vault artifact poll fired before ProgressBus — notify path degraded", {
+            runId: run.id,
+            phase: phase.id,
+            artifactPath,
+          });
+        }
+
+        let found = false;
+        try {
+          found = await invoke<boolean>("check_vault_artifact_exists", {
+            path: artifactPath,
+          });
+        } catch (e) {
+          log.error("check_vault_artifact_exists threw", {
+            runId: run.id,
+            err: String(e),
+          });
+          return;
+        }
+
+        if (found) {
+          await advance();
         }
       };
 
-      this.vaultPoller = setInterval(poll, 3000);
-      poll();
+      // Subscribe to ProgressBus FIRST so we can't miss an event
+      // that fires between the initial poll and the poller arming.
+      // Capture the unsub in a local so we can compose it with the
+      // fast-clear timer's handle without overwriting either one.
+      const busUnsub = ProgressBus.subscribe(onArtifactChanged);
+
+      // Best-effort 1s guard: clear the poller entirely if the bus
+      // delivered quickly. This keeps the steady-state CPU cost at
+      // one event handler, not a recurring setInterval.
+      const fastClearTimer = setTimeout(() => {
+        if (busDelivered && !resolved) {
+          this.clearPoller();
+        }
+      }, 1_000);
+
+      this.vaultPoller = setInterval(poll, 3_000);
+      // Chain BOTH unsubs into a single handle so clearAllWaiters()
+      // always tears down both. Do NOT overwrite `busUnsub` here —
+      // that was the bug the verifier caught in attempt 1: the
+      // bus subscription reference was lost, so dispose() only
+      // cleared the timer and the onArtifactChanged listener
+      // kept firing for the rest of the process.
+      this.busUnsubscribe = () => {
+        clearTimeout(fastClearTimer);
+        busUnsub();
+      };
+      // Run an initial poll in case the artifact already exists
+      // (e.g. we're resuming a run).
+      void poll();
     });
+  }
+
+  /**
+   * Cancel both the polling timer and any ProgressBus subscription
+   * started by `waitForArtifact`. Safe to call from any state.
+   */
+  private clearAllWaiters(): void {
+    this.clearPoller();
+    if (this.busUnsubscribe !== null) {
+      this.busUnsubscribe();
+      this.busUnsubscribe = null;
+    }
   }
 
   /**
@@ -619,7 +731,7 @@ export class WorkflowEngine {
 
     this.pendingApprovalPhase = null;
     run.status = "paused";
-    this.clearPoller();
+    this.clearAllWaiters();
 
     try {
       await invoke("log_workflow_decision", {
@@ -643,7 +755,7 @@ export class WorkflowEngine {
   pause(): void {
     if (!this.currentRun) return;
     this.currentRun.status = "paused";
-    this.clearPoller();
+    this.clearAllWaiters();
     invoke("pause_workflow_run").catch(console.error);
   }
 
@@ -676,10 +788,27 @@ export class WorkflowEngine {
   }
 
   dispose(): void {
-    this.clearPoller();
+    this.clearAllWaiters();
     this.currentRun = null;
     this.currentWorkflow = null;
   }
+}
+
+/**
+ * Loose path equality for ProgressBus → workflow-engine artifact
+ * matching. Normalizes separators and trailing slashes, then either
+ * compares directly or checks whether `a` ends with `b` (or vice versa)
+ * to tolerate relative-vs-absolute forms. The function is intentionally
+ * permissive — the engine only uses it as a "is this event relevant"
+ * filter, not as a security boundary.
+ */
+function pathsMatch(a: string, b: string): boolean {
+  const norm = (p: string): string => p.replace(/\\/g, "/").replace(/\/+$/, "");
+  const na = norm(a);
+  const nb = norm(b);
+  if (na === nb) return true;
+  if (na.endsWith("/" + nb) || nb.endsWith("/" + na)) return true;
+  return false;
 }
 
 export const workflowEngine = new WorkflowEngine();
