@@ -85,13 +85,25 @@ This rebuilds:
   ```
   Override via `C4N_PERSONA_SUPERVISOR=<absolute-path>` env var if the
   binary lives outside `PATH`.
-- **Zellij must be installed separately.** The brief commits to Zellij as
-  the spawn authority (D-2); we don't bundle it. Install via
-  `winget install zellij-org.zellij` (≥ 0.44.3 for Windows ConPTY support).
+- **Zellij is bundled** in the NSIS installer and added to PATH automatically
+  (≥ 0.44.3 for Windows ConPTY support). No separate installation required.
 - **Code signing not configured.** The installer is unsigned, so Windows
   SmartScreen will warn on first launch. Code-signing certificate
   procurement is tracked separately (see LICENSES.md / pinned-versions.md
   for related procurement items).
+
+## Known issues
+
+- **Wizard's "Zellij not installed" gate in dev** — on a machine that
+  doesn't already have Zellij on `PATH`, the first-launch wizard's
+  Zellij-detection probe only walks `PATH` and does not consult the
+  bundled `zellij.exe` shipped at
+  `apps/desktop/src-tauri/binaries/zellij.exe`. Result: a red
+  "Zellij not installed" screen with only a Recheck button. Workarounds
+  (winget install or `PATH` override) documented at
+  [troubleshooting/zellij-wizard-detection.md](troubleshooting/zellij-wizard-detection.md).
+  Root-cause code fix tracked at
+  [NEVAAA-136](/NEVAAA/issues/NEVAAA-136).
 
 ## Verification
 

@@ -33,13 +33,15 @@ export interface ProgressSignal {
 // Lightweight in-process event bus. Callers subscribe and the bus
 // dispatches to all listeners on emit.
 //
-// In the desktop app, a Tauri event listener calls `ProgressBus.emit()`
+// In the desktop app, a Tauri event listener calls `defaultProgressBus.emit()`
 // whenever the Rust side fires a "progress-signal" event.
-// In test environments, inject signals directly with `ProgressBus.emit()`.
+// In test environments, inject signals directly with `defaultProgressBus.emit()`
+// — or, better, instantiate a fresh `new ProgressBusImpl()` and inject it
+// into the code under test (the engine takes a `{ bus }` option for this).
 
 type SignalCallback = (signal: ProgressSignal) => void;
 
-class ProgressBusImpl {
+export class ProgressBusImpl {
   private listeners = new Set<SignalCallback>();
 
   /** Register a callback. Returns an unsubscribe function. */
@@ -75,4 +77,17 @@ class ProgressBusImpl {
   }
 }
 
-export const ProgressBus = new ProgressBusImpl();
+/**
+ * The shared, process-wide progress bus. Production code should use this
+ * directly; tests should construct their own `new ProgressBusImpl()` and
+ * inject it into the code under test (the workflow engine accepts a
+ * `{ bus }` constructor option for exactly this reason).
+ */
+export const defaultProgressBus: ProgressBusImpl = new ProgressBusImpl();
+
+/**
+ * @deprecated Import `defaultProgressBus` instead. Kept as a deprecated
+ * alias for one milestone so existing call sites keep compiling.
+ * Removal target: end of M5.
+ */
+export const ProgressBus: ProgressBusImpl = defaultProgressBus;

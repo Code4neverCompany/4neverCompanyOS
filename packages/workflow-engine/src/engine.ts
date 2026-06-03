@@ -5,17 +5,25 @@
 // Architecture: D-12
 // Implementing stories: M4 Story 4.1-4.6
 //
+// Story 4.1 (this commit): workflow bodies are no longer hardcoded — the
+// engine reads the YAML at runtime via the `read_workflow_yaml` Tauri
+// command, parses it with `js-yaml`, and validates against the Zod
+// schema in `@c4n/core`. The `loadWorkflow()` method is the single
+// entry point; `loader.ts` owns the parse + validate + convert logic.
+//
 // Story 4.2: Engine core — phase state machine, persona dispatch via
 // spawn_dynamic_persona, vault artifact polling, workflow.phase.advanced
 // bus events via bus_publish.
 //
-// Story 4.5: Emits ProgressBus.emitStoryState() on phase start and phase
-// approval to feed the stall detector's rolling window.
+// Story 4.5: Emits `defaultProgressBus.emitStoryState()` on phase start and phase
+// approval to feed the stall detector's rolling window. The bus is
+// injectable for tests (see `new WorkflowEngine({ bus })`).
 //
 // Story 4.6: brownfield workflow — ingest → analyze → refactor-plan phases.
 
 import { invoke } from "@tauri-apps/api/core";
-import { ProgressBus } from "@c4n/progress-signal";
+import { defaultProgressBus, type ProgressBusImpl } from "@c4n/progress-signal";
+import { loadWorkflowFromYaml } from "./loader";
 
 export interface WorkflowPhasePersona {
   name: string;
@@ -100,243 +108,49 @@ export class WorkflowEngine {
   private vaultPoller: ReturnType<typeof setInterval> | null = null;
   private currentWorkflow: WorkflowMetadata | null = null;
   private pendingApprovalPhase: WorkflowPhase | null = null;
+  /**
+   * Progress bus used for `emitStoryState` signals. Defaults to the
+   * package-level singleton for production; tests can construct an
+   * engine with `new WorkflowEngine({ bus: myBus })` to inject a
+   * fresh instance and assert that emissions land only on it.
+   */
+  private bus: ProgressBusImpl = defaultProgressBus;
+
+  constructor(opts?: { bus?: ProgressBusImpl }) {
+    if (opts?.bus) {
+      this.bus = opts.bus;
+    }
+  }
 
   async listWorkflows(): Promise<Array<{ id: string; name: string; description: string }>> {
     return invoke<Array<{ id: string; name: string; description: string }>>("list_workflows");
   }
 
+  /**
+   * Read a workflow's full phase list from disk. Pulls the catalog
+   * metadata (id/name/description) from the existing `list_workflows`
+   * command, then reads the YAML body via the new `read_workflow_yaml`
+   * command, parses it through `js-yaml`, and validates against the
+   * Zod schema in `@c4n/core`. Throws `WorkflowLoadError` on any
+   * failure mode (empty body, syntax error, schema violation). The
+   * returned object merges catalog metadata with the parsed phases.
+   */
   async loadWorkflow(workflowId: string): Promise<WorkflowMetadata> {
-    const phases = await this.loadWorkflowPhases(workflowId);
+    const yamlBody = await invoke<string>("read_workflow_yaml", { workflowId });
+    const loaded = loadWorkflowFromYaml(yamlBody);
+
     const meta = await this.listWorkflows();
     const entry = meta.find((m) => m.id === workflowId);
+
     return {
       id: workflowId,
-      name: entry?.name ?? workflowId,
-      description: entry?.description ?? "",
-      phases,
+      // Prefer the YAML's own name/description when present — users may
+      // edit the YAML to retitle a workflow without touching Rust. Fall
+      // back to the catalog's metadata for unknown fields.
+      name: loaded.workflow.name ?? entry?.name ?? workflowId,
+      description: loaded.workflow.description ?? entry?.description ?? "",
+      phases: loaded.phases,
     };
-  }
-
-  private async loadWorkflowPhases(workflowId: string): Promise<WorkflowPhase[]> {
-    const PHASES: Record<string, WorkflowPhase[]> = {
-      "greenfield-fullstack": [
-        {
-          id: "brief",
-          label: "Brief",
-          description: "Analyst interrogates the idea and produces a project brief.",
-          personas: [
-            {
-              name: "Analyst",
-              backing_cli: "claude",
-              lifecycle: "ephemeral",
-              bmad_phase: "Brief",
-              phase_skills: ["bmad-agent-analyst", "bmad-product-brief"],
-              task_prompt:
-                "You are the **Analyst** persona operating in the **Brief** phase of the BMAD workflow.\n\nYour job is to take a vague project idea and produce a structured project brief. Ask probing questions to clarify scope, users, constraints, and success criteria.\n\nRelevant BMAD skills: The bmad-agent-analyst and bmad-product-brief skills are registered for this phase. Use them to guide your analysis approach.\n\nOutput the brief to vault/projects/{project_id}/bmad/01-brief.md",
-            },
-          ],
-          artifact: {
-            path: "vault/projects/{project_id}/bmad/01-brief.md",
-            description: "Project brief (markdown)",
-          },
-          approval_required: true,
-          governance_gate: true,
-        },
-        {
-          id: "plan",
-          label: "Plan",
-          description: "PM transforms the brief into a full PRD and story backlog.",
-          personas: [
-            {
-              name: "PM",
-              backing_cli: "claude",
-              lifecycle: "ephemeral",
-              bmad_phase: "Plan",
-              phase_skills: ["bmad-agent-pm", "bmad-prd", "bmad-create-epics-and-stories"],
-              task_prompt:
-                "You are the **PM** persona operating in the **Plan** phase of the BMAD workflow.\n\nRead the brief at vault/projects/{project_id}/bmad/01-brief.md and produce a full PRD at vault/projects/{project_id}/bmad/02-prd.md. Then create user stories at vault/projects/{project_id}/bmad/stories/ directory.\n\nRelevant BMAD skills: bmad-agent-pm and bmad-prd are registered for this phase. Use them to guide PRD creation and story decomposition.",
-            },
-          ],
-          artifact: {
-            path: "vault/projects/{project_id}/bmad/02-prd.md",
-            description: "Product Requirements Document (PRD)",
-          },
-          approval_required: true,
-          governance_gate: true,
-        },
-        {
-          id: "architecture",
-          label: "Architecture",
-          description: "Architect designs the system structure and key technical decisions.",
-          personas: [
-            {
-              name: "Architect",
-              backing_cli: "claude",
-              lifecycle: "ephemeral",
-              bmad_phase: "Architecture",
-              phase_skills: [
-                "bmad-agent-architect",
-                "bmad-create-architecture",
-                "bmad-create-epics-and-stories",
-              ],
-              task_prompt:
-                "You are the **Architect** persona operating in the **Architecture** phase of the BMAD workflow.\n\nRead the brief at vault/projects/{project_id}/bmad/01-brief.md and PRD at vault/projects/{project_id}/bmad/02-prd.md and produce an architecture document at vault/projects/{project_id}/bmad/03-architecture.md. Cover: system overview, data model, API surface, technology choices, directory structure, and non-functional requirements.\n\nRelevant BMAD skills: bmad-agent-architect and bmad-create-architecture are registered for this phase. Use them to guide your architectural analysis.",
-            },
-          ],
-          artifact: {
-            path: "vault/projects/{project_id}/bmad/03-architecture.md",
-            description: "Architecture decision document",
-          },
-          approval_required: true,
-          governance_gate: true,
-        },
-        {
-          id: "solutioning",
-          label: "Solutioning",
-          description: "SM refines stories and plans implementation approach.",
-          personas: [
-            {
-              name: "SM",
-              backing_cli: "claude",
-              lifecycle: "ephemeral",
-              bmad_phase: "Solutioning",
-              phase_skills: ["bmad-create-epics-and-stories", "bmad-check-implementation-readiness"],
-              task_prompt:
-                "You are the **SM** (Solution Manager) persona operating in the **Solutioning** phase of the BMAD workflow.\n\nReview the stories in vault/projects/{project_id}/bmad/stories/ and the architecture at vault/projects/{project_id}/bmad/03-architecture.md. Add acceptance criteria, estimate effort, and flag dependencies. Output to vault/projects/{project_id}/bmad/04-solutioning.md\n\nRelevant BMAD skills: bmad-create-epics-and-stories and bmad-check-implementation-readiness are registered for this phase.",
-            },
-          ],
-          artifact: {
-            path: "vault/projects/{project_id}/bmad/04-solutioning.md",
-            description: "Solutioning summary with refined stories",
-          },
-          approval_required: true,
-          governance_gate: true,
-        },
-        {
-          id: "implementation",
-          label: "Implementation",
-          description:
-            "Dev and Frontend Designer implement the code skeleton from approved stories.",
-          personas: [
-            {
-              name: "Dev",
-              backing_cli: "claude",
-              lifecycle: "persistent",
-              bmad_phase: "Implementation",
-              phase_skills: ["bmad-agent-dev", "bmad-dev-story", "bmad-create-story"],
-              task_prompt:
-                "You are the **Dev** persona operating in the **Implementation** phase of the BMAD workflow.\n\nPick up stories from vault/projects/{project_id}/bmad/stories/ and implement them. Write actual code following the architecture at vault/projects/{project_id}/bmad/03-architecture.md. Commit each story's implementation.\n\nRelevant BMAD skills: bmad-agent-dev, bmad-dev-story, and bmad-create-story are registered for this phase. Use them to guide story implementation and checkpoint reviews.",
-            },
-            {
-              name: "Frontend Designer",
-              backing_cli: "aggy",
-              lifecycle: "persistent",
-              bmad_phase: "Implementation",
-              phase_skills: ["bmad-agent-ux-designer", "bmad-create-ux-design"],
-              task_prompt:
-                "You are the **Frontend Designer** persona operating in the **Implementation** phase of the BMAD workflow.\n\nWork on UI components and styling based on the stories in vault/projects/{project_id}/bmad/stories/. Follow the architecture at vault/projects/{project_id}/bmad/03-architecture.md\n\nRelevant BMAD skills: bmad-agent-ux-designer and bmad-create-ux-design are registered for this phase. Use them to guide UX design decisions.",
-            },
-          ],
-          artifact: {
-            path: "vault/projects/{project_id}/bmad/05-implementation.md",
-            description: "Implementation status summary",
-          },
-          approval_required: true,
-          governance_gate: true,
-        },
-        {
-          id: "qa",
-          label: "QA",
-          description: "QA persona reviews implementation and produces test reports.",
-          personas: [
-            {
-              name: "QA",
-              backing_cli: "claude",
-              lifecycle: "ephemeral",
-              bmad_phase: "QA",
-              phase_skills: ["bmad-code-review", "bmad-qa-generate-e2e-tests"],
-              task_prompt:
-                "You are the **QA** persona operating in the **QA** phase of the BMAD workflow.\n\nReview the implementation against the stories in vault/projects/{project_id}/bmad/stories/. Check acceptance criteria, write test cases, and report results at vault/projects/{project_id}/bmad/qa-report.md\n\nRelevant BMAD skills: bmad-code-review and bmad-qa-generate-e2e-tests are registered for this phase. Use them to guide your review and test generation.",
-            },
-          ],
-          artifact: {
-            path: "vault/projects/{project_id}/bmad/qa-report.md",
-            description: "QA report with test results",
-          },
-          approval_required: true,
-          governance_gate: true,
-        },
-      ],
-      brownfield: [
-        {
-          id: "ingest",
-          label: "Ingest",
-          description: "Scan and catalog the existing codebase structure.",
-          personas: [
-            {
-              name: "Analyst",
-              backing_cli: "claude",
-              lifecycle: "ephemeral",
-              bmad_phase: "Ingest",
-              phase_skills: ["bmad-document-project", "bmad-domain-research"],
-              task_prompt:
-                "You are the **Analyst** persona operating in the **Ingest** phase of the BMAD workflow (brownfield path).\n\nYour job is to ingest an existing codebase. Scan the repository at the provided project path, catalog its structure (languages, frameworks, key files, directory layout), and produce a summary at vault/projects/{project_id}/bmad/01-ingest.md. Be thorough — identify the tech stack, entry points, and overall architecture.\n\nRelevant BMAD skills: bmad-document-project is registered for this phase. Use it to guide your documentation approach.",
-            },
-          ],
-          artifact: {
-            path: "vault/projects/{project_id}/bmad/01-ingest.md",
-            description: "Codebase ingest summary",
-          },
-          approval_required: true,
-          governance_gate: true,
-        },
-        {
-          id: "analyze",
-          label: "Analyze",
-          description: "Analyze the codebase for issues, tech debt, and improvement opportunities.",
-          personas: [
-            {
-              name: "Architect",
-              backing_cli: "claude",
-              lifecycle: "ephemeral",
-              bmad_phase: "Analyze",
-              phase_skills: ["bmad-agent-architect", "bmad-review-adversarial-general"],
-              task_prompt:
-                "You are the **Architect** persona operating in the **Analyze** phase of the BMAD workflow (brownfield path).\n\nRead the ingest summary at vault/projects/{project_id}/bmad/01-ingest.md, then perform a deep analysis of the codebase. Identify: (1) architectural problems, (2) tech debt, (3) security concerns, (4) performance bottlenecks, (5) missing tests, (6) code smells. Output your analysis to vault/projects/{project_id}/bmad/02-analyze.md.\n\nRelevant BMAD skills: bmad-review-adversarial-general is registered for this phase. Use it to guide your critical review approach.",
-            },
-          ],
-          artifact: {
-            path: "vault/projects/{project_id}/bmad/02-analyze.md",
-            description: "Codebase analysis report",
-          },
-          approval_required: true,
-          governance_gate: true,
-        },
-        {
-          id: "refactor-plan",
-          label: "Refactor Plan",
-          description: "Produce a prioritized refactor plan based on the analysis.",
-          personas: [
-            {
-              name: "PM",
-              backing_cli: "claude",
-              lifecycle: "ephemeral",
-              bmad_phase: "Refactor Plan",
-              phase_skills: ["bmad-agent-pm", "bmad-prd"],
-              task_prompt:
-                "You are the **PM** persona operating in the **Refactor Plan** phase of the BMAD workflow (brownfield path).\n\nRead the analysis at vault/projects/{project_id}/bmad/02-analyze.md and the ingest summary at vault/projects/{project_id}/bmad/01-ingest.md. Produce a prioritized refactor plan at vault/projects/{project_id}/bmad/03-refactor-plan.md. For each refactoring item: describe the problem, the recommended fix, estimated effort (XS/S/M/L/XL), and expected impact. Prioritize by risk and value.\n\nRelevant BMAD skills: bmad-prd is registered for this phase.",
-            },
-          ],
-          artifact: {
-            path: "vault/projects/{project_id}/bmad/03-refactor-plan.md",
-            description: "Refactor plan with prioritized recommendations",
-          },
-          approval_required: false,
-        },
-      ],
-    };
-
-    return PHASES[workflowId] ?? [];
   }
 
   async startRun(
@@ -380,7 +194,7 @@ export class WorkflowEngine {
     run.status = "running";
     run.active_personas = [];
 
-    ProgressBus.emitStoryState(run.workflow_id);
+    this.bus.emitStoryState(run.workflow_id);
 
     for (const persona of phase.personas) {
       try {
@@ -607,7 +421,7 @@ export class WorkflowEngine {
     }
 
     await this.advanceToNextPhase(run, phaseToAdvance);
-    ProgressBus.emitStoryState(run.workflow_id);
+    this.bus.emitStoryState(run.workflow_id);
   }
 
   async requestChanges(runId: string, feedback: string): Promise<void> {

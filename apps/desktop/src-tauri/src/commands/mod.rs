@@ -3514,6 +3514,43 @@ pub fn list_workflows() -> Vec<WorkflowMetadata> {
         .collect()
 }
 
+/// Read a workflow's BMAD YAML body from `<vault>/_bmad/bmm/workflows/<id>.yaml`.
+///
+/// The catalog (`list_workflows`) only exposes `id`/`name`/`description`; the
+/// full phase list (with personas + artifacts) is read on demand by the
+/// TypeScript `WorkflowEngine` via this command. The YAML files are the
+/// source of truth — they live in the workspace under the user's vault so
+/// the engine reflects user edits without a rebuild.
+///
+/// Returns the raw YAML string. The TS engine parses + Zod-validates it
+/// (see `packages/core/src/schemas/bmad-workflow.ts`).
+#[tauri::command]
+pub fn read_workflow_yaml(workflow_id: String) -> Result<String, String> {
+    // Confirm the id is in the catalog — refuse unknown ids loudly so a
+    // typo in the renderer doesn't lead to a silent empty workflow.
+    if !WORKFLOW_CATALOG.iter().any(|(id, _, _)| *id == workflow_id) {
+        return Err(format!("unknown workflow id: {workflow_id}"));
+    }
+
+    let vault_path = read_workspace_config()?
+        .vault_path;
+    if vault_path.trim().is_empty() {
+        return Err(
+            "workspace vault path is empty — please run the first-run wizard before opening a project"
+                .to_string(),
+        );
+    }
+
+    let yaml_path = PathBuf::from(&vault_path)
+        .join("_bmad")
+        .join("bmm")
+        .join("workflows")
+        .join(format!("{workflow_id}.yaml"));
+
+    std::fs::read_to_string(&yaml_path)
+        .map_err(|e| format!("could not read workflow yaml at {}: {e}", yaml_path.display()))
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowMetadata {
     pub id: String,
