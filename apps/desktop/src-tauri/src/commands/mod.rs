@@ -3554,8 +3554,7 @@ pub fn read_workflow_yaml(workflow_id: String) -> Result<String, String> {
         return Err(format!("unknown workflow id: {workflow_id}"));
     }
 
-    let vault_path = read_workspace_config()?
-        .vault_path;
+    let vault_path = read_workspace_config()?.vault_path;
     if vault_path.trim().is_empty() {
         return Err(
             "workspace vault path is empty — please run the first-run wizard before opening a project"
@@ -3569,8 +3568,12 @@ pub fn read_workflow_yaml(workflow_id: String) -> Result<String, String> {
         .join("workflows")
         .join(format!("{workflow_id}.yaml"));
 
-    std::fs::read_to_string(&yaml_path)
-        .map_err(|e| format!("could not read workflow yaml at {}: {e}", yaml_path.display()))
+    std::fs::read_to_string(&yaml_path).map_err(|e| {
+        format!(
+            "could not read workflow yaml at {}: {e}",
+            yaml_path.display()
+        )
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

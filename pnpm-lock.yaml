@@ -163,9 +163,6 @@ importers:
       '@c4n/core':
         specifier: workspace:*
         version: link:../core
-      '@c4n/observability':
-        specifier: workspace:*
-        version: link:../observability
     devDependencies:
       typescript:
         specifier: 5.8.3

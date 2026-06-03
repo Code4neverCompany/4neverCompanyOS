@@ -510,14 +510,20 @@ mod tests {
     // spill file.
     #[test]
     fn backpressure_policy_default_is_drop_oldest() {
-        assert_eq!(BackpressurePolicy::default(), BackpressurePolicy::DropOldest);
+        assert_eq!(
+            BackpressurePolicy::default(),
+            BackpressurePolicy::DropOldest
+        );
     }
 
     // AC: Relay::new() and Relay::with_capacity() both default to
     // DropOldest — they preserve the existing call-site contract.
     #[test]
     fn new_and_with_capacity_default_to_drop_oldest() {
-        assert_eq!(Relay::new().backpressure_policy(), BackpressurePolicy::DropOldest);
+        assert_eq!(
+            Relay::new().backpressure_policy(),
+            BackpressurePolicy::DropOldest
+        );
         assert_eq!(
             Relay::with_capacity(64).backpressure_policy(),
             BackpressurePolicy::DropOldest

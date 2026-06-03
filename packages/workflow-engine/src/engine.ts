@@ -22,8 +22,8 @@
 // Story 4.6: brownfield workflow — ingest → analyze → refactor-plan phases.
 
 import { invoke } from "@tauri-apps/api/core";
-import { defaultProgressBus, type ProgressBusImpl } from "@c4n/progress-signal";
-import { createLogger } from "@c4n/observability";
+import { defaultProgressBus, type ProgressBusImpl, type ProgressSignal } from "@c4n/progress-signal";
+import { createLogger, startSpan } from "@c4n/observability";
 import { loadWorkflowFromYaml } from "./loader";
 
 const log = createLogger("@c4n/workflow-engine");
@@ -335,7 +335,7 @@ export class WorkflowEngine {
       // that fires between the initial poll and the poller arming.
       // Capture the unsub in a local so we can compose it with the
       // fast-clear timer's handle without overwriting either one.
-      const busUnsub = ProgressBus.subscribe(onArtifactChanged);
+      const busUnsub = defaultProgressBus.subscribe(onArtifactChanged);
 
       // Best-effort 1s guard: clear the poller entirely if the bus
       // delivered quickly. This keeps the steady-state CPU cost at

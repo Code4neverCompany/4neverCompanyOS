@@ -163,7 +163,11 @@ impl PaneHandle {
             .output()?;
         if !output.status.success() {
             return Err(ZellijError::CommandFailed {
-                cmd: format!("{} delete-session {} --force", zellij_path.display(), self.session_name),
+                cmd: format!(
+                    "{} delete-session {} --force",
+                    zellij_path.display(),
+                    self.session_name
+                ),
                 exit_code: output.status.code().unwrap_or(-1),
                 stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
             });
@@ -184,14 +188,21 @@ fn find_zellij_path() -> Option<PathBuf> {
     }
 
     if let Ok(resource_path) = env::var("TAURI_RESOURCE_PATH") {
-        let bundled = PathBuf::from(resource_path).join("binaries").join("zellij.exe");
+        let bundled = PathBuf::from(resource_path)
+            .join("binaries")
+            .join("zellij.exe");
         if bundled.exists() {
             debug!(path = %bundled.display(), "using bundled Zellij");
             return Some(bundled);
         }
     }
 
-    if Command::new("zellij").arg("--version").output().map(|o| o.status.success()).unwrap_or(false) {
+    if Command::new("zellij")
+        .arg("--version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+    {
         if let Ok(zellij_path) = which::which("zellij") {
             debug!(path = %zellij_path.display(), "using Zellij from PATH");
             return Some(zellij_path);
@@ -303,7 +314,10 @@ pub fn spawn_pane(config: SpawnPaneConfig) -> Result<PaneHandle> {
         return Err(ZellijError::CommandFailed {
             cmd: format!(
                 "{} --session {} action new-pane -- {} {:?}",
-                zellij_path.display(), config.session_name, config.command, config.args
+                zellij_path.display(),
+                config.session_name,
+                config.command,
+                config.args
             ),
             exit_code: output.status.code().unwrap_or(-1),
             stderr,
