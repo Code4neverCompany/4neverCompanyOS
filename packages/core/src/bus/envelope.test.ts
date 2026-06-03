@@ -94,6 +94,23 @@ const sample = {
       approved: true,
     },
   },
+  // security-hardening: vault scope monitor detected a write outside
+  // the persona's allowed scope. Mirrors the Rust `ViolationEvent` that
+  // `ScopeGuard::classify_and_log` builds when it fires a publisher
+  // (`crates/vault-scoping`).
+  vaultScopeViolation: {
+    schemaVersion: BUS_SCHEMA_VERSION,
+    id: "99999999-9999-4999-8999-999999999999",
+    source: "vault-scope-monitor",
+    ts: 1_700_000_000_008,
+    type: "vault.scope.violation",
+    payload: {
+      persona_id: "dev",
+      attempted_path: "/vault/personas/architect/persona.md",
+      allowed_paths: ["/vault/personas/dev"],
+      write_type: "modify",
+    },
+  },
 } satisfies Record<string, BusEnvelope>;
 
 describe("bus envelope round-trip serialization", () => {

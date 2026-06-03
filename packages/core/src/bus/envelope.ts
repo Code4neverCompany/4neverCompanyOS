@@ -41,6 +41,13 @@ export const BUS_EVENT_TYPES = [
   "spawn_proposal",
   // Story 4.2 (NEVAAA-41): Workflow phase advance
   "workflow.phase.advanced",
+  // Story 3.5 (security-hardening): vault scope monitor detected a write
+  // outside a persona's allowed scope (best-effort observability, see D-7 /
+  // FR-29). The persona-supervisor emits this when a watcher event fails
+  // the ScopeGuard's classification. The desktop UI panel surfaces it as
+  // a violation badge; the stall detector treats repeated violations as
+  // a prompt-injection signal; Hermes subscribes for cross-persona audits.
+  "vault.scope.violation",
 ] as const;
 export type BusEventType = (typeof BUS_EVENT_TYPES)[number];
 
@@ -185,6 +192,39 @@ export const WorkflowPhaseAdvancedEnvelopeSchema = z.object({
   }),
 });
 
+/**
+ * Vault scope monitor detected a write outside a persona's allowed scope
+ * (Story 3.5 / FR-29 / security-hardening). The persona-supervisor's
+ * watcher classifies every filesystem event against the persona's allowed
+ * scope roots and emits this envelope on each violation. The desktop UI
+ * panel renders it as a per-persona violation badge (already plumbed via
+ * the file-based summary command, which still works alongside this live
+ * event stream); the stall detector treats repeated violations as a
+ * prompt-injection signal; Hermes subscribes for cross-persona audits.
+ *
+ * Best-effort: per FR-29 the workspace observes but does not enforce.
+ * The persona-supervisor cannot reliably block a write on Windows without
+ * kernel hooks, so the audit trail + this live event are the
+ * canonical signals.
+ */
+export const VaultScopeViolationEnvelopeSchema = z.object({
+  ...envelopeBase,
+  type: z.literal("vault.scope.violation"),
+  payload: z.object({
+    /** Persona whose scope was violated (best-effort attribution — see D-7). */
+    persona_id: z.string().min(1),
+    /** Absolute path the persona attempted to write, as observed by the watcher. */
+    attempted_path: z.string().min(1),
+    /**
+     * Allowed scope roots the persona was supposed to write under. Empty
+     * when the persona has no attached projects (own-dir-only scope).
+     */
+    allowed_paths: z.array(z.string().min(1)),
+    /** Watcher-side classification of the write. */
+    write_type: z.enum(["create", "modify", "remove"]),
+  }),
+});
+
 // ── The discriminated union ───────────────────────────────────────────
 
 /**
@@ -199,6 +239,7 @@ export const BusEnvelopeSchema = z.discriminatedUnion("type", [
   StallResumedEnvelopeSchema,
   SpawnProposalEnvelopeSchema,
   WorkflowPhaseAdvancedEnvelopeSchema,
+  VaultScopeViolationEnvelopeSchema,
 ]);
 
 /** Inferred TypeScript type for any bus envelope. */
@@ -211,6 +252,7 @@ export type StallDetectedEnvelope = z.infer<typeof StallDetectedEnvelopeSchema>;
 export type StallResumedEnvelope = z.infer<typeof StallResumedEnvelopeSchema>;
 export type SpawnProposalEnvelope = z.infer<typeof SpawnProposalEnvelopeSchema>;
 export type WorkflowPhaseAdvancedEnvelope = z.infer<typeof WorkflowPhaseAdvancedEnvelopeSchema>;
+export type VaultScopeViolationEnvelope = z.infer<typeof VaultScopeViolationEnvelopeSchema>;
 
 // ── Helpers ───────────────────────────────────────────────────────────
 

@@ -774,5 +774,4 @@ mod tests {
             "20 completions expected"
         );
     }
-
 }

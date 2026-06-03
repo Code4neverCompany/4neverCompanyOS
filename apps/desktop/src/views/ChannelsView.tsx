@@ -33,6 +33,10 @@ const TYPE_COLOR: Record<BusEventType, string> = {
   "stall.resumed": "#6BFF8C",
   spawn_proposal: "var(--fn-gold)",
   "workflow.phase.advanced": "#B8A0FF",
+  // security-hardening: a persona's watcher observed a write outside
+  // its allowed scope. Treat as a security/audit signal — saturated red
+  // so it pops out of the feed against the routine cyan / gold / green.
+  "vault.scope.violation": "#FF6B6B",
 };
 
 export function ChannelsView() {

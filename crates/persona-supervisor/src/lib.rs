@@ -111,6 +111,23 @@ pub enum SupervisorError {
 
     #[error("json: {0}")]
     Json(#[from] serde_json::Error),
+
+    /// Caller claimed to be `claimer` while writing to a path that
+    /// targets persona `requested`. Cross-persona input injection is
+    /// rejected at the validator. See [`validate_pty_in_path`].
+    #[error(
+        "pty.in claim mismatch: caller claimed persona `{claimer}` but the path targets `{requested}`"
+    )]
+    PtyInClaimMismatch {
+        /// Persona whose `.pty.in` path was being targeted.
+        requested: String,
+        /// Persona the caller said it was acting on behalf of.
+        claimer: String,
+    },
+
+    /// `validate_pty_in_path` got a malformed (empty) persona id.
+    #[error("pty.in persona id invalid: {0}")]
+    PtyInInvalidPersonaId(String),
 }
 
 /// What the supervisor needs to know to wrap a child process.
@@ -187,6 +204,53 @@ pub fn pty_in_file_path(vault: &Path, persona_id: &str) -> PathBuf {
         .join(persona_id)
         .join("log")
         .join("current.pty.in")
+}
+
+/// Validate a write to the persona's `.pty.in` input queue.
+///
+/// `requested_persona_id` is the persona whose input path is being
+/// targeted (i.e. the value that was passed to [`pty_in_file_path`]).
+/// `claimer_persona_id` is the identity the *caller* is claiming to
+/// act on behalf of. They must match — otherwise we'd be letting one
+/// persona inject keystrokes into another persona's PTY (cross-persona
+/// injection: e.g. a buggy / compromised `dev` persona computing
+/// `pty_in_file_path(vault, "hermes")` and writing to it).
+///
+/// This is a security-hardening primitive (Story: security-hardening).
+/// The desktop's `write_persona_pty_in` Tauri command calls it with
+/// `claimer == requested` (the persona id from the IPC payload) so a
+/// future drift between the path helper and the persona id is caught
+/// at the call site. Future cross-persona IPC flows (e.g. Hermes
+/// injecting a task into a dev persona) can use the same validator
+/// with `claimer == hermes` / `requested == dev` to express the
+/// intent and have the call rejected unless the supervisor's policy
+/// explicitly allows it (a future story).
+///
+/// Returns the validated, absolute path on success. The match is
+/// exact (case-sensitive) — persona ids are slugs, not file paths, so
+/// the platform case-insensitive FS doesn't apply.
+pub fn validate_pty_in_path(
+    vault: &Path,
+    requested_persona_id: &str,
+    claimer_persona_id: &str,
+) -> Result<PathBuf, SupervisorError> {
+    if requested_persona_id.is_empty() {
+        return Err(SupervisorError::PtyInInvalidPersonaId(
+            "requested_persona_id must not be empty".to_string(),
+        ));
+    }
+    if claimer_persona_id.is_empty() {
+        return Err(SupervisorError::PtyInInvalidPersonaId(
+            "claimer_persona_id must not be empty".to_string(),
+        ));
+    }
+    if requested_persona_id != claimer_persona_id {
+        return Err(SupervisorError::PtyInClaimMismatch {
+            requested: requested_persona_id.to_string(),
+            claimer: claimer_persona_id.to_string(),
+        });
+    }
+    Ok(pty_in_file_path(vault, requested_persona_id))
 }
 
 /// Spawn the child described by `config` inside a PTY with optional
@@ -641,6 +705,81 @@ mod tests {
         let a = pty_in_file_path(Path::new("/vault"), "hermes");
         let b = pty_in_file_path(Path::new("/vault"), "hermes");
         assert_eq!(a, b, "pty.in path must be deterministic across calls");
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // security-hardening: validate_pty_in_path (cross-persona injection)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// Happy path: claimer == requested returns the same path as
+    /// [`pty_in_file_path`]. Catches future drift between the path
+    /// helper and the validator.
+    #[test]
+    fn validate_pty_in_path_accepts_self_claim() {
+        let dir = TempDir::new().unwrap();
+        let path =
+            validate_pty_in_path(dir.path(), "dev", "dev").expect("self-claim must be accepted");
+        let expected = pty_in_file_path(dir.path(), "dev");
+        assert_eq!(
+            path, expected,
+            "validator must return the same path as pty_in_file_path"
+        );
+    }
+
+    /// AC: claimer != requested is rejected with
+    /// [`SupervisorError::PtyInClaimMismatch`]. The threat is a
+    /// buggy / compromised persona writing to another persona's
+    /// input path.
+    #[test]
+    fn validate_pty_in_path_rejects_cross_persona_claim() {
+        let dir = TempDir::new().unwrap();
+        // Persona A claims to be writing for persona B (its own .pty.in).
+        let err = validate_pty_in_path(dir.path(), "hermes", "dev")
+            .expect_err("cross-persona claim must be rejected");
+        match err {
+            SupervisorError::PtyInClaimMismatch { requested, claimer } => {
+                assert_eq!(requested, "hermes");
+                assert_eq!(claimer, "dev");
+            }
+            other => panic!("expected PtyInClaimMismatch, got {other:?}"),
+        }
+    }
+
+    /// Empty persona ids (either side) are an error, not a "claim
+    /// matches" outcome. Defends against a caller accidentally
+    /// passing an empty string and getting back the
+    /// `<vault>/personas//log/current.pty.in` path with a stray `//`.
+    #[test]
+    fn validate_pty_in_path_rejects_empty_ids() {
+        let dir = TempDir::new().unwrap();
+        let err = validate_pty_in_path(dir.path(), "", "dev")
+            .expect_err("empty requested must be rejected");
+        assert!(matches!(err, SupervisorError::PtyInInvalidPersonaId(_)));
+
+        let err = validate_pty_in_path(dir.path(), "dev", "")
+            .expect_err("empty claimer must be rejected");
+        assert!(matches!(err, SupervisorError::PtyInInvalidPersonaId(_)));
+    }
+
+    /// The validator's accepted path is exactly the same path the
+    /// desktop's `pty_in_path_for` helper computes, so the wired
+    /// call site (write_persona_pty_in) doesn't need to know about
+    /// the validator's internals — it just uses the returned path.
+    #[test]
+    fn validate_pty_in_path_matches_desktop_helper() {
+        // The desktop's helper is duplicated logic; this test pins
+        // the contract that both implementations agree on the path
+        // layout. If `pty_in_file_path` ever moves, the desktop's
+        // helper and the validator move together (and the test
+        // catches the drift).
+        let dir = TempDir::new().unwrap();
+        let v = dir.path();
+        let got = validate_pty_in_path(v, "hermes", "hermes").unwrap();
+        let s = got.to_string_lossy().replace('\\', "/");
+        assert!(
+            s.ends_with("personas/hermes/log/current.pty.in"),
+            "validator path layout drifted: {s}"
+        );
     }
 
     /// JSONL append helper still works the same. Catches regressions
