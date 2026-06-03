@@ -1524,7 +1524,9 @@ fn resolve_skill_source_path(project_root: &Path, skill_id: &str) -> Option<Path
         "bmad-product-brief" => "_bmad/bmm/1-analysis/bmad-product-brief/SKILL.md",
         "bmad-domain-research" => "_bmad/bmm/1-analysis/research/bmad-domain-research/SKILL.md",
         "bmad-market-research" => "_bmad/bmm/1-analysis/research/bmad-market-research/SKILL.md",
-        "bmad-technical-research" => "_bmad/bmm/1-analysis/research/bmad-technical-research/SKILL.md",
+        "bmad-technical-research" => {
+            "_bmad/bmm/1-analysis/research/bmad-technical-research/SKILL.md"
+        }
         // BMM — 2-plan-workflows
         "bmad-agent-pm" => "_bmad/bmm/2-plan-workflows/bmad-agent-pm/SKILL.md",
         "bmad-agent-ux-designer" => "_bmad/bmm/2-plan-workflows/bmad-agent-ux-designer/SKILL.md",
@@ -1532,13 +1534,16 @@ fn resolve_skill_source_path(project_root: &Path, skill_id: &str) -> Option<Path
         "bmad-prd" => "_bmad/bmm/2-plan-workflows/bmad-prd/SKILL.md",
         // BMM — 3-solutioning
         "bmad-agent-architect" => "_bmad/bmm/3-solutioning/bmad-agent-architect/SKILL.md",
-        "bmad-check-implementation-readiness" =>
-            "_bmad/bmm/3-solutioning/bmad-check-implementation-readiness/SKILL.md",
+        "bmad-check-implementation-readiness" => {
+            "_bmad/bmm/3-solutioning/bmad-check-implementation-readiness/SKILL.md"
+        }
         "bmad-create-architecture" => "_bmad/bmm/3-solutioning/bmad-create-architecture/SKILL.md",
-        "bmad-create-epics-and-stories" =>
-            "_bmad/bmm/3-solutioning/bmad-create-epics-and-stories/SKILL.md",
-        "bmad-generate-project-context" =>
-            "_bmad/bmm/3-solutioning/bmad-generate-project-context/SKILL.md",
+        "bmad-create-epics-and-stories" => {
+            "_bmad/bmm/3-solutioning/bmad-create-epics-and-stories/SKILL.md"
+        }
+        "bmad-generate-project-context" => {
+            "_bmad/bmm/3-solutioning/bmad-generate-project-context/SKILL.md"
+        }
         // BMM — 4-implementation
         "bmad-agent-dev" => "_bmad/bmm/4-implementation/bmad-agent-dev/SKILL.md",
         "bmad-checkpoint-preview" => "_bmad/bmm/4-implementation/bmad-checkpoint-preview/SKILL.md",
@@ -1547,8 +1552,9 @@ fn resolve_skill_source_path(project_root: &Path, skill_id: &str) -> Option<Path
         "bmad-create-story" => "_bmad/bmm/4-implementation/bmad-create-story/SKILL.md",
         "bmad-dev-story" => "_bmad/bmm/4-implementation/bmad-dev-story/SKILL.md",
         "bmad-investigate" => "_bmad/bmm/4-implementation/bmad-investigate/SKILL.md",
-        "bmad-qa-generate-e2e-tests" =>
-            "_bmad/bmm/4-implementation/bmad-qa-generate-e2e-tests/SKILL.md",
+        "bmad-qa-generate-e2e-tests" => {
+            "_bmad/bmm/4-implementation/bmad-qa-generate-e2e-tests/SKILL.md"
+        }
         "bmad-quick-dev" => "_bmad/bmm/4-implementation/bmad-quick-dev/SKILL.md",
         "bmad-retrospective" => "_bmad/bmm/4-implementation/bmad-retrospective/SKILL.md",
         "bmad-sprint-planning" => "_bmad/bmm/4-implementation/bmad-sprint-planning/SKILL.md",
@@ -1565,13 +1571,11 @@ fn resolve_skill_source_path(project_root: &Path, skill_id: &str) -> Option<Path
         "bmad-customize" => "_bmad/core/bmad-customize/SKILL.md",
         "bmad-distillator" => "_bmad/core/bmad-distillator/SKILL.md",
         "bmad-editorial-review-prose" => "_bmad/core/bmad-editorial-review-prose/SKILL.md",
-        "bmad-editorial-review-structure" =>
-            "_bmad/core/bmad-editorial-review-structure/SKILL.md",
+        "bmad-editorial-review-structure" => "_bmad/core/bmad-editorial-review-structure/SKILL.md",
         "bmad-help" => "_bmad/core/bmad-help/SKILL.md",
         "bmad-index-docs" => "_bmad/core/bmad-index-docs/SKILL.md",
         "bmad-party-mode" => "_bmad/core/bmad-party-mode/SKILL.md",
-        "bmad-review-adversarial-general" =>
-            "_bmad/core/bmad-review-adversarial-general/SKILL.md",
+        "bmad-review-adversarial-general" => "_bmad/core/bmad-review-adversarial-general/SKILL.md",
         "bmad-review-edge-case-hunter" => "_bmad/core/bmad-review-edge-case-hunter/SKILL.md",
         "bmad-shard-doc" => "_bmad/core/bmad-shard-doc/SKILL.md",
         _ => return None,
@@ -1866,7 +1870,10 @@ pub fn spawn_dynamic_persona(
     //   skills copy is project-scoped bmad/skills/ and does not pollute the
     //   persona's canonical vault area.
     let (bus_identity, persona_vault_dir) = if is_ephemeral {
-        (build_bus_identity(&slug), vault_path.to_string_lossy().into_owned())
+        (
+            build_bus_identity(&slug),
+            vault_path.to_string_lossy().into_owned(),
+        )
     } else {
         let meta =
             ensure_persona_vault_dir(&vault_path, &slug, "dynamic", &lifecycle, &backing_cli)?;
@@ -2648,20 +2655,17 @@ pub fn stop_persona_pty_tail(
 // fixed `current.pty.in` (no date rotation), truncated at supervisor
 // startup so previous-session input doesn't leak.
 
-/// Vault path for the persona's `.pty.in` input queue. Mirror of the
-/// supervisor's `pty_in_file_path` — kept independent here so the
-/// desktop crate doesn't need a dep on the supervisor crate (which
-/// would slow down the desktop's compile times for one helper function).
-/// The path layout is part of the supervisor's public contract; a
-/// future supervisor change moving the file would break this too.
-fn pty_in_path_for(vault: &Path, persona_id: &str) -> PathBuf {
-    vault
-        .join("personas")
-        .join(persona_id)
-        .join("log")
-        .join("current.pty.in")
-}
-
+/// Vault path for the persona's `.pty.in` input queue.
+///
+/// **security-hardening:** the canonical path-resolution + cross-persona
+/// claim check now lives in
+/// [`c4n_persona_supervisor::validate_pty_in_path`]. Callers
+/// (i.e. [`write_persona_pty_in`]) must use the validator — it returns
+/// the absolute path on success so no local helper is needed here. The
+/// pre-hardening duplicate (`pty_in_path_for`) was removed when the
+/// dep on the supervisor crate was added; the supervisor's path layout
+/// is the source of truth.
+///
 /// Append user-typed bytes to the persona's `.pty.in` file. The
 /// supervisor's watcher (Story 1.16d) drains them into the child's
 /// stdin at ~50ms cadence.
@@ -2675,6 +2679,17 @@ fn pty_in_path_for(vault: &Path, persona_id: &str) -> PathBuf {
 /// Bytes are taken as `Vec<u8>` rather than `String` so xterm.js can
 /// send arbitrary key sequences (arrow keys, function keys, Esc-sequences,
 /// Ctrl-C, etc.) without UTF-8 round-tripping mangling them.
+///
+/// **security-hardening:** the persona_id from the IPC payload is
+/// validated via [`c4n_persona_supervisor::validate_pty_in_path`]
+/// before any filesystem work. The validator enforces the
+/// `claimer == requested` invariant — a future cross-persona IPC
+/// flow (Hermes injecting a task into a dev persona) can pass a
+/// different claimer and the validator rejects the write. For the
+/// current single-claimer IPC contract the claimer is the same as
+/// the requested persona id; the validator is the safety net that
+/// catches a future drift between this command and the supervisor's
+/// path helper.
 #[tauri::command]
 pub fn write_persona_pty_in(persona_id: String, bytes: Vec<u8>) -> Result<(), String> {
     if bytes.is_empty() {
@@ -2685,7 +2700,14 @@ pub fn write_persona_pty_in(persona_id: String, bytes: Vec<u8>) -> Result<(), St
 
     let workspace = read_workspace_config()?;
     let vault = PathBuf::from(workspace.vault_path);
-    let path = pty_in_path_for(&vault, &persona_id);
+
+    // Security check: refuse to write if the persona id is empty or
+    // if a future caller passes a claimer that doesn't match. The
+    // current IPC contract has no separate claimer, so we assert
+    // `claimer == requested`; the validator returns the absolute
+    // path on success.
+    let path = c4n_persona_supervisor::validate_pty_in_path(&vault, &persona_id, &persona_id)
+        .map_err(|e| format!("pty.in validation rejected write: {e}"))?;
 
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("create pty.in parent dir: {e}"))?;
@@ -3882,10 +3904,7 @@ pub async fn create_paperclip_approval(
     if !response.status().is_success() {
         let status = response.status();
         let body = response.text().await.unwrap_or_default();
-        return Err(format!(
-            "Paperclip API error {}: {}",
-            status, body
-        ));
+        return Err(format!("Paperclip API error {}: {}", status, body));
     }
 
     let body: serde_json::Value = response
@@ -4461,11 +4480,12 @@ mod tests {
 
     #[test]
     fn pty_in_path_matches_supervisor_convention() {
-        // The desktop and supervisor compute this path independently.
-        // If they disagree, keystrokes go into a file the supervisor
-        // never reads. Pin the layout here so a typo-bump in either
-        // place gets caught.
-        let path = pty_in_path_for(Path::new("/vault"), "hermes");
+        // The desktop and supervisor compute this path via the same
+        // `c4n_persona_supervisor::pty_in_file_path` helper (the
+        // security-hardening change replaced the local duplicate with
+        // the canonical implementation). Pin the layout here so a
+        // typo-bump in either place gets caught.
+        let path = c4n_persona_supervisor::pty_in_file_path(Path::new("/vault"), "hermes");
         let s = path.to_string_lossy().replace('\\', "/");
         assert!(
             s.ends_with("/personas/hermes/log/current.pty.in"),
@@ -4479,7 +4499,7 @@ mod tests {
         // NOT per-day. If a future refactor accidentally appends a
         // date suffix, the supervisor's startup truncation goes to a
         // different file than the desktop's appends → silent input loss.
-        let path = pty_in_path_for(Path::new("/v"), "dev");
+        let path = c4n_persona_supervisor::pty_in_file_path(Path::new("/v"), "dev");
         let name = path.file_name().unwrap().to_string_lossy().to_string();
         assert_eq!(name, "current.pty.in");
         assert!(

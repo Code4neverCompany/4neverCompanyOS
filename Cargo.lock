@@ -375,6 +375,7 @@ dependencies = [
  "c4n-credential-storage",
  "c4n-github-sync",
  "c4n-persona-drift",
+ "c4n-persona-supervisor",
  "c4n-platform-fs",
  "c4n-zellij-adapter",
  "chrono",
