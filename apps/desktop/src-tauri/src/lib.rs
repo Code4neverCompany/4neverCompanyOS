@@ -136,6 +136,7 @@ pub fn run() {
             ipc::bus_connection_unsubscribe,
             // Story 4.1: BMAD workflow engine — entry point.
             commands::list_workflows,
+            commands::read_workflow_yaml,
             commands::start_workflow_run,
             commands::get_workflow_run,
             commands::pause_workflow_run,
