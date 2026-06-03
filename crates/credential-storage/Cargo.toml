@@ -13,3 +13,12 @@ crate-type = ["rlib"]
 thiserror = { workspace = true }
 keyring = "3"
 serde = { workspace = true }
+
+# security-hardening: opt-in feature that compiles the in-memory backend
+# into a non-test build. Default off so the production binary never
+# contains the HashMap state; tests use the impl via #[cfg(test)] directly.
+# Downstream integration tests (e.g. desktop Tauri-command tests) can
+# enable this feature to drive the public API without a real OS keychain.
+[features]
+default = []
+test-backend = []
