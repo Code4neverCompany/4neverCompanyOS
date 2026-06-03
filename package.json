@@ -22,6 +22,7 @@
     "rust:fmt:fix": "cargo fmt --all",
     "rust:clippy": "cargo clippy --workspace --all-targets -- -D warnings",
     "rust:test": "cargo test --workspace",
+    "hooks:install": "lefthook install",
     "dev:desktop": "pnpm --filter @c4n/desktop tauri dev",
     "build:desktop": "pnpm --filter @c4n/desktop tauri build",
     "dev:wizard": "pnpm --filter @c4n/wizard tauri dev",
@@ -31,11 +32,12 @@
     "docs:preview": "pnpm --filter @c4n/docs preview"
   },
   "devDependencies": {
-    "bmad-method": "6.7.1",
-    "typescript": "5.8.3",
     "@eslint/js": "^9.17.0",
+    "bmad-method": "6.7.1",
     "eslint": "^9.17.0",
-    "typescript-eslint": "^8.20.0",
-    "prettier": "^3.4.2"
+    "lefthook": "^2.1.9",
+    "prettier": "^3.4.2",
+    "typescript": "5.8.3",
+    "typescript-eslint": "^8.20.0"
   }
 }

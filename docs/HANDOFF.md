@@ -46,13 +46,13 @@ If the interactive flow is unavailable in your session, the non-interactive form
 npx bmad-method install --modules bmm --tools claude-code --yes
 ```
 
-Verify the install by checking that a `bmad/` (or `.bmad/`) directory exists at the project root with persona files (`analyst.md`, `pm.md`, `architect.md`, etc.).
+Verify the install by checking that a `_bmad/` directory exists at the project root with persona files (`analyst.md`, `pm.md`, `architect.md`, etc.).
 
 ## Step 2 — Refine the existing brief through the Analyst persona
 
 Normally, `greenfield-fullstack` starts with the Analyst persona interrogating a vague idea to produce a project brief. We already have a brief (`docs/4neverCompany_OS_Brief.md` at v0.6). So the Analyst's job is **refinement and validation**, not discovery.
 
-Load the Analyst persona by following the BMAD-generated instructions (typically: open `bmad/agents/analyst.md` or run a BMAD-provided command). When the Analyst is active, give it this instruction:
+Load the Analyst persona by following the BMAD-generated instructions (typically: open `_bmad/bmm/agents/analyst.md` or run a BMAD-provided command). When the Analyst is active, give it this instruction:
 
 > A complete project brief already exists at `docs/4neverCompany_OS_Brief.md`. Read it in full. Treat it as authoritative on vision, architecture, and scope. Your task is to:
 >
@@ -110,14 +110,14 @@ These are decisions the brief and build plan deliberately defer, and BMAD will s
 │   ├── 4neverCompany_OS_Brief.md        ← source of truth (vision)
 │   ├── 4neverCompany_OS_Build_Plan.md   ← source of truth (phasing)
 │   └── HANDOFF.md                        ← this file
-├── bmad/                                  ← created by `npx bmad-method install`
-│   ├── agents/
-│   └── workflows/
-├── .bmad-artifacts/                       ← BMAD produces these as personas run
-│   ├── brief.md
-│   ├── prd.md
-│   ├── architecture.md
-│   └── stories/
+├── _bmad/                                 ← created by `npx bmad-method install`
+│   ├── bmm/
+│   │   ├── agents/                       (analyst.md, pm.md, architect.md, …)
+│   │   └── workflows/
+│   └── core/
+├── _bmad-output/                          ← BMAD produces these as personas run
+│   ├── planning-artifacts/                (brief, prd, architecture, epics, …)
+│   └── implementation-artifacts/         (stories, qa-reports, …)
 ├── .git/
 └── README.md                              ← write once Architect stage is done
 ```
