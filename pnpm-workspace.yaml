@@ -8,6 +8,8 @@ packages:
 # additive guard belt-and-suspenders.
 allowBuilds:
   esbuild: true
+  lefthook: true
 
 onlyBuiltDependencies:
   - esbuild
+  - lefthook

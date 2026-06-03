@@ -30,3 +30,42 @@ apps/*/src-tauri/binaries/
 
 # TypeScript incremental build cache
 *.tsbuildinfo
+**/tsconfig.tsbuildinfo
+
+# ─── Build / test / coverage outputs (explicit) ────────────────────
+# Generic build output, in case a future tool uses a non-`dist/` name
+build/
+**/build/
+
+# Vitest / Jest / coverage reporters
+coverage/
+**/coverage/
+*.lcov
+
+# ─── Environment & secrets ──────────────────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+.env.test
+
+# ─── VitePress ──────────────────────────────────────────────────────
+# VitePress cache + temp dirs (apps/docs/.vitepress/)
+apps/docs/.vitepress/cache/
+apps/docs/.vitepress/dist/
+
+# ─── Paperclip runtime / orchestration state ───────────────────────
+# Paperclip creates a per-checkout worktree pool + control plane
+# metadata. None of it is source.
+.paperclip/
+.paperclip/worktrees/
+
+# ─── Mavis / local agent runtime scratchpads ────────────────────────
+# Per-session Mavis artifacts (rooted in ~/.mavis, but never committable
+# if they ever land in the working tree).
+.mavis/
+
+# ─── Lefthook / git hooks install cache ─────────────────────────────
+.lefthook/
+.hooky/

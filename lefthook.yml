@@ -1,0 +1,62 @@
+# Lefthook configuration for 4neverCompany OS.
+#
+# One hook manager, two stacks. The "pre-commit" hook is the fast
+# one (format + lint + cargo fmt/clippy) so the inner dev loop
+# stays snappy; the heavy "pre-push" hook (typecheck + test +
+# cargo test) catches what pre-commit doesn't.
+#
+# To bypass a hook for a one-off (e.g. WIP commit), use
+# `git commit --no-verify` and call it out in the PR description.
+#
+# Install: `pnpm hooks:install` (= `lefthook install`)
+# Manual runs:
+#   - `pnpm format` / `pnpm lint` / `pnpm rust:fmt` / `pnpm rust:clippy`
+#   - `pnpm typecheck` / `pnpm test` / `pnpm rust:test`
+#   - or `lefthook run pre-commit` / `lefthook run pre-push`
+#
+# `*.md` and `*.txt` changes are excluded from the heavy pre-push
+# steps (typecheck / test) so a docs-only commit doesn't burn the
+# full test suite. Pre-commit steps still run on docs so prettier
+# catches a markdown typo before it lands.
+
+min_version: 1.6.0
+
+# Quieter default output: skip the per-step success / execution
+# lines, keep summary + failure + skips. Set `output: false` to
+# silence everything except errors.
+output:
+  - meta
+  - summary
+  - failure
+  - skips
+
+pre-commit:
+  parallel: true
+  commands:
+    pnpm-format:
+      run: pnpm format
+    pnpm-lint:
+      run: pnpm lint
+    cargo-fmt:
+      run: cargo fmt --all -- --check
+    cargo-clippy:
+      run: cargo clippy --workspace --all-targets -- -D warnings
+
+pre-push:
+  parallel: true
+  commands:
+    pnpm-typecheck:
+      # Skip when the only changed files are docs / plain text.
+      # Per lefthook docs: "If you've specified `glob` but don't
+      # have a files template in `run` option, lefthook will check
+      # `{staged_files}` for `pre-commit` hook and `{push_files}`
+      # for `pre-push` hook and apply filtering. If no files left,
+      # the command will be skipped."
+      glob: "!**/*.{md,mdx,txt}"
+      run: pnpm typecheck
+    pnpm-test:
+      glob: "!**/*.{md,mdx,txt}"
+      run: pnpm test
+    cargo-test:
+      glob: "!**/*.{md,mdx,txt}"
+      run: cargo test --workspace
