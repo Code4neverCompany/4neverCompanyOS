@@ -15,6 +15,15 @@
 //!      matching the schema pinned in `docs/vault-layout.md`.
 //!   3. [`ScopeMonitor`] — a `notify`-based watcher (D-4) that feeds live
 //!      filesystem write events through the guard and logs the violations.
+//!   4. [`ViolationPublisher`] + [`ViolationEvent`] — security-hardening
+//!      hook that surfaces out-of-scope writes onto the bus as
+//!      `vault.scope.violation` envelopes. The default is
+//!      [`NullPublisher`] (no-op, matches the pre-hardening behavior);
+//!      the persona-supervisor wires a real publisher when running inside
+//!      a context that has access to the bus relay (the desktop process
+//!      observes the log file independently via the existing
+//!      `persona_scope_violations` Tauri command and can publish from
+//!      there as a future enhancement).
 //!
 //! ## Best-effort attribution caveat
 //!
@@ -29,7 +38,7 @@
 //! as a signal, not proof.
 //!
 //! Architecture: D-7
-//! Implementing stories: M3 Story 3.5
+//! Implementing stories: M3 Story 3.5, security-hardening.
 
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -103,6 +112,71 @@ pub struct OutOfScopeEntry {
     pub caller_persona_id: String,
 }
 
+/// A bus-facing event the [`ViolationPublisher`] receives. Mirrors the
+/// payload of the `vault.scope.violation` envelope pinned in
+/// `packages/core/src/bus/envelope.ts` (Story 3.5, security-hardening).
+///
+/// We carry the data as a typed struct (not a pre-built `BusEnvelope`)
+/// because the `vault-scoping` crate deliberately has no dependency on
+/// `c4n-bus-relay` — the publisher trait is the seam that lets the
+/// persona-supervisor (or a future named-pipe bridge) translate a
+/// violation into the bus envelope format. This keeps the crate
+/// reusable in contexts that don't have a live bus (e.g. unit tests
+/// in CI, the desktop Tauri command that reads the log file).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ViolationEvent {
+    /// Persona whose scope was violated (best-effort attribution — see
+    /// the crate-level "attribution caveat").
+    pub persona_id: String,
+    /// Absolute path the persona attempted to write, as observed by the
+    /// watcher. Captured at the moment the scope guard classified the
+    /// event so a downstream publisher sees the same path the log entry
+    /// recorded.
+    pub attempted_path: String,
+    /// Allowed scope roots the persona was supposed to write under.
+    /// Empty when the persona has no attached projects (own-dir-only
+    /// scope). The desktop UI panel and stall detector consume this
+    /// list so they can show the user *what* the persona should have
+    /// written to.
+    pub allowed_paths: Vec<String>,
+    /// Watcher-side classification of the write. See [`WriteType`].
+    pub write_type: WriteType,
+    /// ISO-8601 UTC timestamp the violation was observed at, matching
+    /// the format the file-log entry uses.
+    pub ts: String,
+}
+
+/// Sink for out-of-scope write events. Implementations translate the
+/// typed [`ViolationEvent`] into a bus envelope (or some other live
+/// channel — e.g. a local IPC socket, an in-process broadcaster, or a
+/// test recorder). The trait is the seam that decouples the scope guard
+/// from any specific transport so the watcher can be unit-tested
+/// without standing up a bus.
+///
+/// The default for production builds is [`NullPublisher`], which is a
+/// no-op — same observable behavior as pre-hardening. The persona-
+/// supervisor is the only known production caller; it wires a real
+/// publisher that publishes a `vault.scope.violation` envelope onto the
+/// bus relay (see `c4n_bus_relay::Relay::publish`). Tests use
+/// [`RecordingPublisher`] to assert the event shape.
+pub trait ViolationPublisher: Send + Sync + std::fmt::Debug {
+    /// Invoked once per classified out-of-scope write, *after* the
+    /// entry has been appended to the on-disk log. Publishers must
+    /// never block on slow I/O — drop the event rather than stall the
+    /// watcher's `recv_timeout` loop. The default `NullPublisher` is
+    /// a true no-op.
+    fn publish_violation(&self, event: &ViolationEvent);
+}
+
+/// Default no-op publisher. Used when no real publisher is wired —
+/// matches the pre-hardening behavior (file log only, no bus event).
+#[derive(Debug, Default, Clone, Copy)]
+pub struct NullPublisher;
+
+impl ViolationPublisher for NullPublisher {
+    fn publish_violation(&self, _event: &ViolationEvent) {}
+}
+
 /// Pure scope classifier + violation logger for a single persona.
 ///
 /// Cloneable so the same scope rules can back both a `ScopeMonitor` and
@@ -114,20 +188,43 @@ pub struct ScopeGuard {
     /// Project IDs whose shared area (`vault/projects/<id>/`) this persona
     /// may write to. Empty means "own persona dir only".
     project_ids: Vec<String>,
+    /// Sink for live violation events (security-hardening). Defaults to
+    /// [`NullPublisher`] so existing callers (the persona-supervisor
+    /// pre-hardening and unit tests that don't care about the bus) get
+    /// the pre-hardening file-log-only behavior with no extra wiring.
+    publisher: Arc<dyn ViolationPublisher>,
 }
 
 impl ScopeGuard {
     /// Build a guard for `persona_id` rooted at `vault_root`, allowing
-    /// writes to the shared area of each project in `project_ids`.
+    /// writes to the shared area of each project in `project_ids`. Uses
+    /// [`NullPublisher`] for live event emission — same as pre-hardening.
     pub fn new(
         vault_root: impl Into<PathBuf>,
         persona_id: impl Into<String>,
         project_ids: impl IntoIterator<Item = String>,
     ) -> Self {
+        Self::new_with_publisher(vault_root, persona_id, project_ids, Arc::new(NullPublisher))
+    }
+
+    /// Build a guard with an explicit live-event publisher. Used by the
+    /// persona-supervisor to wire a real bus publisher and by tests to
+    /// inject a [`RecordingPublisher`].
+    ///
+    /// The publisher is invoked once per classified out-of-scope write
+    /// from [`classify_and_log`], *after* the log file is appended. See
+    /// [`ViolationPublisher`] for the no-block contract.
+    pub fn new_with_publisher(
+        vault_root: impl Into<PathBuf>,
+        persona_id: impl Into<String>,
+        project_ids: impl IntoIterator<Item = String>,
+        publisher: Arc<dyn ViolationPublisher>,
+    ) -> Self {
         Self {
             vault_root: vault_root.into(),
             persona_id: persona_id.into(),
             project_ids: project_ids.into_iter().collect(),
+            publisher,
         }
     }
 
@@ -167,9 +264,11 @@ impl ScopeGuard {
             .any(|root| starts_with_normalized(&norm, root))
     }
 
-    /// Classify `path`; if it's out of scope, append a log entry and
-    /// return `Ok(true)`. In-scope paths return `Ok(false)` and write
-    /// nothing. Never blocks — per FR-29 this is observability only.
+    /// Classify `path`; if it's out of scope, append a log entry, fire
+    /// the live-event publisher, and return `Ok(true)`. In-scope paths
+    /// return `Ok(false)` and write nothing. Never blocks — per FR-29
+    /// this is observability only. The file log is the source of truth;
+    /// the publisher is a best-effort live notification on top of it.
     pub fn classify_and_log(
         &self,
         path: impl AsRef<Path>,
@@ -180,12 +279,32 @@ impl ScopeGuard {
             return Ok(false);
         }
         self.log_out_of_scope_write(path, write_type)?;
+        // Fire the live-event publisher after the on-disk log so a
+        // consumer of the event can rely on the log entry already being
+        // visible to the file-based `persona_scope_violations` Tauri
+        // command. Per the ViolationPublisher contract, a publisher
+        // that fails or panics is the publisher's problem — we don't
+        // unwrap here.
+        let event = ViolationEvent {
+            persona_id: self.persona_id.clone(),
+            attempted_path: path.to_string_lossy().to_string(),
+            allowed_paths: self
+                .allowed_roots()
+                .iter()
+                .map(|p| p.to_string_lossy().to_string())
+                .collect(),
+            write_type,
+            ts: now_iso8601(),
+        };
+        self.publisher.publish_violation(&event);
         Ok(true)
     }
 
     /// Append an out-of-scope entry for `path` to this persona's log.
     /// Callers that have already classified the write use this directly;
-    /// most callers want [`ScopeGuard::classify_and_log`].
+    /// most callers want [`ScopeGuard::classify_and_log`]. Does NOT fire
+    /// the publisher — by the time you call this directly the violation
+    /// is "log only", which is what ad-hoc classification code wants.
     pub fn log_out_of_scope_write(
         &self,
         path: impl AsRef<Path>,
@@ -527,14 +646,20 @@ mod tests {
         let g_dev = guard_in(&dir, "dev", &[]);
         let g_architect = guard_in(&dir, "architect", &[]);
 
-        let dev_out = dir.path().join("personas").join("architect").join("dev_write.md");
-        let arch_out = dir.path().join("personas").join("dev").join("arch_write.md");
+        let dev_out = dir
+            .path()
+            .join("personas")
+            .join("architect")
+            .join("dev_write.md");
+        let arch_out = dir
+            .path()
+            .join("personas")
+            .join("dev")
+            .join("arch_write.md");
 
         std::thread::scope(|s| {
             s.spawn(|| {
-                g_dev
-                    .classify_and_log(&dev_out, WriteType::Create)
-                    .unwrap();
+                g_dev.classify_and_log(&dev_out, WriteType::Create).unwrap();
             });
             s.spawn(|| {
                 g_architect
@@ -591,8 +716,7 @@ mod tests {
                 .join("personas")
                 .join(format!("persona-{}", (i + 1) % 20))
                 .join(format!("cross-{i}.md"));
-            g.classify_and_log(&out_path, WriteType::Modify)
-                .unwrap();
+            g.classify_and_log(&out_path, WriteType::Modify).unwrap();
         }
 
         // Each persona log should have exactly one entry
@@ -688,13 +812,17 @@ mod tests {
         std::thread::scope(|s| {
             s.spawn(|| {
                 assert!(
-                    !g_alice.classify_and_log(&shared_file_a, WriteType::Create).unwrap(),
+                    !g_alice
+                        .classify_and_log(&shared_file_a, WriteType::Create)
+                        .unwrap(),
                     "alice writing to proj-x should be in-scope"
                 );
             });
             s.spawn(|| {
                 assert!(
-                    !g_bob.classify_and_log(&shared_file_b, WriteType::Create).unwrap(),
+                    !g_bob
+                        .classify_and_log(&shared_file_b, WriteType::Create)
+                        .unwrap(),
                     "bob writing to proj-x should be in-scope"
                 );
             });
@@ -733,23 +861,28 @@ mod tests {
                             .join("personas")
                             .join(personas[j])
                             .join(format!("from-{}.md", personas[i]));
-                        g.classify_and_log(&target, WriteType::Create)
-                            .unwrap();
+                        g.classify_and_log(&target, WriteType::Create).unwrap();
                     }
                 });
             }
         });
 
-        for i in 0..personas.len() {
-            let g = guard_in(&dir, personas[i], &[]);
+        for persona in personas.iter() {
+            let g = guard_in(&dir, persona, &[]);
             let body = std::fs::read_to_string(g.log_path()).unwrap();
             let lines: Vec<&str> = body.trim_end().split('\n').collect();
-            assert_eq!(lines.len(), 4, "personas/{} should have 4 entries, got {}", personas[i], lines.len());
+            assert_eq!(
+                lines.len(),
+                4,
+                "personas/{} should have 4 entries, got {}",
+                persona,
+                lines.len()
+            );
             for line in &lines {
                 assert!(
-                    line.contains(&format!("\"caller_persona_id\":\"{}\"", personas[i])),
+                    line.contains(&format!("\"caller_persona_id\":\"{}\"", persona)),
                     "personas/{} entry missing self-attribution: {}",
-                    personas[i],
+                    persona,
                     line
                 );
             }
@@ -765,19 +898,11 @@ mod tests {
 
         {
             let _monitor = ScopeMonitor::start(g.clone()).unwrap();
-            let out = dir
-                .path()
-                .join("personas")
-                .join("architect")
-                .join("x.md");
+            let out = dir.path().join("personas").join("architect").join("x.md");
             g.classify_and_log(&out, WriteType::Create).unwrap();
         }
 
-        let out2 = dir
-            .path()
-            .join("personas")
-            .join("bob")
-            .join("y.md");
+        let out2 = dir.path().join("personas").join("bob").join("y.md");
         g.classify_and_log(&out2, WriteType::Modify).unwrap();
         let body = std::fs::read_to_string(g.log_path()).unwrap();
         assert!(
@@ -826,5 +951,208 @@ mod tests {
             }
             std::thread::sleep(Duration::from_millis(100));
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // security-hardening: violation publisher integration
+    // ─────────────────────────────────────────────────────────────────────
+
+    /// `Mutex<Vec<ViolationEvent>>`-backed publisher. Records every event
+    /// the guard hands us so the test can assert on the shape. The struct
+    /// is `Send + Sync` via the mutex (the trait requires it) and cheap
+    /// to clone — sharing the recorder with the guard is by `Arc`.
+    #[derive(Default, Debug)]
+    struct RecordingPublisher {
+        events: std::sync::Mutex<Vec<ViolationEvent>>,
+    }
+
+    impl RecordingPublisher {
+        fn new() -> Arc<Self> {
+            Arc::new(Self::default())
+        }
+
+        fn recorded(&self) -> Vec<ViolationEvent> {
+            self.events
+                .lock()
+                .expect("RecordingPublisher mutex poisoned")
+                .clone()
+        }
+    }
+
+    impl ViolationPublisher for RecordingPublisher {
+        fn publish_violation(&self, event: &ViolationEvent) {
+            self.events
+                .lock()
+                .expect("RecordingPublisher mutex poisoned")
+                .push(event.clone());
+        }
+    }
+
+    /// AC: `classify_and_log` fires the live-event publisher with the
+    /// typed event that matches the `vault.scope.violation` bus envelope
+    /// payload. We feed a fake "out-of-scope" path and assert the recorder
+    /// captured the persona_id, attempted_path, allowed_paths (containing
+    /// the persona's own dir), write_type, and a fresh ISO-8601 ts.
+    #[test]
+    fn out_of_scope_write_fires_publisher_event() {
+        let dir = TempDir::new().unwrap();
+        let recorder = RecordingPublisher::new();
+        let guard = ScopeGuard::new_with_publisher(
+            dir.path().to_path_buf(),
+            "dev",
+            std::iter::empty::<String>(),
+            recorder.clone(),
+        );
+
+        let sneaky = dir
+            .path()
+            .join("personas")
+            .join("architect")
+            .join("persona.md");
+        assert!(
+            guard.classify_and_log(&sneaky, WriteType::Modify).unwrap(),
+            "out-of-scope write should classify as a violation"
+        );
+
+        let events = recorder.recorded();
+        assert_eq!(events.len(), 1, "expected exactly one publisher event");
+
+        let ev = &events[0];
+        assert_eq!(ev.persona_id, "dev");
+        assert!(
+            ev.attempted_path
+                .replace('\\', "/")
+                .ends_with("personas/architect/persona.md"),
+            "attempted_path mismatch: {}",
+            ev.attempted_path
+        );
+        assert_eq!(ev.write_type, WriteType::Modify);
+        // allowed_paths for a persona with no attached projects contains
+        // exactly one root — the persona's own dir.
+        assert_eq!(ev.allowed_paths.len(), 1);
+        assert!(
+            ev.allowed_paths[0]
+                .replace('\\', "/")
+                .ends_with("personas/dev"),
+            "allowed_paths[0] mismatch: {}",
+            ev.allowed_paths[0]
+        );
+        // ISO-8601 UTC shape: ends with Z, has a T separator.
+        assert!(ev.ts.ends_with('Z') && ev.ts.contains('T'), "ts: {}", ev.ts);
+    }
+
+    /// The publisher fires *only* for out-of-scope writes. An in-scope
+    /// path must not produce an event — same invariant the on-disk log
+    /// already has, lifted to the live-event channel.
+    #[test]
+    fn in_scope_write_does_not_fire_publisher() {
+        let dir = TempDir::new().unwrap();
+        let recorder = RecordingPublisher::new();
+        let guard = ScopeGuard::new_with_publisher(
+            dir.path().to_path_buf(),
+            "dev",
+            std::iter::empty::<String>(),
+            recorder.clone(),
+        );
+
+        let in_scope = dir.path().join("personas").join("dev").join("memory.md");
+        assert!(
+            !guard
+                .classify_and_log(&in_scope, WriteType::Create)
+                .unwrap(),
+            "in-scope write should NOT classify as a violation"
+        );
+        assert!(
+            recorder.recorded().is_empty(),
+            "publisher must not fire for in-scope writes"
+        );
+    }
+
+    /// AC: attached projects show up in `allowed_paths` so a downstream
+    /// consumer (the desktop UI panel, the stall detector) can show the
+    /// user *what* the persona should have written to. This is the only
+    /// case where `allowed_paths` has more than one entry.
+    #[test]
+    fn attached_projects_appear_in_allowed_paths() {
+        let dir = TempDir::new().unwrap();
+        let recorder = RecordingPublisher::new();
+        let guard = ScopeGuard::new_with_publisher(
+            dir.path().to_path_buf(),
+            "dev",
+            vec!["proj-abc".to_string()],
+            recorder.clone(),
+        );
+
+        let out = dir
+            .path()
+            .join("personas")
+            .join("outsider")
+            .join("secret.md");
+        guard.classify_and_log(&out, WriteType::Create).unwrap();
+
+        let events = recorder.recorded();
+        assert_eq!(events.len(), 1);
+        // 1 persona dir + 1 attached project = 2 allowed roots.
+        assert_eq!(events[0].allowed_paths.len(), 2);
+        let joined = events[0]
+            .allowed_paths
+            .iter()
+            .map(|p| p.replace('\\', "/"))
+            .collect::<Vec<_>>()
+            .join("|");
+        assert!(
+            joined.contains("personas/dev"),
+            "allowed_paths missing persona dir: {joined}"
+        );
+        assert!(
+            joined.contains("projects/proj-abc"),
+            "allowed_paths missing project dir: {joined}"
+        );
+    }
+
+    /// The default `ScopeGuard::new` constructor (no publisher arg)
+    /// keeps the pre-hardening behavior: no live events fire, only the
+    /// on-disk log entry. This is the safety net for callers that
+    /// upgrade their `c4n-vault-scoping` dep and don't wire a publisher.
+    #[test]
+    fn default_guard_does_not_publish() {
+        let dir = TempDir::new().unwrap();
+        // No publisher arg -> NullPublisher by default.
+        let guard = ScopeGuard::new(
+            dir.path().to_path_buf(),
+            "dev",
+            std::iter::empty::<String>(),
+        );
+
+        let out = dir.path().join("personas").join("architect").join("a.md");
+        assert!(guard.classify_and_log(&out, WriteType::Create).unwrap());
+        // The on-disk log MUST have the entry — that's the
+        // pre-hardening contract.
+        assert!(guard.log_path().exists(), "log file must be created");
+    }
+
+    /// Direct call to `log_out_of_scope_write` (the no-publisher entry
+    /// point) does NOT fire the publisher — by the time a caller invokes
+    /// it directly, the violation is "log only". This is the contract
+    /// the persona-supervisor's pre-hardening call sites rely on.
+    #[test]
+    fn log_out_of_scope_write_does_not_publish() {
+        let dir = TempDir::new().unwrap();
+        let recorder = RecordingPublisher::new();
+        let guard = ScopeGuard::new_with_publisher(
+            dir.path().to_path_buf(),
+            "dev",
+            std::iter::empty::<String>(),
+            recorder.clone(),
+        );
+
+        let out = dir.path().join("personas").join("architect").join("a.md");
+        guard
+            .log_out_of_scope_write(&out, WriteType::Modify)
+            .unwrap();
+        assert!(
+            recorder.recorded().is_empty(),
+            "log_out_of_scope_write must not fire the publisher"
+        );
     }
 }
