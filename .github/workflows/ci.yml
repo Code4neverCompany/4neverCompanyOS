@@ -234,6 +234,18 @@ jobs:
         run: cargo test --workspace
 
   # ─── Summary job — required for branch protection ────────────────
+  # Verifies the per-lane `result` for each required job. We can't
+  # iterate via a shell `for` loop with `${{ needs.$job.result }}` —
+  # GitHub's expression parser does NOT support dynamic indexing of
+  # the `needs` context; `$job` would be treated as a literal symbol.
+  # Use static references per job (the same pattern the original
+  # ci.yml used for the two-job case).
+  #
+  # A `skipped` result is acceptable because the strict lane only
+  # runs on main pushes, the typo lane only runs on label-gated PRs,
+  # and the PR lane only runs on PRs. Anything that actually ran
+  # must have `result == success`; `failure` and `cancelled` both
+  # fail the summary job.
   ci-pass:
     name: CI Pass
     needs:
@@ -247,16 +259,26 @@ jobs:
       - name: Verify all jobs succeeded
         run: |
           failed=0
-          for job in js-checks js-checks-strict js-checks-typo rust-checks; do
-            result="${{ needs.$job.result }}"
-            # A skipped job is acceptable — the strict lane only runs on
-            # main, the typo lane only runs on label-gated PRs, and the
-            # PR lane only runs on PRs. Anything that ran must succeed.
-            if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
-              echo "::error::Required job '$job' result: $result"
-              failed=1
-            fi
-          done
+          if [ "${{ needs.js-checks.result }}" = "failure" ] || \
+             [ "${{ needs.js-checks.result }}" = "cancelled" ]; then
+            echo "::error::Required job 'js-checks' result: ${{ needs.js-checks.result }}"
+            failed=1
+          fi
+          if [ "${{ needs.js-checks-strict.result }}" = "failure" ] || \
+             [ "${{ needs.js-checks-strict.result }}" = "cancelled" ]; then
+            echo "::error::Required job 'js-checks-strict' result: ${{ needs.js-checks-strict.result }}"
+            failed=1
+          fi
+          if [ "${{ needs.js-checks-typo.result }}" = "failure" ] || \
+             [ "${{ needs.js-checks-typo.result }}" = "cancelled" ]; then
+            echo "::error::Required job 'js-checks-typo' result: ${{ needs.js-checks-typo.result }}"
+            failed=1
+          fi
+          if [ "${{ needs.rust-checks.result }}" = "failure" ] || \
+             [ "${{ needs.rust-checks.result }}" = "cancelled" ]; then
+            echo "::error::Required job 'rust-checks' result: ${{ needs.rust-checks.result }}"
+            failed=1
+          fi
           if [ "$failed" -ne 0 ]; then
             echo "One or more required jobs failed."
             exit 1
