@@ -886,9 +886,6 @@ mod tests {
                     line
                 );
             }
-            // `i` is kept for parity with the original range-loop —
-            // the test harness reads it via the assertion messages.
-            let _ = i;
         }
     }
 
