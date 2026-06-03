@@ -12,7 +12,7 @@ The monorepo uses two languages. **Rust** (stable, pinned via `rust-toolchain.to
 
 ## Package manager
 
-**pnpm 11** (pinned to `11.3.0`, declared in `package.json#packageManager`). The workspace uses `pnpm-workspace.yaml` to enumerate packages and apps. Build-script allowlist is maintained in `pnpm-workspace.yaml` under `allowedDeprecatedVersions` / `onlyBuiltDependencies` to satisfy pnpm 11's build-approval model. The lockfile (`pnpm-lock.yaml`) is committed and enforced in CI with `--frozen-lockfile`. Rust dependencies are managed by Cargo (`Cargo.toml` + committed `Cargo.lock`).
+**pnpm 11** (pinned to `11.3.0`, declared in `package.json#packageManager`). The workspace uses `pnpm-workspace.yaml` to enumerate packages and apps. Build-script allowlist is maintained in `pnpm-workspace.yaml` under `allowedDeprecatedVersions` / `onlyBuiltDependencies` to satisfy pnpm 11's build-approval model. The lockfile (`pnpm-lock.yaml`) is committed and enforced in CI with `--frozen-lockfile` via a **two-lane enforcement** strategy implemented in `.github/workflows/ci.yml`: a non-strict lane (`js-checks`, `--frozen-lockfile=false`) runs on every PR so a PR that adds or upgrades a dependency can regenerate the lockfile in the same PR; a strict lane (`js-checks-strict`, `--frozen-lockfile=true`) runs on every push to `main` and fails the build if the lockfile drifts from `package.json`. A third label-gated lane (`js-checks-typo`, `--frozen-lockfile`) runs on PRs labelled `dependencies` or `pin-upstream` so a labelling maintainer can apply the strict check on a dependency PR before merge. The strict lane only runs on main pushes, so PR feedback speed is unchanged. Rust dependencies are managed by Cargo (`Cargo.toml` + committed `Cargo.lock`).
 
 ## Build
 

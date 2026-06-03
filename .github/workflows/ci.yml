@@ -20,8 +20,32 @@ env:
 
 jobs:
   # ─── JS / TS workspace ───────────────────────────────────────────
+  # Two-lane lockfile enforcement (see ARCHITECTURE.md §"Package manager"):
+  #
+  #   * `js-checks`        — runs on every PR. Uses --frozen-lockfile=false
+  #                          so that PRs which change `package.json` can
+  #                          regenerate `pnpm-lock.yaml` and ship the
+  #                          updated lockfile in the same PR.
+  #
+  #   * `js-checks-strict` — runs on `push` to `main` only. Uses
+  #                          --frozen-lockfile=true so any drift between
+  #                          `package.json` and `pnpm-lock.yaml` fails
+  #                          the build instead of silently rewriting the
+  #                          lockfile in CI. If this job fails, regenerate
+  #                          locally with `pnpm install --no-frozen-lockfile`
+  #                          and commit the updated lockfile.
+  #
+  #   * `js-checks-typo`   — runs on PRs labelled `dependencies` or
+  #                          `pin-upstream` to apply the strict frozen
+  #                          check early (before merge), so a labelling
+  #                          maintainer can catch drift on PRs that touch
+  #                          the dependency tree.
+  #
+  # The strict lane only runs on main pushes, so PR feedback speed is
+  # unchanged.
   js-checks:
     name: JS — ${{ matrix.os }}
+    if: github.event_name == 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -42,8 +66,118 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
 
+      # PR lane: --frozen-lockfile=false is required so PRs that add or
+      # upgrade a dependency can commit the regenerated `pnpm-lock.yaml`
+      # in the same PR. The strict lane on main catches drift after merge.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
+
+      - name: Format check
+        run: pnpm format
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type-check
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+  js-checks-strict:
+    name: JS strict — ${{ matrix.os }}
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      # Strict lane: --frozen-lockfile=true. If the lockfile is out of
+      # sync, pnpm fails with a clear error. Surface the remediation
+      # hint as a follow-up step so the failure message is actionable.
+      - name: Install dependencies (frozen lockfile)
+        id: pnpm-install
+        run: |
+          set +e
+          pnpm install --frozen-lockfile
+          install_exit=$?
+          set -e
+          if [ "$install_exit" -ne 0 ]; then
+            echo "::error::pnpm-lock.yaml is out of sync with package.json (exit $install_exit)."
+            echo "::error::To regenerate locally, run:  pnpm install --no-frozen-lockfile"
+            echo "::error::Then commit the updated pnpm-lock.yaml in the same PR."
+            exit "$install_exit"
+          fi
+
+      - name: Format check
+        run: pnpm format
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type-check
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+  js-checks-typo:
+    name: JS strict (label-gated) — ${{ matrix.os }}
+    if: |
+      github.event_name == 'pull_request' &&
+      (contains(github.event.pull_request.labels.*.name, 'dependencies') ||
+       contains(github.event.pull_request.labels.*.name, 'pin-upstream'))
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+          run_install: false
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      # Label-gated strict check on PRs. Same frozen-lockfile behaviour
+      # as the main-push strict lane so dependency changes can be
+      # validated before merge.
+      - name: Install dependencies (frozen lockfile)
+        id: pnpm-install
+        run: |
+          set +e
+          pnpm install --frozen-lockfile
+          install_exit=$?
+          set -e
+          if [ "$install_exit" -ne 0 ]; then
+            echo "::error::pnpm-lock.yaml is out of sync with package.json (exit $install_exit)."
+            echo "::error::To regenerate locally, run:  pnpm install --no-frozen-lockfile"
+            echo "::error::Then commit the updated pnpm-lock.yaml in the same PR."
+            exit "$install_exit"
+          fi
 
       - name: Format check
         run: pnpm format
@@ -100,16 +234,52 @@ jobs:
         run: cargo test --workspace
 
   # ─── Summary job — required for branch protection ────────────────
+  # Verifies the per-lane `result` for each required job. We can't
+  # iterate via a shell `for` loop with `${{ needs.$job.result }}` —
+  # GitHub's expression parser does NOT support dynamic indexing of
+  # the `needs` context; `$job` would be treated as a literal symbol.
+  # Use static references per job (the same pattern the original
+  # ci.yml used for the two-job case).
+  #
+  # A `skipped` result is acceptable because the strict lane only
+  # runs on main pushes, the typo lane only runs on label-gated PRs,
+  # and the PR lane only runs on PRs. Anything that actually ran
+  # must have `result == success`; `failure` and `cancelled` both
+  # fail the summary job.
   ci-pass:
     name: CI Pass
-    needs: [js-checks, rust-checks]
+    needs:
+      - js-checks
+      - js-checks-strict
+      - js-checks-typo
+      - rust-checks
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Verify all jobs succeeded
         run: |
-          if [ "${{ needs.js-checks.result }}" != "success" ] || \
-             [ "${{ needs.rust-checks.result }}" != "success" ]; then
+          failed=0
+          if [ "${{ needs.js-checks.result }}" = "failure" ] || \
+             [ "${{ needs.js-checks.result }}" = "cancelled" ]; then
+            echo "::error::Required job 'js-checks' result: ${{ needs.js-checks.result }}"
+            failed=1
+          fi
+          if [ "${{ needs.js-checks-strict.result }}" = "failure" ] || \
+             [ "${{ needs.js-checks-strict.result }}" = "cancelled" ]; then
+            echo "::error::Required job 'js-checks-strict' result: ${{ needs.js-checks-strict.result }}"
+            failed=1
+          fi
+          if [ "${{ needs.js-checks-typo.result }}" = "failure" ] || \
+             [ "${{ needs.js-checks-typo.result }}" = "cancelled" ]; then
+            echo "::error::Required job 'js-checks-typo' result: ${{ needs.js-checks-typo.result }}"
+            failed=1
+          fi
+          if [ "${{ needs.rust-checks.result }}" = "failure" ] || \
+             [ "${{ needs.rust-checks.result }}" = "cancelled" ]; then
+            echo "::error::Required job 'rust-checks' result: ${{ needs.rust-checks.result }}"
+            failed=1
+          fi
+          if [ "$failed" -ne 0 ]; then
             echo "One or more required jobs failed."
             exit 1
           fi

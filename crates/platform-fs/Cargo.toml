@@ -4,6 +4,14 @@ version = "0.0.1"
 edition = "2021"
 description = "Rust-side file-watching. Replaces chokidar (which is weaker on Windows). Backs progress-signal artifact.changed and code.changed subscribers."
 authors = ["4neverCompany"]
+# Internal to the 4neverCompany OS workspace. See the rationale in
+# apps/desktop/src-tauri/Cargo.toml; this mirrors the same policy
+# across the workspace.
+publish = false
+# License declaration. Mirrors the workspace's intent to ship under
+# MIT or Apache-2.0 once the project reaches v1.0. Required by the
+# `cargo deny check` license job in .github/workflows/audit.yml.
+license = "MIT OR Apache-2.0"
 
 [lib]
 name = "c4n_platform_fs"

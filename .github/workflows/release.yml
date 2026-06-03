@@ -141,10 +141,45 @@ jobs:
           path: target/release/bundle/nsis/*.exe
           retention-days: 5
 
+  # ─── SBOM (CycloneDX, JSON) ─────────────────────────────────────────
+  # Generate one canonical SBOM for the workspace. The Cargo.lock
+  # is platform-independent, so a single SBOM covers all three
+  # platform binaries. The SBOM is attached to the GitHub release
+  # alongside the platform binaries by the create-release job.
+  generate-sbom:
+    name: Generate SBOM (CycloneDX)
+    needs: [build-dmg, build-appimage, build-nsis]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-cyclonedx
+        # cargo install --locked reads the tool's own Cargo.lock and
+        # refuses to install if any dep version drifts, so the
+        # SBOM-generation tool itself is reproducible.
+        run: cargo install --locked cargo-cyclonedx
+
+      # cargo-cyclonedx walks the workspace's Cargo.lock and
+      # produces a CycloneDX 1.5 SBOM. --format json produces a
+      # machine-readable file; --override-filename pins the output
+      # filename (otherwise cargo-cyclonedx adds a version stamp).
+      - name: Generate CycloneDX SBOM
+        run: cargo cyclonedx --format json --override-filename c4n-os-cyclonedx
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-cyclonedx
+          path: c4n-os-cyclonedx.json
+          retention-days: 5
+
   # ─── Create Release ─────────────────────────────────────────────────
   create-release:
     name: Create Draft Release
-    needs: [build-dmg, build-appimage, build-nsis]
+    needs: [build-dmg, build-appimage, build-nsis, generate-sbom]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -157,28 +192,89 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          # Merge into one folder so the rest of the job can glob
+          # across macos-dmg / linux-appimage / windows-nsis / sbom.
+          merge-multiple: true
 
       - name: List artifacts
         run: |
-          find artifacts -type f \( -name "*.dmg" -o -name "*.AppImage" -o -name "*.exe" \) | while read f; do
+          echo "=== artifacts directory ==="
+          find artifacts -type f | while read f; do
             echo "$f"
           done
 
       - name: Create Draft Release
+        id: create-release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION="${{ github.event.inputs.version || github.ref_name }}"
           TAG_NAME="${VERSION#v}"
 
-          # Create release via GitHub CLI
+          echo "Creating release ${VERSION} with the following assets:"
+          ls -la artifacts/ 2>&1 | sed 's/^/  /'
+
+          # Create the release, capturing both stdout+stderr AND the
+          # exit code. We do NOT use `|| echo "..."` here because
+          # that swallows the failure mode and the operator can't
+          # tell whether the release was created or not.
+          set +e
           gh release create "${VERSION}" \
             --title "4neverCompany OS ${VERSION}" \
             --notes "See https://github.com/Code4neverCompany/4neverCompanyOS/releases" \
             --draft \
-            artifacts/macos-dmg/*.dmg \
-            artifacts/linux-appimage/*.AppImage \
-            artifacts/windows-nsis/*setup*.exe 2>&1 || echo "Release create may have partial failure"
+            artifacts/*.dmg \
+            artifacts/*.AppImage \
+            artifacts/*setup*.exe \
+            artifacts/c4n-os-cyclonedx.json \
+            >/tmp/gh-release-create.stdout 2>/tmp/gh-release-create.stderr
+          release_create_exit=$?
+          set -e
+
+          echo "gh release create exit code: ${release_create_exit}"
+          if [ -s /tmp/gh-release-create.stdout ]; then
+            echo "--- stdout ---"
+            cat /tmp/gh-release-create.stdout
+          fi
+          if [ -s /tmp/gh-release-create.stderr ]; then
+            echo "--- stderr ---"
+            cat /tmp/gh-release-create.stderr
+          fi
+
+          # Persist the exit code for the next step.
+          echo "release_create_exit=${release_create_exit}" >> "$GITHUB_OUTPUT"
+
+      - name: Diagnose partial release failure
+        if: steps.create-release.outputs.release_create_exit != '0'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
+
+          # The previous step failed. Determine whether the release
+          # was created (some assets may have uploaded before the
+          # failure) or whether the release itself was never created.
+          if gh release view "${VERSION}" --json tagName,isDraft,assets >/dev/null 2>&1; then
+            echo "::warning::gh release create failed, but the release DOES exist on GitHub."
+            echo "::warning::The release may have been created with a partial set of assets."
+            echo ""
+            echo "=== assets that DID upload to ${VERSION} ==="
+            gh release view "${VERSION}" --json assets \
+              --jq '.assets[]? | "  - \(.name) (\(.sizeText))"' \
+              || echo "  (could not enumerate assets)"
+            echo ""
+            echo "=== assets that should have uploaded ==="
+            ls -la artifacts/ 2>&1 | sed 's/^/  /' || true
+            echo ""
+            echo "ACTION REQUIRED: re-run this workflow or manually upload the missing assets."
+            # Don't fail the job — the release exists and operators
+            # can re-run to pick up the missing assets.
+            exit 0
+          else
+            echo "::error::gh release create failed AND the release does not exist on GitHub."
+            echo "::error::Inspect /tmp/gh-release-create.stderr (above) for the root cause."
+            exit 1
+          fi
 
       - name: Verify release
         env:
@@ -186,3 +282,45 @@ jobs:
         run: |
           VERSION="${{ github.event.inputs.version || github.ref_name }}"
           gh release view "${VERSION}" --json tagName,url,isDraft,assets 2>&1
+
+      # Catch-all debug step. Runs only when any previous step has
+      # failed, prints the state of the artifacts directory and the
+      # last successful artifact upload so the operator can see what
+      # actually made it to the release.
+      - name: "Debug: print artifact state on failure"
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ github.event.inputs.version || github.ref_name }}"
+
+          echo "::error::Release workflow failed for ${VERSION}."
+          echo "::error::Last successful step and current state:"
+          echo ""
+
+          echo "=== artifacts/ directory contents ==="
+          if [ -d artifacts ]; then
+            find artifacts -type f -printf "  %p (%s bytes)\n" 2>&1 || \
+              ls -la artifacts/ 2>&1 | sed 's/^/  /'
+          else
+            echo "  (artifacts/ does not exist)"
+          fi
+          echo ""
+
+          echo "=== release state on GitHub ==="
+          if gh release view "${VERSION}" >/dev/null 2>&1; then
+            gh release view "${VERSION}" --json tagName,url,isDraft,assets \
+              --jq '"  tagName: \(.tagName)\n  url:     \(.url)\n  isDraft: \(.isDraft)\n  assets:  \(.assets | length) file(s)"' \
+              2>&1 || true
+          else
+            echo "  (release ${VERSION} does NOT exist on GitHub)"
+          fi
+          echo ""
+
+          echo "=== local gh-release-create logs (if any) ==="
+          for f in /tmp/gh-release-create.stdout /tmp/gh-release-create.stderr; do
+            if [ -s "$f" ]; then
+              echo "--- $f ---"
+              cat "$f"
+            fi
+          done
