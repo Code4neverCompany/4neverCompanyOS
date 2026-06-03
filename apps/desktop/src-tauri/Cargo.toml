@@ -4,6 +4,21 @@ version = "0.0.1"
 description = "4neverCompany OS — desktop shell"
 authors = ["4neverCompany"]
 edition = "2021"
+# This crate is internal to the 4neverCompany OS workspace and is
+# never published to crates.io. Marking it `publish = false` lets
+# cargo-deny treat path-only deps as private (which suppresses the
+# wildcard-version warning) and makes the workspace's intent
+# explicit. See the cargo-deny `allow-wildcard-paths` docs:
+# https://embarkstudios.github.io/cargo-deny/
+publish = false
+# License declaration. The repo LICENSE file currently marks the
+# project as "source-available for evaluation only" and states the
+# intent to release under a permissive license (MIT or Apache-2.0)
+# before v1.0; this declaration reflects that intent and is required
+# by the `cargo deny check` license job in .github/workflows/audit.yml.
+# Update the LICENSE + this field in the same commit when the final
+# license is chosen.
+license = "MIT OR Apache-2.0"
 
 [lib]
 name = "c4n_desktop_lib"

@@ -4,6 +4,16 @@ version = "0.0.1"
 description = "4neverCompany OS — first-run wizard"
 authors = ["4neverCompany"]
 edition = "2021"
+# Internal to the 4neverCompany OS workspace. See the rationale in
+# apps/desktop/src-tauri/Cargo.toml; this mirrors the same policy
+# across the workspace.
+publish = false
+# License declaration. Mirrors the workspace's intent to ship under
+# MIT or Apache-2.0 once the project reaches v1.0. See
+# apps/desktop/src-tauri/Cargo.toml for the full rationale and the
+# `cargo deny check` job in .github/workflows/audit.yml that this
+# satisfies.
+license = "MIT OR Apache-2.0"
 
 [lib]
 name = "c4n_wizard_lib"
