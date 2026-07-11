@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="de">
+<!--
+  4never Company — BRAND-GALERIE (Startseite des Template-Packs)
+  Diese Seite verlinkt alle Templates mit skalierten Live-Vorschauen (iframes).
+  Lokal per Doppelklick oeffnen — alle Pfade sind relativ, alles offline nutzbar.
+  BEARBEITEN: Neue Templates als weitere <article class="tile"> ergaenzen
+  (data-Attribute nur Doku; iframe-Groesse + scale im style-Attribut setzen).
+-->
+<head>
+<meta charset="utf-8">
+<title>4never Company — Brand-Galerie</title>
+<style>
+  :root{
+    --ink:#0b0b14; --panel:#12121e;
+    --gold:#d4af37; --gold-light:#f0d778; --gold-deep:#8a6d1f;
+    --foil:linear-gradient(135deg,#f0d778 0%,#d4af37 45%,#8a6d1f 100%);
+    --cyan:#22d3ee; --magenta:#e935f0;
+    --holo:linear-gradient(120deg,#7c5cff 0%,#4cc2ff 35%,#ff7ad9 65%,#d4af37 100%);
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    --mono:ui-monospace,'Cascadia Mono',Consolas,monospace;
+    --track:.28em; --text:#e8e6df; --muted:rgba(232,230,223,.55);
+    --hairline:rgba(212,175,55,.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--ink);color:var(--text);font-family:var(--sans);padding:64px 6vw 120px}
+  a{color:var(--gold);text-decoration:none}
+  a:hover{color:var(--gold-light)}
+  /* ---- Intro ---- */
+  .hero{display:flex;align-items:center;gap:40px;flex-wrap:wrap}
+  .hero .logo{width:150px;height:150px;flex:none;filter:drop-shadow(0 0 26px rgba(212,175,55,.35))}
+  .hero h1{font-family:var(--serif);font-size:56px;letter-spacing:.02em;
+    background:var(--foil);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero .claim{margin-top:12px;font-size:15px;letter-spacing:var(--track);text-transform:uppercase;color:var(--cyan);text-shadow:0 0 10px rgba(34,211,238,.5)}
+  .hero .sub{margin-top:10px;font-size:14px;color:var(--muted);max-width:640px;line-height:1.6}
+  h2{font-family:var(--serif);font-size:28px;color:var(--gold-light);margin:72px 0 8px}
+  .h2-rule{height:2px;background:var(--foil);border-radius:2px;max-width:280px;margin-bottom:32px}
+  /* ---- Palette ---- */
+  .swatches{display:flex;flex-wrap:wrap;gap:18px}
+  .sw{width:132px;border-radius:12px;overflow:hidden;background:var(--panel);border:1px solid rgba(232,230,223,.08)}
+  .sw i{display:block;height:76px}
+  .sw p{padding:10px 12px 4px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text)}
+  .sw code{display:block;padding:0 12px 12px;font-family:var(--mono);font-size:11px;color:var(--muted)}
+  /* ---- Typo ---- */
+  .type-samples{display:grid;gap:20px;max-width:860px}
+  .ts{background:var(--panel);border:1px solid rgba(232,230,223,.08);border-radius:14px;padding:24px 28px}
+  .ts small{display:block;font-size:10px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted);margin-bottom:12px}
+  .ts .serif{font-family:var(--serif);font-size:36px;color:var(--gold)}
+  .ts .label{font-size:14px;letter-spacing:var(--track);text-transform:uppercase;color:var(--text)}
+  .ts .mono{font-family:var(--mono);font-size:15px;color:var(--cyan)}
+  /* ---- Kacheln ---- */
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:28px}
+  .tile{background:var(--panel);border:1px solid rgba(232,230,223,.08);border-radius:16px;overflow:hidden;
+    transition:border-color .2s, transform .2s}
+  .tile:hover{border-color:var(--hairline);transform:translateY(-3px)}
+  .preview{position:relative;height:210px;overflow:hidden;background:#08080f}
+  .preview iframe{position:absolute;left:50%;top:0;border:0;pointer-events:none;transform-origin:top center}
+  .tile .body{padding:18px 20px 20px}
+  .tile h3{font-family:var(--serif);font-size:19px;color:var(--gold-light)}
+  .tile .fmt{margin-top:5px;font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .tile .open{display:inline-block;margin-top:14px;padding:8px 18px;border:1px solid var(--gold);border-radius:8px;
+    font-size:11px;letter-spacing:.2em;text-transform:uppercase}
+  .tile .open:hover{background:rgba(212,175,55,.12)}
+  /* ---- Assets / Export ---- */
+  .asset-list{display:flex;flex-wrap:wrap;gap:16px}
+  .asset{background:var(--panel);border:1px solid rgba(232,230,223,.08);border-radius:12px;padding:16px 20px;min-width:220px}
+  .asset code{font-family:var(--mono);font-size:13px;color:var(--cyan)}
+  .asset p{margin-top:6px;font-size:12px;color:var(--muted);line-height:1.5}
+  .export{max-width:860px;background:var(--panel);border:1px solid var(--hairline);border-radius:16px;padding:28px 32px;line-height:1.7;font-size:14px}
+  .export b{color:var(--gold-light);font-weight:normal;font-family:var(--serif)}
+  .export ul{margin:10px 0 0 20px}
+  .export li{margin-bottom:8px;color:var(--text)}
+  .export kbd{font-family:var(--mono);font-size:12px;background:#0b0b14;border:1px solid rgba(232,230,223,.2);border-radius:5px;padding:1px 7px}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gf" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f0d778"/><stop offset=".45" stop-color="#d4af37"/><stop offset="1" stop-color="#8a6d1f"/>
+  </linearGradient>
+</defs></svg>
+
+<header class="hero">
+  <svg class="logo" viewBox="0 0 240 240" aria-hidden="true">
+    <rect x="5" y="5" width="230" height="230" rx="40" fill="#0b0b14" stroke="url(#gf)" stroke-width="2.5"/>
+    <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+    <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/><circle cx="120" cy="39" r="3.5" fill="url(#gf)"/><circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+    <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="url(#gf)" stroke-width="15" stroke-linecap="round"/>
+    <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="url(#gf)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div>
+    <h1>4never Company</h1>
+    <p class="claim">Agentic Business &middot; Brand Template Pack</p>
+    <p class="sub">Alle Vorlagen sind self-contained HTML — keine externen Assets, offline nutzbar.
+    Kacheln unten &ouml;ffnen die Templates in einem neuen Tab; jede Datei erkl&auml;rt im
+    Kopf-Kommentar, wie sie bearbeitet und exportiert wird.</p>
+  </div>
+</header>
+
+<h2>Farbpalette</h2><div class="h2-rule"></div>
+<div class="swatches">
+  <div class="sw"><i style="background:#0b0b14;border-bottom:1px solid rgba(232,230,223,.1)"></i><p>Ink</p><code>#0b0b14</code></div>
+  <div class="sw"><i style="background:#12121e;border-bottom:1px solid rgba(232,230,223,.1)"></i><p>Panel</p><code>#12121e</code></div>
+  <div class="sw"><i style="background:#f0d778"></i><p>Gold Light</p><code>#f0d778</code></div>
+  <div class="sw"><i style="background:#d4af37"></i><p>Gold</p><code>#d4af37</code></div>
+  <div class="sw"><i style="background:#8a6d1f"></i><p>Gold Deep</p><code>#8a6d1f</code></div>
+  <div class="sw"><i style="background:linear-gradient(135deg,#f0d778,#d4af37 45%,#8a6d1f)"></i><p>Foil</p><code>135deg Verlauf</code></div>
+  <div class="sw"><i style="background:#22d3ee"></i><p>Neon Cyan</p><code>#22d3ee</code></div>
+  <div class="sw"><i style="background:#e935f0"></i><p>Neon Magenta</p><code>#e935f0</code></div>
+  <div class="sw"><i style="background:linear-gradient(120deg,#7c5cff,#4cc2ff 35%,#ff7ad9 65%,#d4af37)"></i><p>Holographic</p><code>7c5cff&middot;4cc2ff&middot;ff7ad9</code></div>
+</div>
+
+<h2>Typografie</h2><div class="h2-rule"></div>
+<div class="type-samples">
+  <div class="ts"><small>Wortmarke &amp; Namen — Serif (Georgia)</small>
+    <p class="serif">4never Company &mdash; Max Mustermann</p></div>
+  <div class="ts"><small>Labels &amp; Kleintext — System-Sans, Uppercase, letter-spacing .28em</small>
+    <p class="label">Agentic Business &middot; Architect &middot; Designer</p></div>
+  <div class="ts"><small>Code &amp; Repos — Monospace</small>
+    <p class="mono">4neverCompanyOS</p></div>
+</div>
+
+<h2>Visitenkarten</h2><div class="h2-rule"></div>
+<div class="grid">
+  <article class="tile">
+    <div class="preview"><iframe src="cards/card-executive.html" width="640" height="560" scrolling="no" loading="lazy" title="Executive Card" style="transform:translateX(-50%) scale(.45)"></iframe></div>
+    <div class="body"><h3>Executive Card</h3><p class="fmt">55&times;85 mm &middot; Gold auf Schwarz &middot; Vorder- &amp; R&uuml;ckseite</p>
+      <a class="open" href="cards/card-executive.html" target="_blank" rel="noopener">&Ouml;ffnen</a></div>
+  </article>
+  <article class="tile">
+    <div class="preview"><iframe src="cards/card-agent.html" width="480" height="700" scrolling="no" loading="lazy" title="Agent Cards" style="transform:translateX(-50%) scale(.6)"></iframe></div>
+    <div class="body"><h3>Agent Cards</h3><p class="fmt">85&times;55 mm &middot; Neon Cyan/Magenta &middot; 2 Rollen</p>
+      <a class="open" href="cards/card-agent.html" target="_blank" rel="noopener">&Ouml;ffnen</a></div>
+  </article>
+  <article class="tile">
+    <div class="preview"><iframe src="cards/card-premium.html" width="340" height="560" scrolling="no" loading="lazy" title="Premium Card" style="transform:translateX(-50%) scale(.72)"></iframe></div>
+    <div class="body"><h3>Premium Card</h3><p class="fmt">55&times;85 mm &middot; Holographic + Gold-Rahmen</p>
+      <a class="open" href="cards/card-premium.html" target="_blank" rel="noopener">&Ouml;ffnen</a></div>
+  </article>
+</div>
+
+<h2>Banner &amp; Social</h2><div class="h2-rule"></div>
+<div class="grid">
+  <article class="tile">
+    <div class="preview"><iframe src="banners/linkedin-banner.html" width="1680" height="560" scrolling="no" loading="lazy" title="LinkedIn Banner" style="transform:translateX(-50%) scale(.185)"></iframe></div>
+    <div class="body"><h3>LinkedIn Banner</h3><p class="fmt">1584&times;396 px &middot; Neon-Ring + Gold C4</p>
+      <a class="open" href="banners/linkedin-banner.html" target="_blank" rel="noopener">&Ouml;ffnen</a></div>
+  </article>
+  <article class="tile">
+    <div class="preview"><iframe src="banners/youtube-banner.html" width="2660" height="1620" scrolling="no" loading="lazy" title="YouTube Banner" style="transform:translateX(-50%) scale(.115)"></iframe></div>
+    <div class="body"><h3>YouTube Kanalbild</h3><p class="fmt">2560&times;1440 px &middot; Safe Area 1546&times;423 markiert</p>
+      <a class="open" href="banners/youtube-banner.html" target="_blank" rel="noopener">&Ouml;ffnen</a></div>
+  </article>
+  <article class="tile">
+    <div class="preview"><iframe src="banners/github-banner.html" width="1380" height="820" scrolling="no" loading="lazy" title="GitHub Social Card" style="transform:translateX(-50%) scale(.225)"></iframe></div>
+    <div class="body"><h3>GitHub Social Card</h3><p class="fmt">1280&times;640 px &middot; Repo-Preview 4neverCompanyOS</p>
+      <a class="open" href="banners/github-banner.html" target="_blank" rel="noopener">&Ouml;ffnen</a></div>
+  </article>
+  <article class="tile">
+    <div class="preview"><iframe src="banners/instagram-post.html" width="1180" height="1260" scrolling="no" loading="lazy" title="Instagram Post" style="transform:translateX(-50%) scale(.26)"></iframe></div>
+    <div class="body"><h3>Instagram Post</h3><p class="fmt">1080&times;1080 px &middot; Neon-Ring + Headline-Slot</p>
+      <a class="open" href="banners/instagram-post.html" target="_blank" rel="noopener">&Ouml;ffnen</a></div>
+  </article>
+  <article class="tile">
+    <div class="preview"><iframe src="banners/instagram-story.html" width="1180" height="2100" scrolling="no" loading="lazy" title="Instagram Story" style="transform:translateX(-50%) scale(.26)"></iframe></div>
+    <div class="body"><h3>Instagram Story</h3><p class="fmt">1080&times;1920 px &middot; Hochformat + Headline-Slot</p>
+      <a class="open" href="banners/instagram-story.html" target="_blank" rel="noopener">&Ouml;ffnen</a></div>
+  </article>
+  <article class="tile">
+    <div class="preview" style="background:#f4f4f6"><iframe src="banners/email-signature.html" width="560" height="320" scrolling="no" loading="lazy" title="E-Mail-Signatur" style="transform:translateX(-50%) scale(.52)"></iframe></div>
+    <div class="body"><h3>E-Mail-Signatur</h3><p class="fmt">Tabellenbasiert &middot; Outlook-sicher &middot; Copy-Paste</p>
+      <a class="open" href="banners/email-signature.html" target="_blank" rel="noopener">&Ouml;ffnen</a></div>
+  </article>
+</div>
+
+<h2>Pr&auml;sentation &amp; Dokumente</h2><div class="h2-rule"></div>
+<div class="grid">
+  <article class="tile">
+    <div class="preview"><iframe src="present/slide-title.html" width="2000" height="1250" scrolling="no" loading="lazy" title="Slide Titel" style="transform:translateX(-50%) scale(.15)"></iframe></div>
+    <div class="body"><h3>Slide: Titel</h3><p class="fmt">1920&times;1080 px &middot; Gold C4 + Neon-Horizont</p>
+      <a class="open" href="present/slide-title.html" target="_blank" rel="noopener">&Ouml;ffnen</a></div>
+  </article>
+  <article class="tile">
+    <div class="preview"><iframe src="present/slide-content.html" width="2000" height="1250" scrolling="no" loading="lazy" title="Slide Inhalt" style="transform:translateX(-50%) scale(.15)"></iframe></div>
+    <div class="body"><h3>Slide: Inhalt</h3><p class="fmt">1920&times;1080 px &middot; Gold-Rule + 2 Spalten</p>
+      <a class="open" href="present/slide-content.html" target="_blank" rel="noopener">&Ouml;ffnen</a></div>
+  </article>
+  <article class="tile">
+    <div class="preview"><iframe src="present/slide-chart.html" width="2000" height="1250" scrolling="no" loading="lazy" title="Slide Chart" style="transform:translateX(-50%) scale(.15)"></iframe></div>
+    <div class="body"><h3>Slide: Chart</h3><p class="fmt">1920&times;1080 px &middot; CSS-Bar + Donut</p>
+      <a class="open" href="present/slide-chart.html" target="_blank" rel="noopener">&Ouml;ffnen</a></div>
+  </article>
+  <article class="tile">
+    <div class="preview"><iframe src="present/letterhead.html" width="880" height="1300" scrolling="no" loading="lazy" title="Briefbogen" style="transform:translateX(-50%) scale(.34)"></iframe></div>
+    <div class="body"><h3>Briefbogen</h3><p class="fmt">DIN A4 &middot; Gold-Kopf + Fu&szlig;linie</p>
+      <a class="open" href="present/letterhead.html" target="_blank" rel="noopener">&Ouml;ffnen</a></div>
+  </article>
+</div>
+
+<h2>Assets &amp; Tokens</h2><div class="h2-rule"></div>
+<div class="asset-list">
+  <div class="asset"><code><a href="logo.svg" target="_blank" rel="noopener">logo.svg</a></code><p>Master-Logo (Gold): Badge, C4, Krone.</p></div>
+  <div class="asset"><code><a href="logo-neon.svg" target="_blank" rel="noopener">logo-neon.svg</a></code><p>Neon-Variante (Cyan-Stroke + Glow).</p></div>
+  <div class="asset"><code><a href="crown.svg" target="_blank" rel="noopener">crown.svg</a></code><p>Krone solo, transparent.</p></div>
+  <div class="asset"><code><a href="tokens.css" target="_blank" rel="noopener">tokens.css</a></code><p>Alle Marken-Tokens als CSS-Variablen (Referenz — Templates tragen eine Kopie).</p></div>
+</div>
+
+<h2>Export</h2><div class="h2-rule"></div>
+<div class="export">
+  <b>Druck (Karten, Briefbogen):</b>
+  <ul>
+    <li>Template &ouml;ffnen &rarr; <kbd>Strg</kbd>+<kbd>P</kbd> &rarr; &bdquo;Als PDF speichern&ldquo;.</li>
+    <li>R&auml;nder auf <b>Keine</b>, Option <b>Hintergrundgrafiken</b> aktivieren.</li>
+    <li>Karten enthalten 3 mm Beschnitt (Seitenformat 61&times;91 bzw. 91&times;61 mm); Schnittmarken setzt die Druckerei auf das Endformat 55&times;85 mm.</li>
+  </ul>
+  <b>Pixel-Banner (LinkedIn, YouTube, GitHub, Instagram, Slides):</b>
+  <ul>
+    <li>Template in Chrome/Edge &ouml;ffnen &rarr; <kbd>F12</kbd> &rarr; im Elements-Tab das <kbd>&lt;div class="canvas"&gt;</kbd> selektieren.</li>
+    <li><kbd>Strg</kbd>+<kbd>Shift</kbd>+<kbd>P</kbd> &rarr; &bdquo;Capture node screenshot&ldquo; &rarr; pixelgenaues PNG in Zielgr&ouml;&szlig;e.</li>
+    <li>Alternativ: Device-Toolbar auf die Canvas-Gr&ouml;&szlig;e stellen und &bdquo;Capture screenshot&ldquo;. Beim YouTube-Banner vorher die Klasse <kbd>guides</kbd> entfernen.</li>
+  </ul>
+  <b>E-Mail-Signatur:</b> im Browser markieren, kopieren, in Outlook/Gmail-Signaturfeld einf&uuml;gen (Anleitung im Datei-Kommentar).
+</div>
+</body>
+</html>

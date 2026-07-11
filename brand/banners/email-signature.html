@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="de">
+<!--
+  4never Company — E-MAIL-SIGNATUR (Outlook-sicher)
+  Aufbau: reine <table>-Struktur, NUR Inline-Styles, keine SVGs/Webfonts/
+  externen Bilder — funktioniert in Outlook, Gmail, Apple Mail, Thunderbird.
+  Das C4-Monogramm ist bewusst als Text gesetzt (Georgia + Unicode-Krone),
+  weil Outlook kein SVG rendert.
+
+  BEARBEITEN: Name, Titel, Telefon, Mail, Web direkt in den <td>-Zellen.
+
+  EINBAUEN (Copy-Paste):
+  1. Diese Datei im Browser oeffnen.
+  2. Die Signatur (alles Sichtbare) mit der Maus markieren -> Strg+C.
+  3. Outlook: Datei -> Optionen -> E-Mail -> Signaturen -> Neu -> Strg+V.
+     Gmail: Einstellungen -> Alle Einstellungen -> Signatur -> Strg+V.
+  4. Testmail an sich selbst senden und Darstellung pruefen.
+-->
+<head>
+<meta charset="utf-8">
+<title>4never Company — E-Mail-Signatur</title>
+</head>
+<body style="margin:0;padding:32px;background:#f4f4f6;">
+
+<!-- ======= SIGNATUR-START (ab hier markieren & kopieren) ======= -->
+<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;font-family:'Segoe UI',Arial,sans-serif;">
+  <tr>
+    <!-- Gold-C4-Block links -->
+    <td width="120" align="center" valign="middle" bgcolor="#0b0b14" style="background-color:#0b0b14;padding:20px 16px;border-radius:12px;">
+      <div style="font-family:Georgia,'Times New Roman',serif;font-size:16px;line-height:16px;color:#d4af37;">&#9819;</div>
+      <div style="font-family:Georgia,'Times New Roman',serif;font-size:38px;line-height:42px;color:#d4af37;font-weight:bold;letter-spacing:1px;">C4</div>
+      <div style="height:2px;line-height:2px;font-size:2px;background-color:#d4af37;width:52px;margin:8px auto 6px auto;">&nbsp;</div>
+      <div style="font-family:'Segoe UI',Arial,sans-serif;font-size:8px;line-height:11px;letter-spacing:2px;color:#e8e6df;text-transform:uppercase;">4never<br>Company</div>
+    </td>
+    <!-- Abstand -->
+    <td width="22" style="font-size:1px;line-height:1px;">&nbsp;</td>
+    <!-- Kontaktblock rechts -->
+    <td valign="middle" style="padding:6px 0;">
+      <table cellpadding="0" cellspacing="0" border="0" role="presentation" style="border-collapse:collapse;">
+        <tr>
+          <td style="font-family:Georgia,'Times New Roman',serif;font-size:20px;line-height:26px;color:#0b0b14;">Max Mustermann</td>
+        </tr>
+        <tr>
+          <td style="font-family:'Segoe UI',Arial,sans-serif;font-size:11px;line-height:18px;letter-spacing:2px;color:#8a6d1f;text-transform:uppercase;padding-bottom:8px;">Titel &nbsp;&#183;&nbsp; 4never Company</td>
+        </tr>
+        <tr>
+          <td style="border-top:2px solid #d4af37;font-size:1px;line-height:1px;padding-top:10px;">&nbsp;</td>
+        </tr>
+        <tr>
+          <td style="font-family:'Segoe UI',Arial,sans-serif;font-size:12px;line-height:20px;color:#333340;">
+            <span style="color:#8a6d1f;">T</span>&nbsp; +49 123 456 789<br>
+            <span style="color:#8a6d1f;">M</span>&nbsp; <a href="mailto:mail@4nevercompany.com" style="color:#333340;text-decoration:none;">mail@4nevercompany.com</a><br>
+            <span style="color:#8a6d1f;">W</span>&nbsp; <a href="https://www.4nevercompany.com" style="color:#333340;text-decoration:none;">www.4nevercompany.com</a>
+          </td>
+        </tr>
+        <tr>
+          <td style="font-family:'Segoe UI',Arial,sans-serif;font-size:9px;line-height:16px;letter-spacing:2px;color:#9a9aa6;text-transform:uppercase;padding-top:8px;">Agentic Business</td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- ======= SIGNATUR-ENDE ======= -->
+
+</body>
+</html>

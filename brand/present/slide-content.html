@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="de">
+<!--
+  4never Company — PRAESENTATION: INHALTSFOLIE (2 Spalten)
+  Canvas: 1920 x 1080 px (16:9).
+  BEARBEITEN: Folientitel im <h1>, Spalteninhalte in den beiden <section>.
+  EXPORT: PNG via DevTools "Capture node screenshot" auf <div class="canvas">,
+          oder Strg+P (Hintergrundgrafiken AN). Siehe slide-title.html.
+-->
+<head>
+<meta charset="utf-8">
+<title>4never Company — Slide: Inhalt</title>
+<style>
+  :root{
+    --ink:#0b0b14; --panel:#12121e;
+    --gold:#d4af37; --gold-light:#f0d778; --gold-deep:#8a6d1f;
+    --foil:linear-gradient(135deg,#f0d778 0%,#d4af37 45%,#8a6d1f 100%);
+    --cyan:#22d3ee; --magenta:#e935f0;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    --track:.28em; --text:#e8e6df; --muted:rgba(232,230,223,.55);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#08080f;font-family:var(--sans);color:var(--text);
+    display:flex;flex-direction:column;align-items:center;gap:20px;padding:40px 20px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .screen-note{font-size:12px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .canvas{
+    position:relative;width:1920px;height:1080px;overflow:hidden;flex:none;
+    background:radial-gradient(120% 140% at 10% 0%,#141420 0%,var(--ink) 60%);
+    box-shadow:0 30px 80px rgba(0,0,0,.6);
+    padding:80px 110px;display:flex;flex-direction:column;
+  }
+  header{display:flex;align-items:center;gap:34px}
+  .logo{width:92px;height:92px;flex:none}
+  h1{font-family:var(--serif);font-size:56px;letter-spacing:.02em;
+    background:var(--foil);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .kicker{margin-left:auto;font-size:16px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .gold-rule{margin-top:34px;height:3px;background:var(--foil);border-radius:2px}
+  .cols{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:90px;margin-top:56px}
+  h2{font-family:var(--serif);font-size:30px;color:var(--gold-light);margin-bottom:26px}
+  ul{list-style:none}
+  li{position:relative;padding-left:36px;margin-bottom:22px;font-size:22px;line-height:1.5;color:var(--text)}
+  li::before{content:"";position:absolute;left:0;top:13px;width:14px;height:14px;
+    background:var(--foil);transform:rotate(45deg);border-radius:2px}
+  li.neon::before{background:var(--cyan);box-shadow:0 0 8px rgba(34,211,238,.6)}
+  footer{display:flex;align-items:center;gap:20px;font-size:15px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  footer .line{flex:1;height:1px;background:rgba(212,175,55,.35)}
+  footer .no{color:var(--gold)}
+  @media print{
+    @page{size:508mm 285.75mm;margin:0}
+    body{background:#fff;padding:0;gap:0;display:block}
+    .screen-note{display:none}
+    .canvas{box-shadow:none;margin:0}
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gf" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f0d778"/><stop offset=".45" stop-color="#d4af37"/><stop offset="1" stop-color="#8a6d1f"/>
+  </linearGradient>
+</defs></svg>
+
+<p class="screen-note">Slide: Inhalt &middot; 1920&times;1080 px</p>
+
+<div class="canvas">
+  <header>
+    <svg class="logo" viewBox="0 0 240 240" aria-hidden="true">
+      <rect x="5" y="5" width="230" height="230" rx="40" fill="#0b0b14" stroke="url(#gf)" stroke-width="4"/>
+      <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+      <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/><circle cx="120" cy="39" r="3.5" fill="url(#gf)"/><circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+      <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="url(#gf)" stroke-width="15" stroke-linecap="round"/>
+      <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="url(#gf)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <h1>Abschnittstitel der Folie</h1>
+    <span class="kicker">Kapitel 01</span>
+  </header>
+  <div class="gold-rule"></div>
+
+  <div class="cols">
+    <section>
+      <h2>Linke Spalte</h2>
+      <ul>
+        <li>Erster Kernpunkt — kurz und pr&auml;gnant formuliert.</li>
+        <li>Zweiter Kernpunkt mit einer Zeile mehr Kontext, damit die Zeilenh&ouml;he sichtbar wird.</li>
+        <li>Dritter Kernpunkt.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Rechte Spalte</h2>
+      <ul>
+        <li class="neon">Agent-Punkt in Neon-Markierung.</li>
+        <li class="neon">Zweiter Agent-Punkt — Automatisierung, Delegation, Ergebnis.</li>
+        <li>Abschlie&szlig;ender Punkt in Gold.</li>
+      </ul>
+    </section>
+  </div>
+
+  <footer>
+    <span>4never Company</span>
+    <div class="line"></div>
+    <span>Agentic Business</span>
+    <div class="line"></div>
+    <span class="no">02</span>
+  </footer>
+</div>
+</body>
+</html>

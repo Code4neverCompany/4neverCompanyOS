@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="de">
+<!--
+  4never Company — EXECUTIVE VISITENKARTE
+  Format: 55 x 85 mm Hochformat + 3 mm Beschnitt rundum = 61 x 91 mm Dokumentseite.
+  BEARBEITEN: Name, Titel und Kontaktzeilen unten im HTML aendern.
+              Farben/Schriften zentral in den :root-Tokens (kopiert aus ../tokens.css).
+  EXPORT:     Im Browser oeffnen -> Strg+P -> "Als PDF speichern",
+              Raender: "Keine", Option "Hintergrundgrafiken" AKTIVIEREN.
+              Ergebnis: 2 Seiten (Vorder-/Rueckseite) je 61 x 91 mm.
+  SCHNITTMARKEN: Die Datei enthaelt 3 mm Beschnitt, aber keine Marken —
+              die Druckerei setzt Schnittmarken auf Endformat 55 x 85 mm (zentriert).
+-->
+<head>
+<meta charset="utf-8">
+<title>4never Company — Executive Card</title>
+<style>
+  :root{
+    --ink:#0b0b14; --panel:#12121e;
+    --gold:#d4af37; --gold-light:#f0d778; --gold-deep:#8a6d1f;
+    --foil:linear-gradient(135deg,#f0d778 0%,#d4af37 45%,#8a6d1f 100%);
+    --cyan:#22d3ee; --magenta:#e935f0;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    --track:.28em; --text:#e8e6df; --muted:rgba(232,230,223,.55);
+    --hairline:rgba(212,175,55,.35);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:#08080f;color:var(--text);font-family:var(--sans);
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    gap:28px;padding:48px 24px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .screen-note{font-size:12px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .sheet{display:flex;gap:36px;flex-wrap:wrap;justify-content:center}
+  figure{text-align:center}
+  figcaption{margin-top:12px;font-size:11px;letter-spacing:var(--track);text-transform:uppercase;color:var(--gold)}
+  .card{
+    position:relative;width:61mm;height:91mm;overflow:hidden;border-radius:2.5mm;
+    box-shadow:0 24px 70px rgba(0,0,0,.65);
+    background:
+      repeating-linear-gradient(135deg,rgba(240,215,120,.045) 0 .35mm,transparent .35mm 2.2mm),
+      radial-gradient(140% 110% at 30% 0%,#15151f 0%,var(--ink) 58%);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .safe{position:absolute;inset:6mm;display:flex;flex-direction:column;align-items:center}
+  .logo{width:22mm;height:22mm;display:block}
+  .logo-big{width:36mm;height:36mm;display:block}
+  .name{margin-top:6mm;font-family:var(--serif);font-size:14pt;color:var(--gold);letter-spacing:.04em}
+  .title{margin-top:1.6mm;font-size:5.6pt;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .bar{margin-top:auto;width:100%;height:.65mm;background:var(--foil);border-radius:.4mm}
+  .contact{margin-top:2.6mm;width:100%;display:flex;flex-direction:column;gap:1.1mm;font-size:5.4pt;letter-spacing:.12em;color:var(--text);text-align:center}
+  .contact span{color:var(--gold)}
+  .front .safe{padding-top:7mm}
+  .back .safe{justify-content:center;align-items:center}
+  .wordmark{margin-top:4mm;font-family:var(--serif);font-size:8.5pt;color:var(--gold);letter-spacing:.08em}
+  .tag{margin-top:1.4mm;font-size:4.6pt;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  @media print{
+    @page{size:61mm 91mm;margin:0}
+    body{background:#fff;padding:0;gap:0;display:block}
+    .screen-note,figcaption{display:none}
+    .sheet{display:block}
+    .card{border-radius:0;box-shadow:none;page-break-after:always;margin:0}
+  }
+</style>
+</head>
+<body>
+<!-- Gemeinsame Gold-Folie fuer alle Inline-Logos -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gf" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f0d778"/><stop offset=".45" stop-color="#d4af37"/><stop offset="1" stop-color="#8a6d1f"/>
+  </linearGradient>
+</defs></svg>
+
+<p class="screen-note">Executive Card &middot; 55&times;85 mm + 3 mm Beschnitt</p>
+
+<div class="sheet">
+  <figure>
+    <div class="card front">
+      <div class="safe">
+        <svg class="logo" viewBox="0 0 240 240" aria-hidden="true">
+          <rect x="5" y="5" width="230" height="230" rx="40" fill="#0b0b14" stroke="url(#gf)" stroke-width="2.5"/>
+          <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+          <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/><circle cx="120" cy="39" r="3.5" fill="url(#gf)"/><circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+          <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="url(#gf)" stroke-width="15" stroke-linecap="round"/>
+          <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="url(#gf)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p class="name">Max Mustermann</p>
+        <p class="title">Titel &middot; 4never Company</p>
+        <div class="bar"></div>
+        <div class="contact">
+          <p><span>T</span>&nbsp; +49 123 456 789</p>
+          <p><span>M</span>&nbsp; mail@4nevercompany.com</p>
+          <p><span>W</span>&nbsp; www.4nevercompany.com</p>
+        </div>
+      </div>
+    </div>
+    <figcaption>Vorderseite</figcaption>
+  </figure>
+
+  <figure>
+    <div class="card back">
+      <div class="safe">
+        <svg class="logo-big" viewBox="0 0 240 240" aria-hidden="true">
+          <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+          <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/><circle cx="120" cy="39" r="3.5" fill="url(#gf)"/><circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+          <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="url(#gf)" stroke-width="15" stroke-linecap="round"/>
+          <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="url(#gf)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <p class="wordmark">4never Company</p>
+        <p class="tag">Agentic Business</p>
+      </div>
+    </div>
+    <figcaption>R&uuml;ckseite</figcaption>
+  </figure>
+</div>
+</body>
+</html>

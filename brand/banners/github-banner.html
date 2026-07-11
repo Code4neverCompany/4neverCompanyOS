@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="de">
+<!--
+  4never Company — GITHUB SOCIAL CARD (Repo "4neverCompanyOS")
+  Canvas: 1280 x 640 px (GitHub Social Preview: Settings -> Social preview).
+  BEARBEITEN: Repo-Name im .repo-Chip, Beschreibung darunter.
+  EXPORT (PNG): DevTools (F12) -> Strg+Shift+P -> "Capture node screenshot"
+  auf dem <div class="canvas">. Ergebnis: pixelgenaues 1280x640-PNG.
+-->
+<head>
+<meta charset="utf-8">
+<title>4never Company — GitHub Social Card 1280x640</title>
+<style>
+  :root{
+    --ink:#0b0b14; --panel:#12121e;
+    --gold:#d4af37; --gold-light:#f0d778; --gold-deep:#8a6d1f;
+    --foil:linear-gradient(135deg,#f0d778 0%,#d4af37 45%,#8a6d1f 100%);
+    --cyan:#22d3ee; --magenta:#e935f0;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    --mono:ui-monospace,'Cascadia Mono',Consolas,monospace;
+    --track:.28em; --text:#e8e6df; --muted:rgba(232,230,223,.55);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#08080f;font-family:var(--sans);color:var(--text);
+    display:flex;flex-direction:column;align-items:center;gap:20px;padding:40px 20px}
+  .screen-note{font-size:12px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .canvas{
+    position:relative;width:1280px;height:640px;overflow:hidden;flex:none;
+    background:radial-gradient(110% 150% at 15% 20%,#151523 0%,var(--ink) 60%);
+    box-shadow:0 30px 80px rgba(0,0,0,.6);
+  }
+  .circuit{position:absolute;inset:0;width:100%;height:100%;opacity:.45;filter:drop-shadow(0 0 5px rgba(34,211,238,.35))}
+  .logo{position:absolute;left:110px;top:50%;transform:translateY(-50%);width:280px;height:280px;filter:drop-shadow(0 0 26px rgba(212,175,55,.35))}
+  .text{position:absolute;left:470px;top:50%;transform:translateY(-50%);max-width:720px}
+  .wordmark{
+    font-family:var(--serif);font-size:74px;line-height:1.05;
+    background:var(--foil);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .repo{
+    display:inline-block;margin-top:24px;padding:12px 22px;border-radius:10px;
+    background:var(--panel);border:1px solid rgba(34,211,238,.4);
+    font-family:var(--mono);font-size:30px;color:var(--cyan);
+    box-shadow:0 0 18px rgba(34,211,238,.2);
+  }
+  .desc{margin-top:22px;font-size:19px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .rule{position:absolute;left:470px;bottom:78px;width:560px;height:2px;background:linear-gradient(90deg,var(--gold),transparent)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gf" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f0d778"/><stop offset=".45" stop-color="#d4af37"/><stop offset="1" stop-color="#8a6d1f"/>
+  </linearGradient>
+</defs></svg>
+
+<p class="screen-note">GitHub Social Card &middot; 1280&times;640 px &middot; Export: DevTools Node-Screenshot</p>
+
+<div class="canvas">
+  <svg class="circuit" viewBox="0 0 1280 640" fill="none" preserveAspectRatio="none" aria-hidden="true">
+    <g stroke="#22d3ee" stroke-width="1" opacity=".5">
+      <path d="M1280 90 H1080 V190 H940"/><path d="M1280 540 H1120 V430 H990"/>
+      <path d="M1020 0 V90 H900 V170"/><path d="M1100 640 V560 H960"/>
+    </g>
+    <g stroke="#d4af37" stroke-width="1" opacity=".4">
+      <path d="M0 560 H180 V470 H320"/><path d="M60 640 V590 H240"/>
+    </g>
+    <g fill="#22d3ee" opacity=".8">
+      <circle cx="940" cy="190" r="4"/><circle cx="990" cy="430" r="4"/>
+      <circle cx="900" cy="170" r="4"/><circle cx="960" cy="560" r="4"/>
+    </g>
+    <g fill="#d4af37" opacity=".7">
+      <circle cx="320" cy="470" r="4"/><circle cx="240" cy="590" r="4"/>
+    </g>
+  </svg>
+  <svg class="logo" viewBox="0 0 240 240" aria-hidden="true">
+    <rect x="5" y="5" width="230" height="230" rx="40" fill="#0b0b14" stroke="url(#gf)" stroke-width="2.5"/>
+    <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+    <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/><circle cx="120" cy="39" r="3.5" fill="url(#gf)"/><circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+    <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="url(#gf)" stroke-width="15" stroke-linecap="round"/>
+    <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="url(#gf)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div class="text">
+    <h1 class="wordmark">4never Company</h1>
+    <span class="repo">4neverCompanyOS</span>
+    <p class="desc">Agentic Business &middot; Operating System</p>
+  </div>
+  <div class="rule"></div>
+</div>
+</body>
+</html>

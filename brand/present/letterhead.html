@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="de">
+<!--
+  4never Company — BRIEFBOGEN (DIN A4, 210 x 297 mm)
+  BEARBEITEN: Empfaenger-/Betreff-/Textbloecke im <main>, Absenderzeile im Header,
+              Fusszeile unten. Farben/Schriften: :root-Tokens.
+  EXPORT (PDF): Strg+P -> "Als PDF speichern", Papierformat A4,
+              Raender "Keine" (die Seite bringt eigene Raender mit),
+              "Hintergrundgrafiken" AKTIVIEREN.
+-->
+<head>
+<meta charset="utf-8">
+<title>4never Company — Briefbogen A4</title>
+<style>
+  :root{
+    --ink:#0b0b14; --panel:#12121e;
+    --gold:#d4af37; --gold-light:#f0d778; --gold-deep:#8a6d1f;
+    --foil:linear-gradient(135deg,#f0d778 0%,#d4af37 45%,#8a6d1f 100%);
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    --track:.28em;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#3a3a44;font-family:var(--sans);
+    display:flex;flex-direction:column;align-items:center;gap:20px;padding:40px 20px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .screen-note{font-size:12px;letter-spacing:var(--track);text-transform:uppercase;color:#c9c9d2}
+  .page{
+    position:relative;width:210mm;height:297mm;background:#fff;color:#1c1c26;flex:none;
+    box-shadow:0 24px 70px rgba(0,0,0,.5);
+    padding:18mm 22mm 30mm;display:flex;flex-direction:column;
+  }
+  header{display:flex;align-items:flex-start;gap:8mm}
+  .logo{width:24mm;height:24mm;flex:none}
+  .head-text .company{font-family:var(--serif);font-size:16pt;color:var(--gold-deep);letter-spacing:.04em}
+  .head-text .claim{margin-top:1.5mm;font-size:6.5pt;letter-spacing:var(--track);text-transform:uppercase;color:#8a8a96}
+  .head-addr{margin-left:auto;text-align:right;font-size:7pt;line-height:1.8;
+    letter-spacing:.18em;text-transform:uppercase;font-variant:small-caps;color:#55555f}
+  .head-addr b{color:var(--gold-deep);font-weight:normal}
+  .head-rule{margin-top:8mm;height:.8mm;background:var(--foil);border-radius:.4mm}
+  .sender-line{margin-top:12mm;font-size:6.5pt;letter-spacing:.14em;font-variant:small-caps;
+    text-transform:uppercase;color:#8a8a96;border-bottom:.2mm solid #d9d9df;
+    display:inline-block;padding-bottom:1mm;width:80mm}
+  .addr-block{margin-top:4mm;font-size:10pt;line-height:1.7;color:#1c1c26}
+  .meta{margin-top:10mm;display:flex;justify-content:space-between;font-size:9pt;color:#55555f}
+  .meta b{color:#1c1c26;font-weight:600}
+  main{margin-top:10mm;font-size:10.5pt;line-height:1.75}
+  main h1{font-family:var(--serif);font-size:13pt;color:#1c1c26;margin-bottom:6mm}
+  main p{margin-bottom:5mm;color:#2a2a34}
+  main .placeholder{color:#9a9aa4;font-style:italic}
+  footer{margin-top:auto}
+  .foot-rule{height:.5mm;background:var(--foil);border-radius:.3mm}
+  .foot-cols{display:flex;justify-content:space-between;margin-top:3.5mm;
+    font-size:6.5pt;letter-spacing:.12em;text-transform:uppercase;color:#77777f;line-height:1.9}
+  .foot-cols b{color:var(--gold-deep);font-weight:normal}
+  @media print{
+    @page{size:A4;margin:0}
+    body{background:#fff;padding:0;gap:0;display:block}
+    .screen-note{display:none}
+    .page{box-shadow:none;margin:0}
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gf" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f0d778"/><stop offset=".45" stop-color="#d4af37"/><stop offset="1" stop-color="#8a6d1f"/>
+  </linearGradient>
+</defs></svg>
+
+<p class="screen-note">Briefbogen &middot; DIN A4 &middot; Export: Strg+P als PDF</p>
+
+<div class="page">
+  <header>
+    <svg class="logo" viewBox="0 0 240 240" aria-hidden="true">
+      <rect x="5" y="5" width="230" height="230" rx="40" fill="#0b0b14" stroke="url(#gf)" stroke-width="2.5"/>
+      <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+      <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/><circle cx="120" cy="39" r="3.5" fill="url(#gf)"/><circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+      <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="url(#gf)" stroke-width="15" stroke-linecap="round"/>
+      <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="url(#gf)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="head-text">
+      <p class="company">4never Company</p>
+      <p class="claim">Agentic Business</p>
+    </div>
+    <div class="head-addr">
+      Musterstra&szlig;e 1 &middot; 12345 Musterstadt<br>
+      <b>T</b> +49 123 456 789<br>
+      <b>M</b> mail@4nevercompany.com<br>
+      <b>W</b> www.4nevercompany.com
+    </div>
+  </header>
+  <div class="head-rule"></div>
+
+  <p class="sender-line">4never Company &middot; Musterstra&szlig;e 1 &middot; 12345 Musterstadt</p>
+  <div class="addr-block">
+    Max Mustermann<br>
+    Beispielweg 2<br>
+    54321 Beispielstadt
+  </div>
+
+  <div class="meta">
+    <span>Ihr Zeichen: <b>&mdash;</b></span>
+    <span>Unser Zeichen: <b>4N-2026-001</b></span>
+    <span>Datum: <b>11.07.2026</b></span>
+  </div>
+
+  <main>
+    <h1>Betreff: Platzhalter f&uuml;r Ihre Betreffzeile</h1>
+    <p>Sehr geehrte Damen und Herren,</p>
+    <p class="placeholder">[Hier steht der Brieftext. Dieser Absatz ist ein Platzhalter &mdash; einfach
+    &uuml;berschreiben. Der Briefbogen h&auml;lt DIN-A4-Ma&szlig;e ein; Kopf mit Gold-Monogramm,
+    Absenderzeile in Kapit&auml;lchen und die Gold-Fu&szlig;linie bleiben bei jedem Druck identisch.]</p>
+    <p class="placeholder">[Zweiter Platzhalter-Absatz f&uuml;r l&auml;ngere Anschreiben.]</p>
+    <p>Mit freundlichen Gr&uuml;&szlig;en</p>
+    <p style="margin-top:14mm;font-family:var(--serif)">Max Mustermann<br>
+    <span style="font-family:var(--sans);font-size:7pt;letter-spacing:.2em;text-transform:uppercase;color:#8a8a96">Titel &middot; 4never Company</span></p>
+  </main>
+
+  <footer>
+    <div class="foot-rule"></div>
+    <div class="foot-cols">
+      <span><b>4never Company</b><br>Musterstra&szlig;e 1 &middot; 12345 Musterstadt</span>
+      <span><b>Kontakt</b><br>+49 123 456 789 &middot; mail@4nevercompany.com</span>
+      <span><b>Web</b><br>www.4nevercompany.com</span>
+    </div>
+  </footer>
+</div>
+</body>
+</html>

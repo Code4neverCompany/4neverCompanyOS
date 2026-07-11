@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="de">
+<!--
+  4never Company — PRAESENTATION: CHART-FOLIE (Bar + Donut, pure CSS)
+  Canvas: 1920 x 1080 px (16:9).
+  BEARBEITEN: Balken = .bar mit style="--v:65%" (Hoehe) + Label.
+              Donut = conic-gradient in .donut (Grad-Werte) + Legende.
+  EXPORT: PNG via DevTools "Capture node screenshot" auf <div class="canvas">,
+          oder Strg+P (Hintergrundgrafiken AN). Siehe slide-title.html.
+-->
+<head>
+<meta charset="utf-8">
+<title>4never Company — Slide: Chart</title>
+<style>
+  :root{
+    --ink:#0b0b14; --panel:#12121e;
+    --gold:#d4af37; --gold-light:#f0d778; --gold-deep:#8a6d1f;
+    --foil:linear-gradient(135deg,#f0d778 0%,#d4af37 45%,#8a6d1f 100%);
+    --cyan:#22d3ee; --magenta:#e935f0;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    --track:.28em; --text:#e8e6df; --muted:rgba(232,230,223,.55);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#08080f;font-family:var(--sans);color:var(--text);
+    display:flex;flex-direction:column;align-items:center;gap:20px;padding:40px 20px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .screen-note{font-size:12px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .canvas{
+    position:relative;width:1920px;height:1080px;overflow:hidden;flex:none;
+    background:radial-gradient(120% 140% at 10% 0%,#141420 0%,var(--ink) 60%);
+    box-shadow:0 30px 80px rgba(0,0,0,.6);
+    padding:80px 110px;display:flex;flex-direction:column;
+  }
+  header{display:flex;align-items:center;gap:34px}
+  .logo{width:92px;height:92px;flex:none}
+  h1{font-family:var(--serif);font-size:56px;
+    background:var(--foil);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .kicker{margin-left:auto;font-size:16px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .gold-rule{margin-top:34px;height:3px;background:var(--foil);border-radius:2px}
+  .charts{flex:1;display:grid;grid-template-columns:1.25fr 1fr;gap:110px;margin-top:64px;align-items:stretch}
+  h2{font-family:var(--serif);font-size:28px;color:var(--gold-light);margin-bottom:34px}
+  /* --- Balken --- */
+  .bars{display:flex;align-items:flex-end;gap:54px;height:420px;
+    border-bottom:2px solid rgba(212,175,55,.4);padding:0 16px}
+  .bar{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%;text-align:center;gap:12px}
+  .bar i{display:block;height:var(--v,50%);background:var(--foil);border-radius:8px 8px 0 0;
+    box-shadow:0 0 24px rgba(212,175,55,.25)}
+  .bar.cyan i{background:linear-gradient(180deg,#7fe6f7,var(--cyan) 55%,#0e7b8d);box-shadow:0 0 24px rgba(34,211,238,.35)}
+  .bar.magenta i{background:linear-gradient(180deg,#f48bf8,var(--magenta) 55%,#8d0e96);box-shadow:0 0 24px rgba(233,53,240,.3)}
+  .bar b{font-family:var(--serif);font-size:26px;color:var(--gold-light);font-weight:normal}
+  .bar.cyan b{color:var(--cyan)} .bar.magenta b{color:var(--magenta)}
+  .bar-labels{display:flex;gap:54px;padding:18px 16px 0}
+  .bar-labels span{flex:1;text-align:center;font-size:15px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  /* --- Donut --- */
+  .donut-wrap{display:flex;align-items:center;gap:64px}
+  .donut{width:330px;height:330px;border-radius:50%;flex:none;position:relative;
+    background:conic-gradient(var(--gold) 0 198deg,var(--cyan) 198deg 306deg,var(--magenta) 306deg 342deg,var(--panel) 342deg 360deg);
+    box-shadow:0 0 40px rgba(212,175,55,.2)}
+  .donut::before{content:"";position:absolute;inset:58px;border-radius:50%;background:var(--ink);
+    box-shadow:inset 0 0 20px rgba(0,0,0,.6)}
+  .donut::after{content:"55%";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    font-family:var(--serif);font-size:58px;color:var(--gold-light)}
+  .legend{display:flex;flex-direction:column;gap:20px}
+  .legend p{display:flex;align-items:center;gap:14px;font-size:19px;color:var(--text)}
+  .legend i{width:16px;height:16px;border-radius:4px;flex:none}
+  .legend small{color:var(--muted);margin-left:auto;padding-left:20px}
+  footer{display:flex;align-items:center;gap:20px;font-size:15px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  footer .line{flex:1;height:1px;background:rgba(212,175,55,.35)}
+  footer .no{color:var(--gold)}
+  @media print{
+    @page{size:508mm 285.75mm;margin:0}
+    body{background:#fff;padding:0;gap:0;display:block}
+    .screen-note{display:none}
+    .canvas{box-shadow:none;margin:0}
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gf" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f0d778"/><stop offset=".45" stop-color="#d4af37"/><stop offset="1" stop-color="#8a6d1f"/>
+  </linearGradient>
+</defs></svg>
+
+<p class="screen-note">Slide: Chart &middot; 1920&times;1080 px</p>
+
+<div class="canvas">
+  <header>
+    <svg class="logo" viewBox="0 0 240 240" aria-hidden="true">
+      <rect x="5" y="5" width="230" height="230" rx="40" fill="#0b0b14" stroke="url(#gf)" stroke-width="4"/>
+      <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+      <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/><circle cx="120" cy="39" r="3.5" fill="url(#gf)"/><circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+      <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="url(#gf)" stroke-width="15" stroke-linecap="round"/>
+      <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="url(#gf)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <h1>Kennzahlen im &Uuml;berblick</h1>
+    <span class="kicker">Kapitel 02</span>
+  </header>
+  <div class="gold-rule"></div>
+
+  <div class="charts">
+    <section>
+      <h2>Umsatz je Quartal (Platzhalter)</h2>
+      <div class="bars">
+        <div class="bar" style="--v:42%"><b>42</b><i></i></div>
+        <div class="bar" style="--v:58%"><b>58</b><i></i></div>
+        <div class="bar cyan" style="--v:74%"><b>74</b><i></i></div>
+        <div class="bar magenta" style="--v:90%"><b>90</b><i></i></div>
+      </div>
+      <div class="bar-labels"><span>Q1</span><span>Q2</span><span>Q3</span><span>Q4</span></div>
+    </section>
+    <section>
+      <h2>Anteil Agent-Wertsch&ouml;pfung</h2>
+      <div class="donut-wrap">
+        <div class="donut"></div>
+        <div class="legend">
+          <p><i style="background:var(--gold)"></i>Gold-Tier<small>55&nbsp;%</small></p>
+          <p><i style="background:var(--cyan)"></i>Agent-Tier<small>30&nbsp;%</small></p>
+          <p><i style="background:var(--magenta)"></i>Premium<small>10&nbsp;%</small></p>
+          <p><i style="background:var(--panel);border:1px solid rgba(232,230,223,.3)"></i>Sonstiges<small>5&nbsp;%</small></p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    <span>4never Company</span>
+    <div class="line"></div>
+    <span>Agentic Business</span>
+    <div class="line"></div>
+    <span class="no">03</span>
+  </footer>
+</div>
+</body>
+</html>

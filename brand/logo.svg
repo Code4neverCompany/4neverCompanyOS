@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 4never Company - Master-Logo (Gold). Badge #0b0b14, Goldfolie C4 + Krone.
+     Dieses SVG ist die EINE Quelle: Inline-Kopien davon stecken in allen Templates. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="4never Company C4 Monogramm">
+  <defs>
+    <linearGradient id="gf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0d778"/>
+      <stop offset="0.45" stop-color="#d4af37"/>
+      <stop offset="1" stop-color="#8a6d1f"/>
+    </linearGradient>
+  </defs>
+  <!-- Badge -->
+  <rect x="5" y="5" width="230" height="230" rx="40" fill="#0b0b14" stroke="url(#gf)" stroke-width="2.5"/>
+  <!-- Krone (3 Zacken, kleine Kreise auf den Spitzen) -->
+  <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+  <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/>
+  <circle cx="120" cy="39" r="3.5" fill="url(#gf)"/>
+  <circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+  <!-- C (grosser Bogen, Oeffnung rechts) -->
+  <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="url(#gf)" stroke-width="15" stroke-linecap="round"/>
+  <!-- 4 (in die Oeffnung des C genestet) -->
+  <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="url(#gf)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

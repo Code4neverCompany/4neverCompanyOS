@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="de">
+<!--
+  4never Company — AGENT VISITENKARTE (2 Varianten: Cyan "ARCHITECT", Magenta "DESIGNER")
+  Format: 85 x 55 mm Querformat + 3 mm Beschnitt rundum = 91 x 61 mm Dokumentseite.
+  BEARBEITEN: Rolle im Hexagon-Label + Kontaktblock rechts aendern.
+              Neue Rolle = .card kopieren und Klasse cyan/magenta setzen
+              (oder eigene --accent/--glow Werte vergeben).
+  EXPORT:     Strg+P -> "Als PDF speichern", Raender "Keine",
+              "Hintergrundgrafiken" AKTIVIEREN. Ergebnis: 2 Seiten je 91 x 61 mm.
+  SCHNITTMARKEN: 3 mm Beschnitt enthalten, Endformat 85 x 55 mm zentriert.
+-->
+<head>
+<meta charset="utf-8">
+<title>4never Company — Agent Cards</title>
+<style>
+  :root{
+    --ink:#0b0b14; --panel:#12121e;
+    --gold:#d4af37; --gold-light:#f0d778; --gold-deep:#8a6d1f;
+    --foil:linear-gradient(135deg,#f0d778 0%,#d4af37 45%,#8a6d1f 100%);
+    --cyan:#22d3ee; --magenta:#e935f0;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    --track:.28em; --text:#e8e6df; --muted:rgba(232,230,223,.55);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:#08080f;color:var(--text);font-family:var(--sans);
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    gap:28px;padding:48px 24px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .screen-note{font-size:12px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  figure{text-align:center}
+  figcaption{margin-top:12px;font-size:11px;letter-spacing:var(--track);text-transform:uppercase;color:var(--acc,var(--gold))}
+  .card{
+    position:relative;width:91mm;height:61mm;overflow:hidden;border-radius:2.5mm;
+    background:radial-gradient(120% 130% at 18% 20%,#141422 0%,var(--ink) 60%);
+    box-shadow:inset 0 0 0 1px var(--glow),0 0 26px -6px var(--accent),0 22px 60px rgba(0,0,0,.6);
+    display:flex;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .card.cyan{--accent:#22d3ee;--glow:rgba(34,211,238,.4)}
+  .card.magenta{--accent:#e935f0;--glow:rgba(233,53,240,.4)}
+  .card::after{ /* Leuchtkante oben + unten */
+    content:"";position:absolute;left:8mm;right:8mm;top:0;height:.35mm;
+    background:linear-gradient(90deg,transparent,var(--accent),transparent);
+    box-shadow:0 0 3mm var(--accent),0 60.6mm 0 var(--accent),0 60.6mm 3mm var(--accent);
+    opacity:.85;pointer-events:none;
+  }
+  .left{position:relative;width:42%;height:100%}
+  .circuit{position:absolute;inset:0;width:100%;height:100%;filter:drop-shadow(0 0 4px var(--glow))}
+  .hex-wrap{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2.2mm}
+  .hex{width:17mm;height:19mm;filter:drop-shadow(0 0 5px var(--glow))}
+  .role{font-size:7pt;letter-spacing:var(--track);text-transform:uppercase;color:var(--accent);text-shadow:0 0 6px var(--glow)}
+  .role-sub{font-size:4.6pt;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .right{position:relative;flex:1;padding:8mm 9mm 8mm 4mm;display:flex;flex-direction:column}
+  .mini-logo{position:absolute;top:6mm;right:7mm;width:9mm;height:9mm;opacity:.95}
+  .name{font-family:var(--serif);font-size:12.5pt;color:#fff;letter-spacing:.03em;margin-top:1mm}
+  .title{margin-top:1.4mm;font-size:5.4pt;letter-spacing:var(--track);text-transform:uppercase;color:var(--accent)}
+  .rule{margin:3mm 0 2.6mm;width:22mm;height:.3mm;background:linear-gradient(90deg,var(--accent),transparent)}
+  .contact{display:flex;flex-direction:column;gap:1.2mm;font-size:5.6pt;letter-spacing:.1em;color:var(--text)}
+  .contact span{color:var(--accent);display:inline-block;width:4mm}
+  .brand-line{margin-top:auto;font-size:4.6pt;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .brand-line b{color:var(--gold);font-weight:normal;font-family:var(--serif);letter-spacing:.08em;text-transform:none;font-size:6pt}
+  @media print{
+    @page{size:91mm 61mm;margin:0}
+    body{background:#fff;padding:0;gap:0;display:block}
+    .screen-note,figcaption{display:none}
+    .card{border-radius:0;box-shadow:inset 0 0 0 1px var(--glow);page-break-after:always;margin:0}
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gf" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f0d778"/><stop offset=".45" stop-color="#d4af37"/><stop offset="1" stop-color="#8a6d1f"/>
+  </linearGradient>
+</defs></svg>
+
+<p class="screen-note">Agent Cards &middot; 85&times;55 mm + 3 mm Beschnitt</p>
+
+<!-- ======== VARIANTE 1: CYAN / ARCHITECT ======== -->
+<figure style="--acc:#22d3ee">
+  <div class="card cyan">
+    <div class="left">
+      <svg class="circuit" viewBox="0 0 170 122" fill="none" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <g stroke="var(--accent)" stroke-width="1" opacity=".8">
+          <path d="M-4 22 H36 V52 H58"/><path d="M-4 96 H26 V72 H50"/>
+          <path d="M20 126 V104 H44 V88"/><path d="M120 -4 V18 H140 V40"/>
+          <path d="M160 116 H132 V96"/><path d="M-4 58 H22"/>
+        </g>
+        <g fill="var(--accent)">
+          <circle cx="58" cy="52" r="2.4"/><circle cx="50" cy="72" r="2.4"/><circle cx="44" cy="88" r="2.4"/>
+          <circle cx="140" cy="40" r="2.4"/><circle cx="132" cy="96" r="2.4"/><circle cx="22" cy="58" r="2.4"/>
+        </g>
+      </svg>
+      <div class="hex-wrap">
+        <svg class="hex" viewBox="0 0 100 112" fill="none" aria-hidden="true">
+          <polygon points="50,4 96,30 96,82 50,108 4,82 4,30" stroke="var(--accent)" stroke-width="2.5"/>
+          <polygon points="50,16 85,36 85,76 50,96 15,76 15,36" stroke="var(--accent)" stroke-width="1" opacity=".5"/>
+          <text x="50" y="66" text-anchor="middle" font-family="Georgia,serif" font-size="34" fill="var(--accent)">C4</text>
+        </svg>
+        <p class="role">Architect</p>
+        <p class="role-sub">Agent Unit</p>
+      </div>
+    </div>
+    <div class="right">
+      <svg class="mini-logo" viewBox="0 0 240 240" aria-hidden="true">
+        <rect x="5" y="5" width="230" height="230" rx="40" fill="#0b0b14" stroke="url(#gf)" stroke-width="4"/>
+        <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+        <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/><circle cx="120" cy="39" r="3.5" fill="url(#gf)"/><circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+        <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="url(#gf)" stroke-width="15" stroke-linecap="round"/>
+        <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="url(#gf)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <p class="name">Max Mustermann</p>
+      <p class="title">Titel &middot; Architect Agent</p>
+      <div class="rule"></div>
+      <div class="contact">
+        <p><span>T</span>+49 123 456 789</p>
+        <p><span>M</span>mail@4nevercompany.com</p>
+        <p><span>W</span>www.4nevercompany.com</p>
+      </div>
+      <p class="brand-line"><b>4never Company</b> &nbsp;&middot;&nbsp; Agentic Business</p>
+    </div>
+  </div>
+  <figcaption>Agent &middot; Architect (Cyan)</figcaption>
+</figure>
+
+<!-- ======== VARIANTE 2: MAGENTA / DESIGNER ======== -->
+<figure style="--acc:#e935f0">
+  <div class="card magenta">
+    <div class="left">
+      <svg class="circuit" viewBox="0 0 170 122" fill="none" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <g stroke="var(--accent)" stroke-width="1" opacity=".8">
+          <path d="M-4 22 H36 V52 H58"/><path d="M-4 96 H26 V72 H50"/>
+          <path d="M20 126 V104 H44 V88"/><path d="M120 -4 V18 H140 V40"/>
+          <path d="M160 116 H132 V96"/><path d="M-4 58 H22"/>
+        </g>
+        <g fill="var(--accent)">
+          <circle cx="58" cy="52" r="2.4"/><circle cx="50" cy="72" r="2.4"/><circle cx="44" cy="88" r="2.4"/>
+          <circle cx="140" cy="40" r="2.4"/><circle cx="132" cy="96" r="2.4"/><circle cx="22" cy="58" r="2.4"/>
+        </g>
+      </svg>
+      <div class="hex-wrap">
+        <svg class="hex" viewBox="0 0 100 112" fill="none" aria-hidden="true">
+          <polygon points="50,4 96,30 96,82 50,108 4,82 4,30" stroke="var(--accent)" stroke-width="2.5"/>
+          <polygon points="50,16 85,36 85,76 50,96 15,76 15,36" stroke="var(--accent)" stroke-width="1" opacity=".5"/>
+          <text x="50" y="66" text-anchor="middle" font-family="Georgia,serif" font-size="34" fill="var(--accent)">C4</text>
+        </svg>
+        <p class="role">Designer</p>
+        <p class="role-sub">Agent Unit</p>
+      </div>
+    </div>
+    <div class="right">
+      <svg class="mini-logo" viewBox="0 0 240 240" aria-hidden="true">
+        <rect x="5" y="5" width="230" height="230" rx="40" fill="#0b0b14" stroke="url(#gf)" stroke-width="4"/>
+        <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+        <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/><circle cx="120" cy="39" r="3.5" fill="url(#gf)"/><circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+        <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="url(#gf)" stroke-width="15" stroke-linecap="round"/>
+        <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="url(#gf)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <p class="name">Max Mustermann</p>
+      <p class="title">Titel &middot; Designer Agent</p>
+      <div class="rule"></div>
+      <div class="contact">
+        <p><span>T</span>+49 123 456 789</p>
+        <p><span>M</span>mail@4nevercompany.com</p>
+        <p><span>W</span>www.4nevercompany.com</p>
+      </div>
+      <p class="brand-line"><b>4never Company</b> &nbsp;&middot;&nbsp; Agentic Business</p>
+    </div>
+  </div>
+  <figcaption>Agent &middot; Designer (Magenta)</figcaption>
+</figure>
+</body>
+</html>

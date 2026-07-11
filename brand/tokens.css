@@ -1,0 +1,63 @@
+/* ==========================================================================
+   4never Company — BRAND TOKENS  (Single Source of Truth)
+   ==========================================================================
+   Diese Datei ist das Referenz-Dokument fuer alle Marken-Werte.
+   Die HTML-Templates in diesem Ordner sind absichtlich self-contained
+   (kein <link>!): Wer ein Template baut oder aendert, KOPIERT den
+   :root-Block unten in den <style>-Bereich des Templates.
+   Aenderungen an der Marke: 1) hier aendern, 2) in Templates nachziehen.
+   ========================================================================== */
+
+:root {
+  /* ---- CORE / INK -------------------------------------------------------
+     Tiefes Navy-Schwarz als Buehne fuer Gold + Neon. */
+  --ink:   #0b0b14;   /* Haupt-Hintergrund, Badge-Fuellung, Kartenschwarz */
+  --panel: #12121e;   /* Panels, Karten-Flaechen, sekundaere Flaechen     */
+
+  /* ---- GOLD (Executive / Marke) ---------------------------------------- */
+  --gold:       #d4af37;  /* Basis-Gold: Linien, Ruleln, Text            */
+  --gold-light: #f0d778;  /* Licht-Kante der Folie, Highlights           */
+  --gold-deep:  #8a6d1f;  /* Schatten-Kante der Folie, Tiefe             */
+  /* Folien-Verlauf: fuer Flaechen ODER Text via
+     background: var(--foil); -webkit-background-clip: text; color: transparent; */
+  --foil: linear-gradient(135deg, #f0d778 0%, #d4af37 45%, #8a6d1f 100%);
+
+  /* ---- NEON (Agent-Tier, sekundaer) -------------------------------------
+     Leuchtende Circuit-Board-Linien auf Dunkel. Glow via
+     filter: drop-shadow(0 0 6px ...) bzw. box-shadow. */
+  --cyan:    #22d3ee;  /* Agent-Rolle A (z.B. ARCHITECT) */
+  --magenta: #e935f0;  /* Agent-Rolle B (z.B. DESIGNER)  */
+  --cyan-glow:    rgba(34, 211, 238, 0.45);
+  --magenta-glow: rgba(233, 53, 240, 0.45);
+
+  /* ---- HOLOGRAPHIC (Premium-Tier) ---------------------------------------
+     Violett / Cyan / Pink / Gold-Schimmer als geschichteter Verlauf. */
+  --holo-violet: #7c5cff;
+  --holo-cyan:   #4cc2ff;
+  --holo-pink:   #ff7ad9;
+  --holo: linear-gradient(120deg, #7c5cff 0%, #4cc2ff 35%, #ff7ad9 65%, #d4af37 100%);
+
+  /* ---- TYPOGRAFIE --------------------------------------------------------
+     Wortmarke + Namen: Serif. Labels/Kleintext: System-Sans,
+     UPPERCASE + letter-spacing (siehe --track). */
+  --serif: Georgia, 'Times New Roman', serif;
+  --sans:  'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  --mono:  ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  --track: 0.28em;    /* Standard-Letterspacing fuer Uppercase-Labels */
+
+  /* ---- TEXT AUF DUNKEL --------------------------------------------------- */
+  --text:  #e8e6df;               /* warmes Weiss             */
+  --muted: rgba(232, 230, 223, 0.55); /* gedaempfte Nebenzeilen */
+
+  /* ---- SONSTIGES ---------------------------------------------------------- */
+  --radius: 16px;                          /* Standard-Eckenradius   */
+  --hairline: rgba(212, 175, 55, 0.35);    /* feine Gold-Linien      */
+}
+
+/* --------------------------------------------------------------------------
+   MERKSAETZE
+   - Wortmarke: "4never Company" in var(--serif), Gold.
+   - Tagline:   "AGENTIC BUSINESS" in var(--sans), uppercase, var(--track).
+   - Logo:      C4-Monogramm + 3-Punkt-Krone, siehe logo.svg / logo-neon.svg.
+   - Print:     immer  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+   -------------------------------------------------------------------------- */

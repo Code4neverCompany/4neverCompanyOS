@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 4never Company - Logo Neon-Variante (Agent-Tier): Cyan-Strokes + Glow. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240" role="img" aria-label="4never Company C4 Monogramm Neon">
+  <defs>
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="4" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect x="5" y="5" width="230" height="230" rx="40" fill="#0b0b14" stroke="#22d3ee" stroke-width="2" opacity="0.9"/>
+  <g filter="url(#glow)">
+    <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="none" stroke="#22d3ee" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="107" cy="45" r="3.5" fill="#22d3ee"/>
+    <circle cx="120" cy="39" r="3.5" fill="#22d3ee"/>
+    <circle cx="133" cy="45" r="3.5" fill="#22d3ee"/>
+    <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="#22d3ee" stroke-width="13" stroke-linecap="round"/>
+    <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="#22d3ee" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg>

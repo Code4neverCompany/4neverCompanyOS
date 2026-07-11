@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="de">
+<!--
+  4never Company — YOUTUBE KANALBILD
+  Canvas: 2560 x 1440 px (YouTube-Gesamtformat).
+  SAFE AREA: 1546 x 423 px zentriert — nur dieser Bereich ist auf ALLEN
+  Geraeten sichtbar (die gestrichelte Markierung ist nur Screen-Hilfe;
+  fuer den Export die Klasse "guides" am <div class="canvas"> ENTFERNEN).
+  BEARBEITEN: Wortmarke/Tagline im .safe-Block aendern.
+  EXPORT (PNG): DevTools (F12) -> Strg+Shift+P -> "Capture node screenshot"
+  auf dem <div class="canvas"> (vorher "guides" entfernen). Ergebnis: 2560x1440.
+-->
+<head>
+<meta charset="utf-8">
+<title>4never Company — YouTube Banner 2560x1440</title>
+<style>
+  :root{
+    --ink:#0b0b14; --panel:#12121e;
+    --gold:#d4af37; --gold-light:#f0d778; --gold-deep:#8a6d1f;
+    --foil:linear-gradient(135deg,#f0d778 0%,#d4af37 45%,#8a6d1f 100%);
+    --cyan:#22d3ee; --magenta:#e935f0;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    --track:.28em; --text:#e8e6df; --muted:rgba(232,230,223,.55);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#08080f;font-family:var(--sans);color:var(--text);
+    display:flex;flex-direction:column;align-items:center;gap:20px;padding:40px 20px}
+  .screen-note{font-size:12px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .frame-scroll{max-width:100%;overflow:auto}
+  .canvas{
+    position:relative;width:2560px;height:1440px;overflow:hidden;flex:none;
+    background:radial-gradient(60% 60% at 50% 50%,#161624 0%,var(--ink) 70%);
+  }
+  .circuit{position:absolute;inset:0;width:100%;height:100%;opacity:.4;filter:drop-shadow(0 0 8px rgba(34,211,238,.35))}
+  .halo{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:900px;height:900px;border-radius:50%;
+    background:radial-gradient(circle,rgba(212,175,55,.16) 0%,transparent 62%);
+  }
+  .safe{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:1546px;height:423px;
+    display:flex;align-items:center;justify-content:center;gap:56px;
+  }
+  .guides .safe{outline:2px dashed rgba(34,211,238,.5);outline-offset:-2px}
+  .guides .safe::after{
+    content:"SAFE AREA 1546 \00d7 423 — auf allen Ger\00e4ten sichtbar";
+    position:absolute;top:10px;left:14px;font-size:18px;letter-spacing:.2em;
+    text-transform:uppercase;color:rgba(34,211,238,.75);
+  }
+  .logo{width:300px;height:300px;flex:none;filter:drop-shadow(0 0 30px rgba(212,175,55,.4))}
+  .wordmark{
+    font-family:var(--serif);font-size:120px;line-height:1;letter-spacing:.02em;
+    background:var(--foil);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .tagline{margin-top:26px;font-size:30px;letter-spacing:var(--track);text-transform:uppercase;color:var(--cyan);text-shadow:0 0 14px rgba(34,211,238,.55)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gf" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f0d778"/><stop offset=".45" stop-color="#d4af37"/><stop offset="1" stop-color="#8a6d1f"/>
+  </linearGradient>
+</defs></svg>
+
+<p class="screen-note">YouTube Banner &middot; 2560&times;1440 px &middot; Safe Area 1546&times;423 markiert (Klasse "guides" vor Export entfernen)</p>
+
+<div class="frame-scroll">
+<div class="canvas guides">
+  <svg class="circuit" viewBox="0 0 2560 1440" fill="none" preserveAspectRatio="none" aria-hidden="true">
+    <g stroke="#22d3ee" stroke-width="2" opacity=".45">
+      <path d="M0 220 H420 V420 H700"/><path d="M2560 260 H2140 V440 H1880"/>
+      <path d="M0 1200 H380 V1020 H640"/><path d="M2560 1180 H2180 V1000 H1940"/>
+      <path d="M520 0 V180 H760 V320"/><path d="M2040 1440 V1260 H1800 V1120"/>
+    </g>
+    <g fill="#22d3ee" opacity=".8">
+      <circle cx="700" cy="420" r="7"/><circle cx="1880" cy="440" r="7"/>
+      <circle cx="640" cy="1020" r="7"/><circle cx="1940" cy="1000" r="7"/>
+      <circle cx="760" cy="320" r="7"/><circle cx="1800" cy="1120" r="7"/>
+    </g>
+    <g stroke="#e935f0" stroke-width="2" opacity=".3">
+      <path d="M0 700 H300"/><path d="M2560 740 H2260"/>
+    </g>
+  </svg>
+  <div class="halo"></div>
+  <div class="safe">
+    <svg class="logo" viewBox="0 0 240 240" aria-hidden="true">
+      <rect x="5" y="5" width="230" height="230" rx="40" fill="#0b0b14" stroke="url(#gf)" stroke-width="2.5"/>
+      <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+      <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/><circle cx="120" cy="39" r="3.5" fill="url(#gf)"/><circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+      <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="url(#gf)" stroke-width="15" stroke-linecap="round"/>
+      <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="url(#gf)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <h1 class="wordmark">4never Company</h1>
+      <p class="tagline">Agentic Business</p>
+    </div>
+  </div>
+</div>
+</div>
+</body>
+</html>

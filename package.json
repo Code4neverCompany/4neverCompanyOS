@@ -1,0 +1,16 @@
+{
+  "name": "4nevercompany-os",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personal OS dashboard backend for 4neverCompany",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4"
+  }
+}

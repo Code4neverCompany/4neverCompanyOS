@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="de">
+<!--
+  4never Company — LINKEDIN BANNER (Profil-Header)
+  Canvas: exakt 1584 x 396 px (LinkedIn-Vorgabe).
+  BEARBEITEN: Headline/Tagline im .text-Block unten aendern.
+  EXPORT (PNG): Datei in Chrome/Edge oeffnen -> F12 (DevTools) ->
+    Strg+Shift+P -> "Capture node screenshot" -> vorher im Elements-Tab
+    das <div class="canvas"> selektieren. Ergebnis: pixelgenaues 1584x396-PNG.
+    Alternativ: Device-Toolbar auf 1584x396 stellen und "Capture screenshot".
+-->
+<head>
+<meta charset="utf-8">
+<title>4never Company — LinkedIn Banner 1584x396</title>
+<style>
+  :root{
+    --ink:#0b0b14; --panel:#12121e;
+    --gold:#d4af37; --gold-light:#f0d778; --gold-deep:#8a6d1f;
+    --foil:linear-gradient(135deg,#f0d778 0%,#d4af37 45%,#8a6d1f 100%);
+    --cyan:#22d3ee; --magenta:#e935f0;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    --track:.28em; --text:#e8e6df; --muted:rgba(232,230,223,.55);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#08080f;font-family:var(--sans);color:var(--text);
+    display:flex;flex-direction:column;align-items:center;gap:20px;padding:40px 20px}
+  .screen-note{font-size:12px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .canvas{
+    position:relative;width:1584px;height:396px;overflow:hidden;flex:none;
+    background:radial-gradient(90% 160% at 22% 45%,#151523 0%,var(--ink) 55%);
+    box-shadow:0 30px 80px rgba(0,0,0,.6);
+  }
+  .circuit{position:absolute;inset:0;width:100%;height:100%;opacity:.55;filter:drop-shadow(0 0 6px rgba(34,211,238,.4))}
+  .ring{
+    position:absolute;left:150px;top:50%;transform:translateY(-50%);
+    width:320px;height:320px;border-radius:50%;
+    border:2px solid rgba(34,211,238,.75);
+    box-shadow:0 0 46px rgba(34,211,238,.45),inset 0 0 46px rgba(34,211,238,.22),0 0 120px rgba(233,53,240,.18);
+  }
+  .ring::after{content:"";position:absolute;inset:14px;border-radius:50%;border:1px solid rgba(233,53,240,.35)}
+  .logo{position:absolute;left:214px;top:50%;transform:translateY(-50%);width:192px;height:192px;filter:drop-shadow(0 0 24px rgba(212,175,55,.35))}
+  .text{position:absolute;left:600px;top:50%;transform:translateY(-50%)}
+  .headline{
+    font-family:var(--serif);font-size:84px;line-height:1.05;letter-spacing:.02em;
+    background:var(--foil);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .tagline{margin-top:22px;font-size:24px;letter-spacing:var(--track);text-transform:uppercase;color:var(--cyan);text-shadow:0 0 12px rgba(34,211,238,.6)}
+  .tagline em{font-style:normal;color:var(--muted);margin:0 14px}
+  .baseline{position:absolute;left:600px;bottom:52px;width:640px;height:2px;background:linear-gradient(90deg,var(--gold),transparent)}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gf" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f0d778"/><stop offset=".45" stop-color="#d4af37"/><stop offset="1" stop-color="#8a6d1f"/>
+  </linearGradient>
+</defs></svg>
+
+<p class="screen-note">LinkedIn Banner &middot; 1584&times;396 px &middot; Export: DevTools Node-Screenshot</p>
+
+<div class="canvas">
+  <svg class="circuit" viewBox="0 0 1584 396" fill="none" preserveAspectRatio="none" aria-hidden="true">
+    <g stroke="#22d3ee" stroke-width="1.2" opacity=".5">
+      <path d="M1584 60 H1350 V140 H1180"/><path d="M1584 330 H1420 V240 H1260"/>
+      <path d="M1240 396 V320 H1100 V250"/><path d="M980 0 V70 H1060 V150"/>
+    </g>
+    <g stroke="#e935f0" stroke-width="1.2" opacity=".4">
+      <path d="M1584 200 H1470 V280 H1360"/><path d="M900 396 V330 H980 V260"/>
+    </g>
+    <g fill="#22d3ee" opacity=".8">
+      <circle cx="1180" cy="140" r="4"/><circle cx="1260" cy="240" r="4"/>
+      <circle cx="1100" cy="250" r="4"/><circle cx="1060" cy="150" r="4"/>
+    </g>
+    <g fill="#e935f0" opacity=".7">
+      <circle cx="1360" cy="280" r="4"/><circle cx="980" cy="260" r="4"/>
+    </g>
+  </svg>
+  <div class="ring"></div>
+  <svg class="logo" viewBox="0 0 240 240" aria-hidden="true">
+    <rect x="5" y="5" width="230" height="230" rx="40" fill="#0b0b14" stroke="url(#gf)" stroke-width="2.5"/>
+    <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+    <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/><circle cx="120" cy="39" r="3.5" fill="url(#gf)"/><circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+    <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="url(#gf)" stroke-width="15" stroke-linecap="round"/>
+    <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="url(#gf)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div class="text">
+    <h1 class="headline">4never Leadership</h1>
+    <p class="tagline"><em>&mdash;</em>Agentic Business<em>&mdash;</em></p>
+  </div>
+  <div class="baseline"></div>
+</div>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de">
+<!--
+  4never Company — PRAESENTATION: TITELFOLIE
+  Canvas: 1920 x 1080 px (16:9).
+  BEARBEITEN: Titel im <h1>, Untertitel im <p class="subtitle">.
+  EXPORT: a) PNG: DevTools (F12) -> Strg+Shift+P -> "Capture node screenshot"
+             auf dem <div class="canvas">.
+          b) PDF: Strg+P -> Querformat, Raender "Keine",
+             "Hintergrundgrafiken" AKTIVIEREN (Papierformat frei, Folie skaliert).
+          PNGs lassen sich 1:1 in PowerPoint/Keynote als Folienbild einsetzen.
+-->
+<head>
+<meta charset="utf-8">
+<title>4never Company — Slide: Titel</title>
+<style>
+  :root{
+    --ink:#0b0b14; --panel:#12121e;
+    --gold:#d4af37; --gold-light:#f0d778; --gold-deep:#8a6d1f;
+    --foil:linear-gradient(135deg,#f0d778 0%,#d4af37 45%,#8a6d1f 100%);
+    --cyan:#22d3ee; --magenta:#e935f0;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    --track:.28em; --text:#e8e6df; --muted:rgba(232,230,223,.55);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#08080f;font-family:var(--sans);color:var(--text);
+    display:flex;flex-direction:column;align-items:center;gap:20px;padding:40px 20px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .screen-note{font-size:12px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .canvas{
+    position:relative;width:1920px;height:1080px;overflow:hidden;flex:none;
+    background:radial-gradient(70% 90% at 50% 30%,#151523 0%,var(--ink) 65%);
+    box-shadow:0 30px 80px rgba(0,0,0,.6);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+  }
+  /* Neon-Horizont unten */
+  .horizon{position:absolute;left:0;right:0;bottom:0;height:340px;pointer-events:none;
+    background:radial-gradient(55% 90% at 50% 100%,rgba(34,211,238,.22),transparent 70%)}
+  .horizon::after{content:"";position:absolute;left:14%;right:14%;bottom:110px;height:2px;
+    background:linear-gradient(90deg,transparent,var(--cyan) 30%,var(--magenta) 70%,transparent);
+    box-shadow:0 0 24px rgba(34,211,238,.7)}
+  .logo{width:260px;height:260px;filter:drop-shadow(0 0 30px rgba(212,175,55,.4))}
+  h1{
+    margin-top:56px;max-width:1400px;text-align:center;
+    font-family:var(--serif);font-size:104px;line-height:1.08;letter-spacing:.02em;
+    background:var(--foil);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .subtitle{margin-top:34px;font-size:26px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .brand-foot{position:absolute;bottom:48px;left:0;right:0;text-align:center;
+    font-size:17px;letter-spacing:var(--track);text-transform:uppercase;color:var(--cyan);
+    text-shadow:0 0 12px rgba(34,211,238,.55)}
+  @media print{
+    @page{size:508mm 285.75mm;margin:0}
+    body{background:#fff;padding:0;gap:0;display:block}
+    .screen-note{display:none}
+    .canvas{box-shadow:none;margin:0}
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gf" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f0d778"/><stop offset=".45" stop-color="#d4af37"/><stop offset="1" stop-color="#8a6d1f"/>
+  </linearGradient>
+</defs></svg>
+
+<p class="screen-note">Slide: Titel &middot; 1920&times;1080 px</p>
+
+<div class="canvas">
+  <div class="horizon"></div>
+  <svg class="logo" viewBox="0 0 240 240" aria-hidden="true">
+    <rect x="5" y="5" width="230" height="230" rx="40" fill="#0b0b14" stroke="url(#gf)" stroke-width="2.5"/>
+    <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+    <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/><circle cx="120" cy="39" r="3.5" fill="url(#gf)"/><circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+    <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="url(#gf)" stroke-width="15" stroke-linecap="round"/>
+    <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="url(#gf)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <h1>Titel der Pr&auml;sentation</h1>
+  <p class="subtitle">Untertitel &middot; Datum &middot; Referent</p>
+  <p class="brand-foot">4never Company &mdash; Agentic Business</p>
+</div>
+</body>
+</html>

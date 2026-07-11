@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 4never Company - Krone solo (Goldfolie), transparenter Hintergrund. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="98 33 44 42" width="88" height="84" role="img" aria-label="4never Company Krone">
+  <defs>
+    <linearGradient id="gf" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#f0d778"/>
+      <stop offset="0.45" stop-color="#d4af37"/>
+      <stop offset="1" stop-color="#8a6d1f"/>
+    </linearGradient>
+  </defs>
+  <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+  <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/>
+  <circle cx="120" cy="39" r="3.5" fill="url(#gf)"/>
+  <circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+</svg>

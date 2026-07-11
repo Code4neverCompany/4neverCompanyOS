@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="de">
+<!--
+  4never Company — PREMIUM VISITENKARTE (Holographic Tier)
+  Format: 55 x 85 mm Hochformat + 3 mm Beschnitt rundum = 61 x 91 mm Dokumentseite.
+  BEARBEITEN: Name/Titel/Kontakt im HTML unten. Holo-Farben: --holo-* Tokens.
+  SCREEN:     Der Holo-Schimmer ist animiert (nur Bildschirm).
+  EXPORT:     Strg+P -> "Als PDF speichern", Raender "Keine",
+              "Hintergrundgrafiken" AKTIVIEREN. Animation wird im Druck
+              automatisch eingefroren (statischer Verlauf). 1 Seite 61 x 91 mm.
+  SCHNITTMARKEN: 3 mm Beschnitt enthalten, Endformat 55 x 85 mm zentriert.
+-->
+<head>
+<meta charset="utf-8">
+<title>4never Company — Premium Card</title>
+<style>
+  :root{
+    --ink:#0b0b14; --panel:#12121e;
+    --gold:#d4af37; --gold-light:#f0d778; --gold-deep:#8a6d1f;
+    --foil:linear-gradient(135deg,#f0d778 0%,#d4af37 45%,#8a6d1f 100%);
+    --holo-violet:#7c5cff; --holo-cyan:#4cc2ff; --holo-pink:#ff7ad9;
+    --serif:Georgia,'Times New Roman',serif;
+    --sans:'Segoe UI',system-ui,-apple-system,Arial,sans-serif;
+    --track:.28em; --text:#e8e6df; --muted:rgba(232,230,223,.6);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:#08080f;color:var(--text);font-family:var(--sans);
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    gap:28px;padding:48px 24px;
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .screen-note{font-size:12px;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .card{
+    position:relative;width:61mm;height:91mm;overflow:hidden;border-radius:2.5mm;
+    box-shadow:0 24px 70px rgba(0,0,0,.65);
+    background:
+      radial-gradient(120% 80% at 82% 8%,rgba(124,92,255,.5),transparent 62%),
+      radial-gradient(120% 90% at 12% 30%,rgba(76,194,255,.42),transparent 60%),
+      radial-gradient(130% 100% at 62% 96%,rgba(255,122,217,.42),transparent 65%),
+      radial-gradient(100% 80% at 28% 82%,rgba(212,175,55,.30),transparent 60%),
+      var(--ink);
+    -webkit-print-color-adjust:exact;print-color-adjust:exact;
+  }
+  .card::before{ /* Lesbarkeits-Schleier */
+    content:"";position:absolute;inset:0;z-index:1;
+    background:linear-gradient(180deg,rgba(11,11,20,.28) 0%,rgba(11,11,20,.5) 100%);
+  }
+  .card::after{ /* animierter Holo-Schimmer (nur Screen) */
+    content:"";position:absolute;inset:-40%;z-index:3;pointer-events:none;
+    background:linear-gradient(115deg,transparent 38%,rgba(255,255,255,.22) 50%,transparent 62%);
+    mix-blend-mode:overlay;animation:shimmer 6s linear infinite;
+  }
+  @keyframes shimmer{
+    0%{transform:translateX(-30%) translateY(-10%)}
+    100%{transform:translateX(30%) translateY(10%)}
+  }
+  /* Gold-Doppelrahmen */
+  .frame{position:absolute;inset:3.8mm;z-index:2;border:.4mm solid var(--gold);border-radius:1.2mm;pointer-events:none}
+  .frame::after{content:"";position:absolute;inset:.9mm;border:.15mm solid rgba(212,175,55,.5);border-radius:.8mm}
+  /* Circuit-Linien in Gold */
+  .circuit{position:absolute;inset:0;z-index:1;width:100%;height:100%;opacity:.5;filter:drop-shadow(0 0 3px rgba(212,175,55,.5))}
+  .safe{position:absolute;inset:7mm;z-index:2;display:flex;flex-direction:column;align-items:center;padding-top:6mm}
+  .logo{width:23mm;height:23mm;display:block;filter:drop-shadow(0 0 4mm rgba(212,175,55,.35))}
+  .tier{margin-top:4mm;font-size:5pt;letter-spacing:var(--track);text-transform:uppercase;color:var(--gold-light)}
+  .name{margin-top:2mm;font-family:var(--serif);font-size:13.5pt;color:var(--gold-light);letter-spacing:.04em;text-shadow:0 0 6px rgba(212,175,55,.4)}
+  .title{margin-top:1.6mm;font-size:5.4pt;letter-spacing:var(--track);text-transform:uppercase;color:var(--muted)}
+  .bar{margin-top:auto;width:70%;height:.5mm;background:var(--foil);border-radius:.3mm}
+  .contact{margin-top:2.6mm;display:flex;flex-direction:column;gap:1.1mm;font-size:5.4pt;letter-spacing:.12em;color:#fff;text-align:center}
+  .contact span{color:var(--gold)}
+  @media print{
+    @page{size:61mm 91mm;margin:0}
+    body{background:#fff;padding:0;gap:0;display:block}
+    .screen-note{display:none}
+    .card{border-radius:0;box-shadow:none;margin:0}
+    .card::after{animation:none;transform:none}
+  }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gf" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#f0d778"/><stop offset=".45" stop-color="#d4af37"/><stop offset="1" stop-color="#8a6d1f"/>
+  </linearGradient>
+</defs></svg>
+
+<p class="screen-note">Premium Card &middot; 55&times;85 mm + 3 mm Beschnitt &middot; Holo</p>
+
+<div class="card">
+  <svg class="circuit" viewBox="0 0 122 182" fill="none" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <g stroke="#d4af37" stroke-width=".8">
+      <path d="M-4 30 H20 V52 H36"/><path d="M126 44 H100 V66 H84"/>
+      <path d="M-4 150 H24 V132 H40"/><path d="M126 160 H96 V142"/>
+      <path d="M60 186 V168 H78 V156"/>
+    </g>
+    <g fill="#d4af37">
+      <circle cx="36" cy="52" r="1.8"/><circle cx="84" cy="66" r="1.8"/><circle cx="40" cy="132" r="1.8"/>
+      <circle cx="96" cy="142" r="1.8"/><circle cx="78" cy="156" r="1.8"/>
+    </g>
+  </svg>
+  <div class="frame"></div>
+  <div class="safe">
+    <svg class="logo" viewBox="0 0 240 240" aria-hidden="true">
+      <rect x="5" y="5" width="230" height="230" rx="40" fill="#0b0b14" stroke="url(#gf)" stroke-width="2.5"/>
+      <path d="M102 72 L107 49 L114 61 L120 43 L126 61 L133 49 L138 72 Z" fill="url(#gf)"/>
+      <circle cx="107" cy="45" r="3.5" fill="url(#gf)"/><circle cx="120" cy="39" r="3.5" fill="url(#gf)"/><circle cx="133" cy="45" r="3.5" fill="url(#gf)"/>
+      <path d="M161.6 185.5 A56 56 0 1 1 161.6 110.5" fill="none" stroke="url(#gf)" stroke-width="15" stroke-linecap="round"/>
+      <path d="M168 112 L136 156 L186 156 M168 112 L168 184" fill="none" stroke="url(#gf)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <p class="tier">Premium &middot; Agentic Business</p>
+    <p class="name">Max Mustermann</p>
+    <p class="title">Titel &middot; 4never Company</p>
+    <div class="bar"></div>
+    <div class="contact">
+      <p><span>T</span>&nbsp; +49 123 456 789</p>
+      <p><span>M</span>&nbsp; mail@4nevercompany.com</p>
+      <p><span>W</span>&nbsp; www.4nevercompany.com</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

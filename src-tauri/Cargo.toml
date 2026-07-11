@@ -1,0 +1,25 @@
+[package]
+name = "fournever-os"
+version = "0.1.0"
+edition = "2021"
+description = "4neverCompanyOS desktop app (Tauri v2 shell around fournever_core)."
+
+[lib]
+name = "fournever_os_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+fournever_core = { path = "core" }
+
+[workspace]
+members = ["core"]
+
+[profile.release]
+opt-level = "s"
+lto = true
