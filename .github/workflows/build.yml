@@ -1,0 +1,38 @@
+name: Build 4neverCompanyOS (Windows)
+
+on:
+  push:
+    branches: [cowork-rebuild]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust (stable, MSVC)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Build app + create GitHub release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: .
+          tagName: app-v0.2.0
+          releaseName: "4neverCompanyOS v0.2.0"
+          releaseBody: |
+            Windows-Installer der 4neverCompanyOS Desktop-App (Tauri, Rust-Backend, C4-Branding).
+            - .msi = Windows Installer
+            - -setup.exe = NSIS Installer
+            Nach der Installation startet die App eigenständig (kein Node nötig). Daten: I:\4neverCompanyOS\data + vault.
+          releaseDraft: false
+          prerelease: false
