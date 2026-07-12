@@ -33,6 +33,6 @@ jobs:
             Windows-Installer der 4neverCompanyOS Desktop-App (Tauri, Rust-Backend, C4-Branding).
             - .msi = Windows Installer
             - -setup.exe = NSIS Installer
-            Nach der Installation startet die App eigenständig (kein Node nötig). Daten: I:\4neverCompanyOS\data + vault.
+            Nach der Installation startet die App eigenstaendig (kein Node noetig). Daten: I:\4neverCompanyOS\data + vault.
           releaseDraft: false
           prerelease: false
